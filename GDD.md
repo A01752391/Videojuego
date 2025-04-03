@@ -46,7 +46,7 @@
 
 ### **Summary**
 
-Sum up your game idea in 2 sentences. A kind of elevator pitch. Keep it simple!
+This is a chess-roguelike game on which the pieces of the chess board are in a completely random square. Each round has a specific amount of points the player should reach to finish the round and get to a shop phase. In the shop you can buy powered pieces, special squares and game tickets. Each round the amount of points increases, so that the game in the latter round becomes very difficult to beat. Each run has milestones to unlock new powerups and pieces for the shop.
 
 ### **Gameplay**
 
