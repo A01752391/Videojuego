@@ -50,11 +50,14 @@ This is a chess-roguelike game on which the pieces of the chess board are in a c
 
 ### **Gameplay**
 
-What should the gameplay be like? What is the goal of the game, and what kind of obstacles are in the way? What tactics should the player use to overcome them?
+The gameplay involves the traditional chess moves over the board, until power ups or tickets are acquired. The currency of the game is silver nuggets, which can be used to purchase things from the shop. The powerups can be general (for every piece) or specific for just one piece. Tickets are the factor of the game that will add uncertainty and a more fresh experience each run. They can affect the board, exchange pieces, disappear pieces, etc. 
+The goal of the game is to reach several milestones throughout each run of the game to unlock new power ups and tickets and get to the highest score possible. 
+To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. In the shop phase, investing in powered pieces or game tickets should be done strategically. Overall, success depends on managing resources wisely, and making calculated sacrifices when necessary.
+
 
 ### **Mindset**
 
-What kind of mindset do you want to provoke in the player? Do you want them to feel powerful, or weak? Adventurous, or nervous? Hurried, or calm? How do you intend to provoke those emotions?
+The game is intended to provoke a mindset of a frenetic and randomized gameplay, where the only limit is the combination of the pieces and the tickets, and adventurous tension by creating an atmosphere of constantly adapting to unpredictable situations while seeking creative ways to overcome them. However, the shop phase and unlockable power-ups allow players to feel progressively stronger with each successful round. This balances the emotions that are provoked through the design. 
 
 ## _Technical_
 
