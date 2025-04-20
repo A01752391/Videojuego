@@ -182,13 +182,13 @@ _(example)_
 ## _Graphics_
 
 **Game logo**
-![Game logo.](/Users/mirandaurbansolano/Documents/GitHub/Videojuego/Imagenes/Logo.jpg)
+![Game logo.](Imagenes/Logo.jpg)
 
 **Game board**
-![Game board.](/Users/mirandaurbansolano/Documents/GitHub/Videojuego/Imagenes/Tablero.jpg)
+![Game board.](Imagenes/Tablero.jpg)
 
 **Pieces/Characters**
-![Game characters.](/Users/mirandaurbansolano/Documents/GitHub/Videojuego/Imagenes/Piezas.jpg)
+![Game characters.](Imagenes/Piezas.jpg)
 
 ---
 
