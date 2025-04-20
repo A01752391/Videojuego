@@ -88,6 +88,19 @@ _(example)_
 
 How will the player interact with the game? Will they be able to choose the controls? What kind of in-game events are they going to be able to trigger, and how? (e.g. pressing buttons, opening doors, etc.)
 
+The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules.
+
+The basic trigger events are the following:
+
+- Left click: select/move piece.
+- Right click: view piece info (abilities, stats).
+- Key I: open inventory (power-ups & tickets).
+- Key S: open shop during shop phase.
+
+The triggerable in-game events:
+
+- Purchase of upgraded pieces or special tiles during shop phase.
+
 ### **Mechanics**
 
 Are there any interesting mechanics? If so, how are you going to accomplish them? Physics, algorithms, etc.
@@ -100,32 +113,32 @@ _(Note : These sections can safely be skipped if they&#39;re not relevant, or yo
 
 ### **Themes**
 
-1. Forest
+1. Board
    1. Mood
-      1. Dark, calm, foreboding
+      1. Supernatural, playful, chaotic.
    2. Objects
       1. _Ambient_
-         1. Fireflies
-         2. Beams of moonlight
-         3. Tall grass
+         1. Hand-painted look
+         2. Fairytale aesthetic
+         3. Dim lighting
       2. _Interactive_
-         1. Wolves
-         2. Goblins
-         3. Rocks
-2. Castle
+         1. Pieces
+         2. Tiles
+2. Pieces
    1. Mood
-      1. Dangerous, tense, active
+      1. Spectral, theatrical, ghostly.
    2. Objects
       1. _Ambient_
-         1. Rodents
-         2. Torches
-         3. Suits of armor
+         1. Each piece has its own personality
+         2. Uncanny touches
+         3. Bizarre looks
       2. _Interactive_
-         1. Guards
-         2. Giant rats
-         3. Chests
-
-_(example)_
+         1. King
+         2. Queen
+         3. Rook
+         4. Bishop
+         5. Knight
+         6. Pawn
 
 ### **Game Flow**
 
