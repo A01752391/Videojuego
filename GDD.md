@@ -32,11 +32,12 @@ ADA
    3. [Mechanics](#mechanics)
 4. [Level Design](#level-design)
    1. [Themes](#themes)
-      1. Ambience
-      2. Objects
+      1. Board
          1. Ambient
          2. Interactive
-      3. Challenges
+      2. Pieces
+         1. Ambient
+         2. Interactive
    2. [Game Flow](#game-flow)
 5. [Development](#development)
    1. [Abstract Classes](#abstract-classes--components)
@@ -76,19 +77,18 @@ The game is intended to provoke a mindset of a frenetic and randomized gameplay,
 
 1. Title Screen
    1. Options
-2. Level Select
+2. Play
 3. Game
-   1. Inventory
-   2. Assessment / Next Level
-4. End Credits
-
-_(example)_
+   1. Pause
+   2. Quit
+4. Shop stage
+5. End screen
+   1. Winning screen
+   2. Losing screen
 
 ### **Controls**
 
-How will the player interact with the game? Will they be able to choose the controls? What kind of in-game events are they going to be able to trigger, and how? (e.g. pressing buttons, opening doors, etc.)
-
-The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules.
+The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules. Each time a piece is selected or clicked upon, the squares where the piece can move will be lighted up.
 
 The basic trigger events are the following:
 
@@ -103,7 +103,11 @@ The triggerable in-game events:
 
 ### **Mechanics**
 
-Are there any interesting mechanics? If so, how are you going to accomplish them? Physics, algorithms, etc.
+- Classic chess movement.
+- Random piece placement at the start of every round. A controlled randomization system must be used to avoid checkmate, etc.
+- The scoring system will be determined by capturing specific pieces (Pawn = 1, Queen = 9, etc.).
+- The goal is to reach the round’s required point total to unlock the objects of the shop.
+- Power-ups can be applied globally or to specific pieces types, depending on the type of power-up chosen.
 
 ## _Level Design_
 
@@ -142,15 +146,14 @@ _(Note : These sections can safely be skipped if they&#39;re not relevant, or yo
 
 ### **Game Flow**
 
-1. Player starts in forest
-2. Pond to the left, must move right
-3. To the right is a hill, player jumps to traverse it (&quot;jump&quot; taught)
-4. Player encounters castle - door&#39;s shut and locked
-5. There&#39;s a window within jump height, and a rock on the ground
-6. Player picks up rock and throws at glass (&quot;throw&quot; taught)
-7. … etc.
-
-_(example)_
+1. Randomized board is generated and target score for the round is displayed.
+2. Player moves using chess logic.
+3. Capture pieces to gain points.
+4. Use any power-ups or tickets if available.
+5. Once the target score is reached, the shop opens.
+6. Player can spend silver nuggets strategically.
+7. Next round begins, same logic, but with a new board, harder layout
+8. Repeat until defeat or victory.
 
 ## _Development_
 
