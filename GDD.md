@@ -261,72 +261,38 @@ _(example)_
 
 ### **Style Attributes**
 
-Again, consistency is key. Define that consistency here. What kind of instruments do you want to use in your music? Any particular tempo, key? Influences, genre? Mood?
 
-Stylistically, what kind of sound effects are you looking for? Do you want to exaggerate actions with lengthy, cartoony sounds (e.g. mario&#39;s jump), or use just enough to let the player know something happened (e.g. mega man&#39;s landing)? Going for realism? You can use the music style as a bit of a reference too.
-
-Remember, auditory feedback should stand out from the music and other sound effects so the player hears it well. Volume, panning, and frequency/pitch are all important aspects to consider in both music _and_ sounds - so plan accordingly!
+- *Effects:* whimsical and percussive—light “clicks,” playful “pops,” energetic “zaps.”  
+- *Music:* upbeat, loopable tracks with quirky melodies (e.g. marimba, xylophone, light synth), rising in intensity as power thresholds approach.
 
 ### **Sounds Needed**
 
-1. Effects
-   1. Soft Footsteps (dirt floor)
-   2. Sharper Footsteps (stone floor)
-   3. Soft Landing (low vertical velocity)
-   4. Hard Landing (high vertical velocity)
-   5. Glass Breaking
-   6. Chest Opening
-   7. Door Opening
-2. Feedback
-   1. Relieved &quot;Ahhhh!&quot; (health)
-   2. Shocked &quot;Ooomph!&quot; (attacked)
-   3. Happy chime (extra life)
-   4. Sad chime (died)
-
-_(example)_
+1. Move click  
+2. Capture bite  
+3. Power spawn zap  
+4. Power collect pop  
+5. Power activate whoosh  
+6. Round transition jingle  
+7. Victory/death fanfare  
 
 ### **Music Needed**
 
-1. Slow-paced, nerve-racking &quot;forest&quot; track
-2. Exciting &quot;castle&quot; track
-3. Creepy, slow &quot;dungeon&quot; track
-4. Happy ending credits track
-5. Rick Astley&#39;s hit #1 single &quot;Never Gonna Give You Up&quot;
-
-_(example)_
+1. *Main Loop:* light, catchy motif  
+2. *Tension Build:* rhythmic swell on spawns  
+3. *Finale:* triumphant brass/synth flourish 
 
 ## _Schedule_
 
 ---
 
-_(define the main activities and the expected dates when they should be finished. This is only a reference, and can change as the project is developed)_
+1. *Week 1:* grid & piece movement, highlights  
+2. *Week 2:* capture scoring & UI  
+3. *Week 3:* threshold detection & power spawn  
+4. *Week 4:* implement each power effect  
+5. *Week 5:* round transitions & summaries  
+6. *Week 6:* handicap layout for Round 2 favoring trailing player  
+7. *Week 7:* integrate final graphics & animations  
+8. *Week 8:* add SFX & music  
+9. *Week 9:* playtesting & balancing  
+10. *Week 10:* polish, bug fixes, final build  
 
-1. develop base classes
-   1. base entity
-      1. base player
-      2. base enemy
-      3. base block
-2. base app state
-   1. game world
-   2. menu world
-3. develop player and basic block classes
-   1. physics / collisions
-4. find some smooth controls/physics
-5. develop other derived classes
-   1. blocks
-      1. moving
-      2. falling
-      3. breaking
-      4. cloud
-   2. enemies
-      1. soldier
-      2. rat
-      3. etc.
-6. design levels
-   1. introduce motion/jumping
-   2. introduce throwing
-   3. mind the pacing, let the player play between lessons
-7. design sounds
-8. design music
-
-_(example)_
