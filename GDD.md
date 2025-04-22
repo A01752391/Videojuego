@@ -57,17 +57,17 @@ ADA
 
 ### **Summary**
 
-This is a chess-roguelike game on which the pieces of the chess board are in a completely random square. Each round has a specific amount of points the player should reach to finish the round and get to a shop phase. In the shop you can buy powered pieces, special squares and game tickets. Each round the amount of points increases, so that the game in the latter round becomes very difficult to beat. Each run has milestones to unlock new powerups and pieces for the shop.
+This is a chess-roguelike local two player game on which the pieces of the chess board are in mid-game status, which means that the pieces are already developed and ready to attack each other. Each piece capture has a specific amount of points the player should reach to get a completely random powerup. The powerups are triggered by the user so they can use them when most convenient. The game is based on a best-of 3 system so when any of the players reach two wins the run is over.
 
 ### **Gameplay**
 
-The gameplay involves the traditional chess moves over the board, until power ups or tickets are acquired. The currency of the game is silver nuggets, which can be used to purchase things from the shop. The powerups can be general (for every piece) or specific for just one piece. Tickets are the factor of the game that will add uncertainty and a more fresh experience each run. They can affect the board, exchange pieces, disappear pieces, etc.
-The goal of the game is to reach several milestones throughout each run of the game to unlock new power ups and tickets and get to the highest score possible.
-To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. In the shop phase, investing in powered pieces or game tickets should be done strategically. Overall, success depends on managing resources wisely, and making calculated sacrifices when necessary.
+The gameplay involves the traditional chess moves over the board, until power ups are acquired. The powerups can be general (for every piece of your control) or even be applicable to the opponents pieces. This is the factor of the game that will add uncertainty and a more fresh experience each run. Powerups can affect the board, exchange pieces, disappear pieces, etc.
+The goal of the game is to beat the other player and gain points after each capture to be awarded power ups for any-round use and get to the highest score possible.
+To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. When receiveing a powerup, the player should decide on a conservative or aggressive approach, to attack the opposing pieces with the powerup. Overall, success depends on managing resources wisely, and making calculated sacrifices when necessary.
 
 ### **Mindset**
 
-The game is intended to provoke a mindset of a frenetic and randomized gameplay, where the only limit is the combination of the pieces and the tickets, and adventurous tension by creating an atmosphere of constantly adapting to unpredictable situations while seeking creative ways to overcome them. However, the shop phase and unlockable power-ups allow players to feel progressively stronger with each successful round. This balances the emotions that are provoked through the design.
+The game is intended to provoke a mindset of a frenetic and randomized gameplay, where the only limit is the combination of the powerups and how they are used, and adventurous tension by creating an atmosphere of constantly adapting to unpredictable situations while seeking creative ways to overcome them. However, the unlockable power-ups allow players to feel progressively stronger with each milestone of points reached. This balances the emotions that are provoked through the design.
 
 ## _Technical_
 
@@ -88,18 +88,21 @@ The game is intended to provoke a mindset of a frenetic and randomized gameplay,
 
 ### **Controls**
 
-The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules. Each time a piece is selected or clicked upon, the squares where the piece can move will be lighted up.
+The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules. Each time a piece is selected or clicked upon, the squares 
+
+where the piece can move will be lighted up.
 
 The basic trigger events are the following:
 
 - Left click: select/move piece.
 - Right click: view piece info (abilities, stats).
 - Key I: open inventory (power-ups & tickets).
-- Key S: open shop during shop phase.
+- Key Esq: Open menu (continue, new run, main menu).
 
 The triggerable in-game events:
 
 - Purchase of upgraded pieces or special tiles during shop phase.
+- 
 
 ### **Mechanics**
 
