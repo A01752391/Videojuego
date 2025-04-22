@@ -117,10 +117,6 @@ The triggerable in-game events:
 
 ## _Level Design_
 
----
-
-_(Note : These sections can safely be skipped if they&#39;re not relevant, or you&#39;d rather go about it another way. For most games, at least one of them should be useful. But I&#39;ll understand if you don&#39;t want to use them. It&#39;ll only hurt my feelings a little bit.)_
-
 ### **Themes**
 
 1. Board
@@ -167,39 +163,22 @@ _(Note : These sections can safely be skipped if they&#39;re not relevant, or yo
 
 ### **Abstract Classes / Components**
 
-1. BasePhysics
-   1. BasePlayer
-   2. BaseEnemy
-   3. BaseObject
-2. BaseObstacle
-3. BaseInteractable
-
-_(example)_
+1. ⁠*GameManager:* orchestrates rounds, scores, transitions
+2. ⁠*Board:* handles grid, piece placement, power spawn logic
+3. *Player:* input, score tracking, power inventory
+4. *Piece:* movement rules, capture handling
+5. *PowerUp:* interface for spawning & activation effects  
 
 ### **Derived Classes / Component Compositions**
 
-1. BasePlayer
-   1. PlayerMain
-   2. PlayerUnlockable
-2. BaseEnemy
-   1. EnemyWolf
-   2. EnemyGoblin
-   3. EnemyGuard (may drop key)
-   4. EnemyGiantRat
-   5. EnemyPrisoner
-3. BaseObject
-   1. ObjectRock (pick-up-able, throwable)
-   2. ObjectChest (pick-up-able, throwable, spits gold coins with key)
-   3. ObjectGoldCoin (cha-ching!)
-   4. ObjectKey (pick-up-able, throwable)
-4. BaseObstacle
-   1. ObstacleWindow (destroyed with rock)
-   2. ObstacleWall
-   3. ObstacleGate (watches to see if certain buttons are pressed)
-5. BaseInteractable
-   1. InteractableButton
-
-_(example)_
+1. *Piece:* Pawn, Knight, Bishop, Rook, Queen, King
+2. *PowerUp:*  
+  - *ExtraMove:* immediate extra turn  
+  - *Swap:* exchange two pieces anywhere  
+  - *Shield:* protect one piece from next capture  
+  - *Teleport:* relocate one piece to any empty square  
+  - *Blast:* remove any enemy piece of your choice
+3. *Board Generators:* StandardSetupGenerator, HandicapSetupGenerator  
 
 ## _Graphics_
 
@@ -216,44 +195,47 @@ _(example)_
 
 ### **Style Attributes**
 
-What kinds of colors will you be using? Do you have a limited palette to work with? A post-processed HSV map/image? Consistency is key for immersion.
-
-What kind of graphic style are you going for? Cartoony? Pixel-y? Cute? How, specifically? Solid, thick outlines with flat hues? Non-black outlines with limited tints/shades? Emphasize smooth curvatures over sharp angles? Describe a set of general rules depicting your style here.
-
-Well-designed feedback, both good (e.g. leveling up) and bad (e.g. being hit), are great for teaching the player how to play through trial and error, instead of scripting a lengthy tutorial. What kind of visual feedback are you going to use to let the player know they&#39;re interacting with something? That they \*can\* interact with something?
+- ⁠*Art Style:* playful, cartoon‑vector with thick black outlines and simple shapes.  
+- *Palette:*  
+  - *Backgrounds:* muted purples and dark browns for contrast.  
+  - *Tiles:* alternating pastel gold and lavender reminiscent of “Plants vs. Zombies.”  
+  - *Pieces & Powers:* off‑white bases with magenta, yellow, and teal accents for visual pop.  
+- *Aesthetic Cues:*  
+  - Slight texture/noise overlay for a hand‑drawn feel.  
+  - Exaggerated expressions on face‑like pieces, dynamic lightning bolts or sparkles on spawns.  
+- ⁠*Feedback:*  
+  - *Spawn:* bright magenta spark and small particles.  
+  - *Collect:* quick scaling “pop” and inventory flash.  
+  - *Activation:* radial wipe or burst of colored light.
 
 ### **Graphics Needed**
 
 1. Characters
-   1. Human-like
-      1. Goblin (idle, walking, throwing)
-      2. Guard (idle, walking, stabbing)
-      3. Prisoner (walking, running)
-   2. Other
-      1. Wolf (idle, walking, running)
-      2. Giant Rat (idle, scurrying)
-2. Blocks
-   1. Dirt
-   2. Dirt/Grass
-   3. Stone Block
-   4. Stone Bricks
-   5. Tiled Floor
-   6. Weathered Stone Block
-   7. Weathered Stone Bricks
-3. Ambient
-   1. Tall Grass
-   2. Rodent (idle, scurrying)
-   3. Torch
-   4. Armored Suit
-   5. Chains (matching Weathered Stone Bricks)
-   6. Blood stains (matching Weathered Stone Bricks)
-4. Other
-   1. Chest
-   2. Door (matching Stone Bricks)
-   3. Gate
-   4. Button (matching Weathered Stone Bricks)
-
-_(example)_
+   1. Pieces
+      1. Pawn
+      2. Knight
+      3. Bishop
+      4. Rook
+      5. Queen
+      6. King
+2. Board
+   1. Wood frame
+   2. Two tile variants
+   3. Highlight overlay
+3. Power-ups
+   1. ExtraMove
+   2. Swap
+   3. Shield
+   4. Teleport
+   5. Blast    
+4. UI Elements
+   1. Panels
+   2. Buttons
+   3. Tooltips
+5. Effects
+   1. Spawn sparkle
+   2. Capture “bite”
+   3. Power activation burst  
 
 ## _Sounds/Music_
 
