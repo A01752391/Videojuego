@@ -81,7 +81,7 @@ The game is intended to provoke a mindset of a frenetic and randomized gameplay,
 3. Game
    1. Pause
    2. Quit
-4. Shop stage
+4. Powerup award (when the score is reached)
 5. End screen
    1. Winning screen
    2. Losing screen
@@ -96,7 +96,6 @@ The basic trigger events are the following:
 
 - Left click: select/move piece.
 - Right click: view piece info (abilities, stats).
-- Key I: open inventory (power-ups & tickets).
 - Key Esq: Open menu (continue, new run, main menu).
 
 The triggerable in-game events:
@@ -106,11 +105,18 @@ The triggerable in-game events:
 
 ### **Mechanics**
 
-- Classic chess movement.
-- Random piece placement at the start of every round. A controlled randomization system must be used to avoid checkmate, etc.
-- The scoring system will be determined by capturing specific pieces (Pawn = 1, Queen = 9, etc.).
-- The goal is to reach the round’s required point total to unlock the objects of the shop.
-- Power-ups can be applied globally or to specific pieces types, depending on the type of power-up chosen.
+- *Standard Chess Moves:* click to select a piece, then click a highlighted legal square to move or capture.  
+- *Scoring:* capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).  
+- *Superpower Spawns:* upon crossing each threshold, the player is awarded one powerup to use in-game when desired. The powerup will appear on the game's screen.
+- *Activation:* on your turn, select a power, then click its target on board.  
+- *Two Rounds:*  
+  1. *Round 1:* standard mid‑game setup—race for points and powers.  
+  2. *Round 2:* fresh mid‑game layout where the trailing player receives an *advantaged formation*:  
+     - +2 advanced pawns on the third rank,  
+     - +1 additional minor piece (Knight or Bishop) placed to control the center,  
+     - +1 free superpower token in inventory at start.  
+- *Victory:* highest cumulative points after Round 2; if tied, next capture wins.
+
 
 ## _Level Design_
 
