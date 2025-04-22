@@ -88,9 +88,7 @@ The game is intended to provoke a mindset of a frenetic and randomized gameplay,
 
 ### **Controls**
 
-The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules. Each time a piece is selected or clicked upon, the squares 
-
-where the piece can move will be lighted up.
+The player will interact with the game moving pieces by clicking on them, and then selecting a valid square, following traditional chess movement rules. Each time a piece is selected or clicked upon, the squares where the piece can move will be lighted up.
 
 The basic trigger events are the following:
 
@@ -99,9 +97,8 @@ The basic trigger events are the following:
 - Key Esq: Open menu (continue, new run, main menu).
 
 The triggerable in-game events:
+- Power-up spawn: select a power-up to apply it to a single piece.
 
-- Purchase of upgraded pieces or special tiles during shop phase.
-- 
 
 ### **Mechanics**
 
@@ -155,14 +152,14 @@ _(Note : These sections can safely be skipped if they&#39;re not relevant, or yo
 
 ### **Game Flow**
 
-1. Randomized board is generated and target score for the round is displayed.
+1. A standard mid‑game layout is generated randomly and the target score for the round is displayed.
 2. Player moves using chess logic.
 3. Capture pieces to gain points.
-4. Use any power-ups or tickets if available.
-5. Once the target score is reached, the shop opens.
-6. Player can spend silver nuggets strategically.
-7. Next round begins, same logic, but with a new board, harder layout
-8. Repeat until defeat or victory.
+4. According to the points gained, power-ups are displayed.
+5. Use any power-ups if available.
+6. Next round begins, same logic, but with a new board, applying dynamic layout favoring trailing players (advanced pawns, central minor piece, bonus power).
+7. Repeat until victory or sudden‑death.
+
 
 ## _Development_
 
