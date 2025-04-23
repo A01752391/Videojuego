@@ -1,8 +1,14 @@
 # **Pawned**
 
+<p align="center">
+  <img src="Imagenes/Logo.jpg" alt="Logo del juego" width="200">
+</p>
+
 ## _Game Design Document_
 
----
+<p align="center">
+  <img src="https://javier.rodriguez.org.mx/itesm/2014/tecnologico-de-monterrey-blue.png" alt="Tec de Monterrey" width="300">
+</p>
 
 ##### **Team name:**
 
@@ -14,8 +20,6 @@ ADA
 - Luis Santiago Lopez A01785755
 - Luis Leonardo Rodríguez Gálvez A01029331
 - Santino Matias Im A01029622
-
-##
 
 ## _Index_
 
@@ -97,23 +101,22 @@ The basic trigger events are the following:
 - Key Esq: Open menu (continue, new run, main menu).
 
 The triggerable in-game events:
-- Power-up spawn: select a power-up to apply it to a single piece.
 
+- Power-up spawn: select a power-up to apply it to a single piece.
 
 ### **Mechanics**
 
-- *Standard Chess Moves:* click to select a piece, then click a highlighted legal square to move or capture.  
-- *Scoring:* capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).  
-- *Superpower Spawns:* upon crossing each threshold, the player is awarded one powerup to use in-game when desired. The powerup will appear on the game's screen.
-- *Activation:* on your turn, select a power, then click its target on board.  
-- *Two Rounds:*  
-  1. *Round 1:* standard mid‑game setup—race for points and powers.  
-  2. *Round 2:* fresh mid‑game layout where the trailing player receives an *advantaged formation*:  
-     - +2 advanced pawns on the third rank,  
-     - +1 additional minor piece (Knight or Bishop) placed to control the center,  
-     - +1 free superpower token in inventory at start.  
-- *Victory:* highest cumulative points after Round 2; if tied, next capture wins.
-
+- _Standard Chess Moves:_ click to select a piece, then click a highlighted legal square to move or capture.
+- _Scoring:_ capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).
+- _Superpower Spawns:_ upon crossing each threshold, the player is awarded one powerup to use in-game when desired. The powerup will appear on the game's screen.
+- _Activation:_ on your turn, select a power, then click its target on board.
+- _Two Rounds:_
+  1. _Round 1:_ standard mid‑game setup—race for points and powers.
+  2. _Round 2:_ fresh mid‑game layout where the trailing player receives an _advantaged formation_:
+     - +2 advanced pawns on the third rank,
+     - +1 additional minor piece (Knight or Bishop) placed to control the center,
+     - +1 free superpower token in inventory at start.
+- _Victory:_ highest cumulative points after Round 2; if tied, next capture wins.
 
 ## _Level Design_
 
@@ -156,7 +159,6 @@ The triggerable in-game events:
 6. Next round begins, same logic, but with a new board, applying dynamic layout favoring trailing players (advanced pawns, central minor piece, bonus power).
 7. Repeat until victory or sudden‑death.
 
-
 ## _Development_
 
 ---
@@ -165,20 +167,22 @@ The triggerable in-game events:
 
 1. ⁠*GameManager:* orchestrates rounds, scores, transitions
 2. ⁠*Board:* handles grid, piece placement, power spawn logic
-3. *Player:* input, score tracking, power inventory
-4. *Piece:* movement rules, capture handling
-5. *PowerUp:* interface for spawning & activation effects  
+3. _Player:_ input, score tracking, power inventory
+4. _Piece:_ movement rules, capture handling
+5. _PowerUp:_ interface for spawning & activation effects
 
 ### **Derived Classes / Component Compositions**
 
-1. *Piece:* Pawn, Knight, Bishop, Rook, Queen, King
-2. *PowerUp:*  
-  - *ExtraMove:* immediate extra turn  
-  - *Swap:* exchange two pieces anywhere  
-  - *Shield:* protect one piece from next capture  
-  - *Teleport:* relocate one piece to any empty square  
-  - *Blast:* remove any enemy piece of your choice
-3. *Board Generators:* StandardSetupGenerator, HandicapSetupGenerator  
+1. _Piece:_ Pawn, Knight, Bishop, Rook, Queen, King
+2. _PowerUp:_
+
+- _ExtraMove:_ immediate extra turn
+- _Swap:_ exchange two pieces anywhere
+- _Shield:_ protect one piece from next capture
+- _Teleport:_ relocate one piece to any empty square
+- _Blast:_ remove any enemy piece of your choice
+
+3. _Board Generators:_ StandardSetupGenerator, HandicapSetupGenerator
 
 ## _Graphics_
 
@@ -195,18 +199,18 @@ The triggerable in-game events:
 
 ### **Style Attributes**
 
-- ⁠*Art Style:* playful, cartoon‑vector with thick black outlines and simple shapes.  
-- *Palette:*  
-  - *Backgrounds:* muted purples and dark browns for contrast.  
-  - *Tiles:* alternating pastel gold and lavender reminiscent of “Plants vs. Zombies.”  
-  - *Pieces & Powers:* off‑white bases with magenta, yellow, and teal accents for visual pop.  
-- *Aesthetic Cues:*  
-  - Slight texture/noise overlay for a hand‑drawn feel.  
-  - Exaggerated expressions on face‑like pieces, dynamic lightning bolts or sparkles on spawns.  
-- ⁠*Feedback:*  
-  - *Spawn:* bright magenta spark and small particles.  
-  - *Collect:* quick scaling “pop” and inventory flash.  
-  - *Activation:* radial wipe or burst of colored light.
+- ⁠*Art Style:* playful, cartoon‑vector with thick black outlines and simple shapes.
+- _Palette:_
+  - _Backgrounds:_ muted purples and dark browns for contrast.
+  - _Tiles:_ alternating pastel gold and lavender reminiscent of “Plants vs. Zombies.”
+  - _Pieces & Powers:_ off‑white bases with magenta, yellow, and teal accents for visual pop.
+- _Aesthetic Cues:_
+  - Slight texture/noise overlay for a hand‑drawn feel.
+  - Exaggerated expressions on face‑like pieces, dynamic lightning bolts or sparkles on spawns.
+- ⁠*Feedback:*
+  - _Spawn:_ bright magenta spark and small particles.
+  - _Collect:_ quick scaling “pop” and inventory flash.
+  - _Activation:_ radial wipe or burst of colored light.
 
 ### **Graphics Needed**
 
@@ -227,7 +231,7 @@ The triggerable in-game events:
    2. Swap
    3. Shield
    4. Teleport
-   5. Blast    
+   5. Blast
 4. UI Elements
    1. Panels
    2. Buttons
@@ -235,7 +239,7 @@ The triggerable in-game events:
 5. Effects
    1. Spawn sparkle
    2. Capture “bite”
-   3. Power activation burst  
+   3. Power activation burst
 
 ## _Sounds/Music_
 
@@ -243,38 +247,36 @@ The triggerable in-game events:
 
 ### **Style Attributes**
 
-
-- *Effects:* whimsical and percussive—light “clicks,” playful “pops,” energetic “zaps.”  
-- *Music:* upbeat, loopable tracks with quirky melodies (e.g. marimba, xylophone, light synth), rising in intensity as power thresholds approach.
+- _Effects:_ whimsical and percussive—light “clicks,” playful “pops,” energetic “zaps.”
+- _Music:_ upbeat, loopable tracks with quirky melodies (e.g. marimba, xylophone, light synth), rising in intensity as power thresholds approach.
 
 ### **Sounds Needed**
 
-1. Move click  
-2. Capture bite  
-3. Power spawn zap  
-4. Power collect pop  
-5. Power activate whoosh  
-6. Round transition jingle  
-7. Victory/death fanfare  
+1. Move click
+2. Capture bite
+3. Power spawn zap
+4. Power collect pop
+5. Power activate whoosh
+6. Round transition jingle
+7. Victory/death fanfare
 
 ### **Music Needed**
 
-1. *Main Loop:* light, catchy motif  
-2. *Tension Build:* rhythmic swell on spawns  
-3. *Finale:* triumphant brass/synth flourish 
+1. _Main Loop:_ light, catchy motif
+2. _Tension Build:_ rhythmic swell on spawns
+3. _Finale:_ triumphant brass/synth flourish
 
 ## _Schedule_
 
 ---
 
-1. *Week 1:* grid & piece movement, highlights  
-2. *Week 2:* capture scoring & UI  
-3. *Week 3:* threshold detection & power spawn  
-4. *Week 4:* implement each power effect  
-5. *Week 5:* round transitions & summaries  
-6. *Week 6:* handicap layout for Round 2 favoring trailing player  
-7. *Week 7:* integrate final graphics & animations  
-8. *Week 8:* add SFX & music  
-9. *Week 9:* playtesting & balancing  
-10. *Week 10:* polish, bug fixes, final build  
-
+1. _Week 1:_ grid & piece movement, highlights
+2. _Week 2:_ capture scoring & UI
+3. _Week 3:_ threshold detection & power spawn
+4. _Week 4:_ implement each power effect
+5. _Week 5:_ round transitions & summaries
+6. _Week 6:_ handicap layout for Round 2 favoring trailing player
+7. _Week 7:_ integrate final graphics & animations
+8. _Week 8:_ add SFX & music
+9. _Week 9:_ playtesting & balancing
+10. _Week 10:_ polish, bug fixes, final build
