@@ -269,14 +269,36 @@ The triggerable in-game events:
 ## _Schedule_
 
 ---
+### Semana 1
+- [ ] Grid & piece movement  
+- [ ] Highlights  
+- [ ] Capture scoring  
+- [ ] UI  
 
-1. _Week 1:_ grid & piece movement, highlights
-2. _Week 2:_ capture scoring & UI
-3. _Week 3:_ threshold detection & power spawn
-4. _Week 4:_ implement each power effect
-5. _Week 5:_ round transitions & summaries
-6. _Week 6:_ handicap layout for Round 2 favoring trailing player
-7. _Week 7:_ integrate final graphics & animations
-8. _Week 8:_ add SFX & music
-9. _Week 9:_ playtesting & balancing
-10. _Week 10:_ polish, bug fixes, final build
+### Semana 2
+- [ ] Threshold detection  
+- [ ] Power spawn  
+- [ ] Implement each power effect  
+
+### Semana 3
+- [ ] Round transitions  
+- [ ] Round summaries  
+- [ ] Handicap layout (favor trailing player in Round 2)  
+
+### Semana 4
+- [ ] Integrate final graphics  
+- [ ] Animations  
+- [ ] Add SFX & music  
+
+### Semana 5
+- [ ] Playtesting  
+- [ ] Balancing  
+
+### Semana 6
+- [ ] Polish  
+- [ ] Bug fixes  
+
+### Semana 7
+- [ ] Final build  
+- [ ] Extra QA if needed  
+- [ ] Buffer for unexpected issues
