@@ -67,7 +67,7 @@ This is a chess-roguelike local two player game on which the pieces of the chess
 
 The gameplay involves the traditional chess moves over the board, until power-ups are acquired. The power-ups can be general (for every piece under your control) or even applicable to the opponent’s pieces. This is the factor of the game that will add uncertainty and a more fresh experience each run. Power-ups can affect the board, exchange pieces, make pieces disappear, etc. While the chess pieces are randomly reassigned each round, the power-ups and points you’ve acquired persist, allowing strategic progression and build variety across the run.
 
-The board itself is randomly generated at the beginning of each round or game, using a curated set of mid-game chess positions as templates. This ensures a variety of dynamic and challenging starting situations, while maintaining balanced and recognizable chess structures.
+The board itself is randomly obtained from a pool of different mid-game scenarios (neutral, favorable to player 1 pr favorable to player 2) at the beginning of each round or game, using a curated set of mid-game chess positions as templates. This ensures a variety of dynamic and challenging starting situations, while maintaining balanced and recognizable chess structures.
 
 The goal of the game is to capture the opponent’s king, as in traditional chess, while gaining points after each capture to be awarded power-ups for any-round use and reach the highest. To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. When receiving a power-up, the player should decide on a conservative or aggressive approach to attack the opposing pieces. Overall, success depends on managing resources wisely and making calculated sacrifices when necessary.
 
@@ -110,8 +110,9 @@ The triggerable in-game events:
 
 - _Standard Chess Moves:_ click to select a piece, then click a highlighted legal square to move or capture.
 - _Scoring:_ capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).
-- _Power-Up Unlocks:_ Power-ups are unlocked by reaching specific point thresholds during a round. For example, the first power-up is granted at 5 points, the second at 10, and so on. Upon crossing each threshold, the player is awarded a random power-up and it is added to their inventory.
-- _Power-Up Use:_ On your turn, you can activate a power-up instead of making a traditional move, or as an enhancement to a move (depending on the power-up type). Click to select the power-up, then click on the target (a piece, square, or zone) to apply its effect.
+- _Power-Up Unlocks:_ Power-ups are unlocked by reaching specific point thresholds during a round. For example, the first power-up is granted at 5 points, the second at 10, and so on. Upon crossing each threshold, the player is awarded a random power-up and it is added to their inventory. The powerups can be accumulated through rounds if they're not used, and each player has a limit of 5 powerups at the same time on inventory (when the number is reached no more powerups can appear for the player).
+- Types_Of_Power-Ups: There are two types of powerups: Piece powerups, which work by changing the movement range of a piece; and Board powerups, which work by changing piece placements, piece swaps, etc.
+- _Power-Up_Use:_ On your turn, you can activate a power-up instead of making a traditional move, or as an enhancement to a move (depending on the power-up type). Click to select the power-up, then click on the target (a piece, square, or zone) to apply its effect.
 - _Available Power-Ups:_
   1. _Blast:_ Destroys a selected enemy piece instantly.
   2. _Teleport:_ Move one of your pieces to any unoccupied square on the board.
@@ -126,6 +127,7 @@ The triggerable in-game events:
      - +1 additional minor piece (Knight or Bishop) placed to control the center,
      - +1 free superpower token in inventory at start.
 - _Victory:_ highest cumulative points after Round 2; if tied, next capture wins.
+- Post_Game: After each game a random powerup that wasnt unlocked before will be available to use and spawn in the next matches.
 
 ## _Level Design_
 
