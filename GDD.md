@@ -65,9 +65,11 @@ This is a chess-roguelike local two player game on which the pieces of the chess
 
 ### **Gameplay**
 
-The gameplay involves the traditional chess moves over the board, until power ups are acquired. The powerups can be general (for every piece of your control) or even be applicable to the opponents pieces. This is the factor of the game that will add uncertainty and a more fresh experience each run. Powerups can affect the board, exchange pieces, disappear pieces, etc.
-The goal of the game is to beat the other player and gain points after each capture to be awarded power ups for any-round use and get to the highest score possible.
-To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. When receiveing a powerup, the player should decide on a conservative or aggressive approach, to attack the opposing pieces with the powerup. Overall, success depends on managing resources wisely, and making calculated sacrifices when necessary.
+The gameplay involves the traditional chess moves over the board, until power-ups are acquired. The power-ups can be general (for every piece under your control) or even applicable to the opponent’s pieces. This is the factor of the game that will add uncertainty and a more fresh experience each run. Power-ups can affect the board, exchange pieces, make pieces disappear, etc. While the chess pieces are randomly reassigned each round, the power-ups and points you’ve acquired persist, allowing strategic progression and build variety across the run.
+
+The board itself is randomly generated at the beginning of each round or game, using a curated set of mid-game chess positions as templates. This ensures a variety of dynamic and challenging starting situations, while maintaining balanced and recognizable chess structures.
+
+The goal of the game is to capture the opponent’s king, as in traditional chess, while gaining points after each capture to be awarded power-ups for any-round use and reach the highest. To overcome the challenges, the player should focus on adaptability, turn management, and long-term planning. When receiving a power-up, the player should decide on a conservative or aggressive approach to attack the opposing pieces. Overall, success depends on managing resources wisely and making calculated sacrifices when necessary.
 
 ### **Mindset**
 
@@ -108,8 +110,15 @@ The triggerable in-game events:
 
 - _Standard Chess Moves:_ click to select a piece, then click a highlighted legal square to move or capture.
 - _Scoring:_ capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).
-- _Superpower Spawns:_ upon crossing each threshold, the player is awarded one powerup to use in-game when desired. The powerup will appear on the game's screen.
-- _Activation:_ on your turn, select a power, then click its target on board.
+- _Power-Up Unlocks:_ Power-ups are unlocked by reaching specific point thresholds during a round. For example, the first power-up is granted at 5 points, the second at 10, and so on. Upon crossing each threshold, the player is awarded a random power-up and it is added to their inventory.
+- _Power-Up Use:_ On your turn, you can activate a power-up instead of making a traditional move, or as an enhancement to a move (depending on the power-up type). Click to select the power-up, then click on the target (a piece, square, or zone) to apply its effect.
+- _Available Power-Ups:_
+  1. _Blast:_ Destroys a selected enemy piece instantly.
+  2. _Teleport:_ Move one of your pieces to any unoccupied square on the board.
+  3. _Swap:_ Swap positions of any two of your pieces on the board.
+  4. _Shield:_ Temporarily protects a piece from capture for one turn.
+  5. _ExtraMove:_ Grants an immediate second move within the same turn.
+  6. _Power-Up Persistence:_ Power-ups remain in your inventory across rounds, enabling long-term strategy and tactical planning.
 - _Two Rounds:_
   1. _Round 1:_ standard mid‑game setup—race for points and powers.
   2. _Round 2:_ fresh mid‑game layout where the trailing player receives an _advantaged formation_:
