@@ -23,6 +23,13 @@ function initialBoard() {
 
 function renderBoard() {
   boardElement.innerHTML = '';
+
+  // Calcular movimientos posibles para la pieza seleccionada
+  let possibleMoves = [];
+  if (selected) {
+    possibleMoves = getPossibleMoves(selected[0], selected[1]);
+  }
+
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
         const cell = document.createElement("div");
@@ -40,15 +47,52 @@ function renderBoard() {
             cell.classList.add(piece.color === 'w' ? 'player1-piece' : 'player2-piece');
         }
 
-        // Marcar seleccionada
+        // Resaltar pieza seleccionada
         if (selected && selected[0] === r && selected[1] === c) {
-            cell.style.border = "2px solid red";
+            cell.classList.add("selected-piece");
+        }
+
+        // Resaltar movimientos posibles
+        const possibleMove = possibleMoves.find(move => move.row === r && move.col === c);
+        if (possibleMove) {
+            if (possibleMove.isCapture) {
+                cell.classList.add("possible-capture");
+            } else {
+                cell.classList.add("possible-move");
+            }
         }
         
         cell.addEventListener("click", () => handleClick(r, c));
         boardElement.appendChild(cell);
     }
   }
+}
+
+// Calcular todos los movimientos posibles para una pieza
+function getPossibleMoves(r, c) {
+  const possibleMoves = [];
+  const piece = board[r][c];
+  
+  if (!piece) return possibleMoves;
+  
+  // Verificar cada casilla del tablero
+  for (let tr = 0; tr < 8; tr++) {
+    for (let tc = 0; tc < 8; tc++) {
+      // Guardar estado actual del color para no afectar la verificación
+      const savedColor = currentColor;
+      currentColor = piece.color;
+      
+      // Verificar si el movimiento es legal y no causa jaque propio
+      if (isLegalMove(r, c, tr, tc) && !moveCausesCheck(r, c, tr, tc, piece.color)) {
+        possibleMoves.push({ row: tr, col: tc, isCapture: board[tr][tc] !== EMPTY });
+      }
+      
+      // Restaurar color
+      currentColor = savedColor;
+    }
+  }
+  
+  return possibleMoves;
 }
 
 function getSymbol(piece) {

@@ -79,3 +79,37 @@ body {
   color: #a159d8; /* azul claro */
   text-shadow: 0 0 4px #000;
 }
+
+.selected-piece {
+  box-shadow: inset 0 0 10px 5px rgba(255, 255, 0, 0.7);
+  border: 2px solid yellow !important;
+}
+
+.possible-move {
+  position: relative;
+}
+
+.possible-move::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 255, 0, 0.3);
+  pointer-events: none;
+}
+
+.possible-capture {
+  position: relative;
+}
+
+.possible-capture::after {
+  content: "";
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 0, 0, 0.6);
+  box-sizing: border-box;
+  pointer-events: none;
+}
