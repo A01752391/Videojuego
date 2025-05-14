@@ -1,0 +1,115 @@
+body {
+  background-color: #3b2a39;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Courier New', monospace;
+  color: #f9e5a7;
+}
+
+#title {
+    margin-top: 40px;
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 60px);
+  grid-template-rows: repeat(8, 60px);
+  border: 10px solid #5a2b2b;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 5px #7c4935;
+  background-color: #5a2b2b;
+  margin-top: 20px;
+}
+
+.cell {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.white {
+  background-color: #d8a225;
+}
+
+.black {
+  background-color: #522c58;
+}
+
+#message {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+#game-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 40px;
+}
+
+.score-panel {
+  color: #f0d891;
+  font-size: 20px;
+  text-align: center;
+  background-color: #5a2b2b;
+  padding: 20px;
+  border-radius: 10px;
+  border: 3px solid #7c4935;
+  box-shadow: inset 0 0 0 4px #3b2a39;
+  width: 100px;
+}
+
+.piece {
+  font-size: 36px;
+}
+
+.player1-piece {
+  color: #f9e5a7; /* dorado claro */
+  text-shadow: 0 0 4px #000;
+}
+
+.player2-piece {
+  color: #a159d8; /* azul claro */
+  text-shadow: 0 0 4px #000;
+}
+
+.selected-piece {
+  box-shadow: inset 0 0 10px 5px rgba(255, 255, 0, 0.7);
+  border: 2px solid yellow !important;
+}
+
+.possible-move {
+  position: relative;
+}
+
+.possible-move::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(0, 255, 0, 0.3);
+  pointer-events: none;
+}
+
+.possible-capture {
+  position: relative;
+}
+
+.possible-capture::after {
+  content: "";
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 0, 0, 0.6);
+  box-sizing: border-box;
+  pointer-events: none;
+}
