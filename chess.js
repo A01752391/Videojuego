@@ -174,15 +174,33 @@ function isPathClear(fr, fc, tr, tc) {
   return true;
 }
 
-function updateScore(player) {
+
+// Actualiza el score con base en los movimientos
+function updateScore(player, captured, isCheckmate = false) {
+  let points = 0;
+
+  if (isCheckmate) {
+    points = 12;
+  } else if (captured) {
+    switch (captured.type) {
+      case 'p': points = 1; break;
+      case 'n':
+      case 'b': points = 3; break;
+      case 'r': points = 5; break;
+      case 'q': points = 9; break;
+      default: points = 0;
+    }
+  }
+
   if (player === 'white') {
-    score1 += 1;
+    score1 += points;
     document.getElementById('score1').textContent = score1;
   } else {
-    score2 += 1;
+    score2 += points;
     document.getElementById('score2').textContent = score2;
   }
 }
+
 
 function handleClick(r, c) {
   if (!selected) {
@@ -215,13 +233,16 @@ function handleClick(r, c) {
     board[fr][fc] = EMPTY;
 
     if (captured && captured.color !== currentColor) {
-        updateScore(currentColor === 'w' ? 'white' : 'black');
+      updateScore(currentColor === 'w' ? 'white' : 'black', captured);
     }
 
     currentColor = currentColor === 'w' ? 'b' : 'w';
     if (isInCheck(currentColor)) {
         if (isCheckmate(currentColor)) {
           message.textContent = `¡JAQUE MATE! ${currentColor === 'w' ? 'Negras' : 'Blancas'} ganan`;
+
+          updateScore(currentColor === 'w' ? 'black' : 'white', null, true); // Actualizar el score si se hace jaque
+
           // Desactivar eventos de clic en el tablero
           document.querySelectorAll('.cell').forEach(cell => {
             cell.removeEventListener('click', handleClick);
