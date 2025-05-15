@@ -342,7 +342,7 @@ function moveCausesCheck(fr, fc, tr, tc, playerColor) {
   return inCheck;
 }
 
-// Verificar jaque mate
+// Verificar si hay jaque mate
 function isCheckmate(color) {
   if (!isInCheck(color)) return false;
   
