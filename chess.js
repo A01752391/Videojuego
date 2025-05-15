@@ -8,15 +8,19 @@ let selected = null;
 let score1 = 0;
 let score2 = 0;
 
+// Inicializar el tablero
 function initialBoard() {
   const backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
   const newBoard = [];
 
-  newBoard.push(backRank.map(type => ({ type, color: 'b' })));
+  // Elementos del tablero
+  newBoard.push(backRank.map((type, i) => {
+    return { type, color: 'b', hasMoved: false };}));
   newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'b' })));
   for (let i = 0; i < 4; i++) newBoard.push(Array(8).fill(null));
   newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'w' })));
-  newBoard.push(backRank.map(type => ({ type, color: 'w' })));
+  newBoard.push(backRank.map((type, i) => {
+    return { type, color: 'w', hasMoved: false };}));
 
   return newBoard;
 }
@@ -146,7 +150,27 @@ function isLegalMove(fr, fc, tr, tc) {
       if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
       return isPathClear(fr, fc, tr, tc);
     case 'k': // Rey - un cuadro en cualquier dirección
-      return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
+      // Movimiento normal
+      if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
+
+      // Enroque
+      if (!piece.hasMoved && dr === 0 && Math.abs(dc) === 2) {
+        const rookCol = dc === 2 ? 7 : 0;
+        const rook = board[fr][rookCol];
+        if (
+          rook && rook.type === 'r' && rook.color === piece.color && !rook.hasMoved &&
+          isPathClear(fr, fc, fr, rookCol)
+        ) {
+          // Verificamos que no pase por jaque
+          const step = dc > 0 ? 1 : -1;
+          for (let i = 0; i <= 2; i++) {
+            const col = fc + i * step;
+            if (moveCausesCheck(fr, fc, fr, col, piece.color)) return false;
+          }
+          return true;
+        }
+      }
+      return false;
     default:
       return false;
   }
@@ -199,6 +223,7 @@ function handleClick(r, c) {
     if (fr === r && fc === c) {
       selected = null;
       renderBoard();
+      board[r][c].hasMoved = true;
       return;
     }
 
@@ -212,7 +237,25 @@ function handleClick(r, c) {
       }
     const captured = board[r][c];
     board[r][c] = board[fr][fc];
+
+    // Cambio de peón a reina
+    if (board[r][c].type === 'p' && (r === 0 || r === 7)) {
+      board[r][c].type = 'q';
+      message.textContent += ' (Promocionado a Reina)';
+    }
+
+
     board[fr][fc] = EMPTY;
+
+    // Enroque: mover torre también
+    if (board[r][c].type === 'k' && Math.abs(fc - c) === 2) {
+      const rookCol = c === 6 ? 7 : 0;
+      const newRookCol = c === 6 ? 5 : 3;
+      board[r][newRookCol] = board[r][rookCol];
+      board[r][rookCol] = EMPTY;
+      board[r][newRookCol].hasMoved = true;
+    }
+
 
     if (captured && captured.color !== currentColor) {
         updateScore(currentColor === 'w' ? 'white' : 'black');
