@@ -46,11 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
           findKing: (color) => findKing(color, gameContext),
           isInCheck: (color) => isInCheck(color, gameContext),
           moveCausesCheck: (fr, fc, tr, tc, playerColor) => 
-            moveCausesCheck(fr, fc, tr, tc, playerColor, gameContext),
+          moveCausesCheck(fr, fc, tr, tc, playerColor, gameContext),
           isCheckmate: (color) => isCheckmate(color, gameContext),
           updateScore: (player) => updateScore(player, gameContext),
           handleClick: (r, c) => handleClick(r, c, gameContext),
-          renderBoard: () => renderBoard(gameContext)
+          renderBoard: () => renderBoard(gameContext),
+          checkDetection: false,
+          checkingCheckmate: false
         };
         
         // Extract game functions

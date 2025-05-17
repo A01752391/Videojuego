@@ -2,11 +2,11 @@ export function initialBoard() {
   const backRank = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
   const newBoard = [];
 
-  newBoard.push(backRank.map(type => ({ type, color: 'b' })));
-  newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'b' })));
+  newBoard.push(backRank.map(type => ({ type, color: 'b', hasMoved: false})));
+  newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'b', hasMoved: false })));
   for (let i = 0; i < 4; i++) newBoard.push(Array(8).fill(null));
-  newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'w' })));
-  newBoard.push(backRank.map(type => ({ type, color: 'w' })));
+  newBoard.push(Array(8).fill(null).map(() => ({ type: 'p', color: 'w', hasMoved: false })));
+  newBoard.push(backRank.map(type => ({ type, color: 'w', hasMoved: false })));
 
   return newBoard;
 }
@@ -46,7 +46,7 @@ export function renderBoard(gameContext) {
         // Resaltar movimientos posibles
         const possibleMove = possibleMoves.find(move => move.row === r && move.col === c);
         if (possibleMove) {
-            if (possibleMove.isCapture) {
+            if (possibleMove.capture) {
                 cell.classList.add("possible-capture");
             } else {
                 cell.classList.add("possible-move");

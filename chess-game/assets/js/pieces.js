@@ -10,7 +10,7 @@ export function getPossibleMoves(r, c, gameContext) {
   for (let tr = 0; tr < 8; tr++) {
     for (let tc = 0; tc < 8; tc++) {
       if (isLegalMove(r, c, tr, tc, gameContext) && 
-          !moveCausesCheck(r, c, tr, tc, piece.color)) {
+          !gameContext.moveCausesCheck(r, c, tr, tc, piece.color)) {
         possibleMoves.push({
           row: tr,
           col: tc,
@@ -49,7 +49,11 @@ export function isPathClear(fr, fc, tr, tc, gameContext) {
 export function isLegalMove(fr, fc, tr, tc, gameContext) {
   const { board, currentColor} = gameContext;
   const piece = board[fr][fc];
-  if (!piece || piece.color !== currentColor) return false;
+  // Don't check for current color during checkmate detection
+  if (!piece) return false;
+  
+  // In normal gameplay, enforce current color
+  if (!gameContext.checkingCheckmate && piece.color !== currentColor) return false;
 
   const dr = tr - fr;
   const dc = tc - fc;
@@ -57,6 +61,13 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
 
   // No se puede capturar piezas del mismo color
   if (target && target.color === piece.color) return false;
+
+  if (target && target.type === 'k') {
+  // Allow theoretical king captures only during check detection
+  if (!gameContext.checkDetection) {
+    return false;
+  }
+}
 
   switch (piece.type) {
     case 'p': {
@@ -85,8 +96,13 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
       if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
       return isPathClear(fr, fc, tr, tc, gameContext);
     case 'k': // Rey - un cuadro en cualquier dirección
-      return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
-    default:
-      return false;
+      // Regular king movement
+  if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
+  
+  // Castling logic (king moves 2 squares horizontally)
+  if (!piece.hasMoved && dr === 0 && Math.abs(dc) === 2) {
+    // Implement castling check here
+  }
+  return false;
   }
 }
