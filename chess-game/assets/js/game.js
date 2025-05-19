@@ -1,6 +1,11 @@
 export function handleClick(r, c, gameContext) {
   let { board, currentColor, selected, messageElement } = gameContext;
 
+  // If check mate - no more moves
+  if (gameContext.gameOver) {
+    return;
+  }
+
   if (!selected) {
     // Select origin - this part is fine
     const piece = board[r][c];
@@ -77,6 +82,7 @@ export function handleClick(r, c, gameContext) {
         if (gameContext.isCheckmate(opponentColor)) {
           messageElement.textContent = `Checkmate! ${currentColor === 'w' ? 'White' : 'Black'} wins!`;
           messageShown = true;
+          gameContext.gameOver = true;
         } else {
           messageElement.textContent = `Check! ${opponentColor === 'w' ? 'White' : 'Black'} to move.`;
           messageShown = true;

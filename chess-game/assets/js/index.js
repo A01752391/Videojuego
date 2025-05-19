@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
           boardElement,
           messageElement,
           EMPTY,
+          gameOver: false,
           
           // Functions
           getSymbol,
@@ -81,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameContext.selected = null;
             gameContext.score1 = 0;
             gameContext.score2 = 0;
+            gameContext.gameOver = false;
             
             // Update UI
             document.getElementById('score1').textContent = '0';
