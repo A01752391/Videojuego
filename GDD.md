@@ -109,17 +109,28 @@ The triggerable in-game events:
 ### **Mechanics**
 
 - _Standard Chess Moves:_ click to select a piece, then click a highlighted legal square to move or capture.
-- _Scoring:_ capture value = classic chess points (Pawn = 1, Knight/Bishop = 3, Rook = 5, Queen = 9; checkmate grants +12).
+- _Scoring:_ capture value = classic chess points (Pawn = 2, Knight/Bishop = 4, Rook = 6, Queen = 9; checkmate grants +12).
 - _Power-Up Unlocks:_ Power-ups are unlocked by reaching specific point thresholds during a round. For example, the first power-up is granted at 5 points, the second at 10, and so on. Upon crossing each threshold, the player is awarded a random power-up and it is added to their inventory. The powerups can be accumulated through rounds if they're not used, and each player has a limit of 5 powerups at the same time on inventory (when the number is reached no more powerups can appear for the player).
-- Types_Of_Power-Ups: There are two types of powerups: Piece powerups, which work by changing the movement range of a piece; and Board powerups, which work by changing piece placements, piece swaps, etc.
+- Types_Of_Power-Ups: There are three types of powerups:
+  1. Piece powerups: Work by changing piece placements, piece swaps, etc.
+  2. Board powerups: Work by changing the nature and accesibility of the board.
+  3. Movement powerups: Work by changing the movement range of a piece.
 - _Power-Up_Use:_ On your turn, you can activate a power-up instead of making a traditional move, or as an enhancement to a move (depending on the power-up type). Click to select the power-up, then click on the target (a piece, square, or zone) to apply its effect.
 - _Available Power-Ups:_
-  1. _Blast:_ Destroys a selected enemy piece instantly.
-  2. _Teleport:_ Move one of your pieces to any unoccupied square on the board.
-  3. _Swap:_ Swap positions of any two of your pieces on the board.
-  4. _Shield:_ Temporarily protects a piece from capture for one turn.
-  5. _ExtraMove:_ Grants an immediate second move within the same turn.
-  6. _Power-Up Persistence:_ Power-ups remain in your inventory across rounds, enabling long-term strategy and tactical planning.
+  1. Piece powerups
+    - Shield: Temporarily protects a piece from capture for one turn.
+    - Blast: Destroys a selected enemy piece instantly (just for pawn, knight and bishop).
+    - Swap: Swap positions of any two of your pieces on the board. You'll lose your turn by using it.
+    - Extra move: Grants an immediate second move within the same turn (different pieces).
+  2. Board powerups
+    - Fence: Lock a tile for three turns.
+    - Horizontal portal: Allows a piece to move from one end of the board to the other one (just for knight and queen).
+    - Cage: Immobilizes the piece for three turns.
+    - Evolution: Allows you to select a random tile, if a pawn falls there it transforms in a knight or bishop.
+  3. Movement powerups
+    - Pawn range: Changes the range of movement of the pawn. Moves two tiles, instead of moving one tile.
+    - Reducer: Reduces the range of motion of a piece (just for knight, bishop and queen).
+    - Crazy king: Change the king's range of movement to act as queen for three turns.
 - _Two Rounds:_
   1. _Round 1:_ standard mid‑game setup—race for points and powers.
   2. _Round 2:_ fresh mid‑game layout where the trailing player receives an _advantaged formation_:
