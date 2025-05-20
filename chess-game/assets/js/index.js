@@ -15,7 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Import the piece movement functions
     import('./pieces.js').then(piecesModule => {
-      const { isLegalMove, getPossibleMoves, isPathClear } = piecesModule;
+      const { 
+        isLegalMove, 
+        getPossibleMoves, 
+        isBasicLegalMove, 
+        isSquareAttacked, 
+        findKing, 
+        isKingInCheck, 
+        isCheckmate 
+      } = piecesModule;
       
       // Import the game management functions
       import('./game.js').then(gameModule => {
@@ -43,21 +51,19 @@ document.addEventListener('DOMContentLoaded', () => {
           coordsToAlgebraic,
           isLegalMove: (fr, fc, tr, tc) => isLegalMove(fr, fc, tr, tc, gameContext),
           getPossibleMoves: (r, c) => getPossibleMoves(r, c, gameContext),
-          isPathClear: (fr, fc, tr, tc) => isPathClear(fr, fc, tr, tc, gameContext),
-          findKing: (color) => findKing(color, gameContext),
-          isInCheck: (color) => isInCheck(color, gameContext),
-          moveCausesCheck: (fr, fc, tr, tc, playerColor) => 
-          moveCausesCheck(fr, fc, tr, tc, playerColor, gameContext),
+          isBasicLegalMove: (fr, fc, tr, tc) => isBasicLegalMove(fr, fc, tr, tc, gameContext),
+          isSquareAttacked: (r, c, color) => isSquareAttacked(r, c, color, gameContext),
+          findKing: (color) => findKing(gameContext.board, color),
+           isInCheck: (color) => isInCheck(color, gameContext),
           isCheckmate: (color) => isCheckmate(color, gameContext),
           updateScore: (player) => updateScore(player, gameContext),
           handleClick: (r, c) => handleClick(r, c, gameContext),
           renderBoard: () => renderBoard(gameContext),
-          checkDetection: false,
           checkingCheckmate: false
         };
         
         // Extract game functions
-        const { findKing, isInCheck, moveCausesCheck, isCheckmate, updateScore, handleClick } = gameModule;
+        const { updateScore, handleClick } = gameModule;
         
         // Initialize the board UI
         renderBoard(gameContext);
@@ -87,13 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update UI
             document.getElementById('score1').textContent = '0';
             document.getElementById('score2').textContent = '0';
-            messageElement.textContent = "Game reset. White's turn.";
+            messageElement.textContent = "Juego reiniciado. Turno de las Blancas.";
             renderBoard(gameContext);
           });
         }
         
         // Initial message
-        messageElement.textContent = `${currentColor === 'w' ? 'White' : 'Black'}'s turn`;
+        messageElement.textContent = `${currentColor === 'w' ? 'Blancas' : 'Negras'} comienzan`;
       });
     });
   });

@@ -1,5 +1,7 @@
 export function handleClick(r, c, gameContext) {
-  let { board, currentColor, selected, messageElement } = gameContext;
+  const { board, currentColor, selected, messageElement } = gameContext;
+
+  if (gameContext.gameOver) return;
 
   // If check mate - no more moves
   if (gameContext.gameOver) {
@@ -7,96 +9,98 @@ export function handleClick(r, c, gameContext) {
   }
 
   if (!selected) {
-    // Select origin - this part is fine
+    // Seleccionar origen
     const piece = board[r][c];
     if (piece && piece.color === currentColor) {
+      // Verificar si hay movimientos posibles para esta pieza
+      const possibleMoves = gameContext.getPossibleMoves(r, c);
+      
+      if (possibleMoves.length === 0) {
+        messageElement.textContent = `Esta pieza no tiene movimientos legales.`;
+        return;
+      }
+      
       gameContext.selected = [r, c];
       gameContext.renderBoard();
     }
     else if (piece) {
-      messageElement.textContent = `It's ${currentColor === 'w' ? 'White' : 'Black'}'s turn!`;
+      messageElement.textContent = `Es el turno de ${currentColor === 'w' ? 'Blancas' : 'Negras'}!`;
     }
   } else {
-    // Make a move
+    // Realizar un movimiento
     const [fr, fc] = selected;
-    const kingInCheck = gameContext.isInCheck(currentColor);
     
-    // First check if the move is legal according to piece movement rules
+    // Verificar si el movimiento es legal
     if (gameContext.isLegalMove(fr, fc, r, c)) {
+      const piece = board[fr][fc];
       
-      // Temporarily make the move to see if it affects check status
-      const sourcePiece = board[fr][fc]; // Save the source piece
-      const targetPiece = board[r][c];   // Save the target piece
-
-      board[r][c] = sourcePiece;         // Move the source piece to target
-      board[fr][fc] = null;              // Clear the source square
-
-      // Check king's status after this move
-      const stillInCheck = gameContext.isInCheck(currentColor);
-
-      // Restore board - CORRECTED
-      board[fr][fc] = sourcePiece;       // Put the source piece back
-      board[r][c] = targetPiece;         // Restore the target square
+      // Verificar si es un enroque
+      const isRookCastling = piece.type === 'k' && Math.abs(c - fc) === 2;
       
-      // If king is in check and would remain in check, reject move
-      if (kingInCheck && stillInCheck) {
-        messageElement.textContent = `Your king is in check! You must address the check.`;
-        gameContext.selected = null;
-        gameContext.renderBoard();
-        return;
-      }
-      
-      // If the move would put/leave the king in check, reject move
-      if (!kingInCheck && stillInCheck) {
-        messageElement.textContent = `That move would put your king in check!`;
-        gameContext.selected = null;
-        gameContext.renderBoard();
-        return;
-      }
-      
-      // MOVE IS VALID - Proceed with the actual move
+      // Guardar referencia a la pieza capturada (si hay)
       const capturedPiece = board[r][c];
       if (capturedPiece) {
         gameContext.updateScore(currentColor === 'w' ? 'white' : 'black');
       }
       
-      // Move the piece
+      // Mover la pieza
       board[r][c] = board[fr][fc];
       board[fr][fc].hasMoved = true;
       board[fr][fc] = null;
       
+      // Si es enroque, mover también la torre
+      if (isRookCastling) {
+        const rookCol = c > fc ? 7 : 0;
+        const newRookCol = c > fc ? c - 1 : c + 1;
+        
+        // Mover la torre
+        board[r][newRookCol] = board[r][rookCol];
+        board[r][newRookCol].hasMoved = true;
+        board[r][rookCol] = null;
+      }
+      
+      // Verificar promoción de peón
       const movedPiece = board[r][c];
-        if (movedPiece.type === 'p') {
+      if (movedPiece.type === 'p') {
         if ((movedPiece.color === 'w' && r === 0) || (movedPiece.color === 'b' && r === 7)) {
-            // Promote to queen
-            board[r][c] = { type: 'q', color: movedPiece.color, hasMoved: true };
-            messageElement.textContent = `Pawn promoted to Queen!`;
+          // Promover a reina
+          board[r][c] = { type: 'q', color: movedPiece.color, hasMoved: true };
+          messageElement.textContent = `¡Peón promovido a Reina!`;
         }
-        }
-
-      // Check for checkmate or check first
+      }
+      
+      // Comprobar jaque o jaque mate primero
       const opponentColor = currentColor === 'w' ? 'b' : 'w';
       let messageShown = false;
       
-      if (gameContext.isInCheck(opponentColor)) {
-        if (gameContext.isCheckmate(opponentColor)) {
-          messageElement.textContent = `Checkmate! ${currentColor === 'w' ? 'White' : 'Black'} wins!`;
+      // Cambiar turno
+      gameContext.currentColor = opponentColor;
+      
+      // Verificar si el oponente está en jaque
+      if (gameContext.isKingInCheck(board, opponentColor)) {
+        if (gameContext.isCheckmate(opponentColor, gameContext)) {
+          messageElement.textContent = `¡Jaque mate! ${currentColor === 'w' ? 'Blancas' : 'Negras'} ganan!`;
           messageShown = true;
           gameContext.gameOver = true;
         } else {
-          messageElement.textContent = `Check! ${opponentColor === 'w' ? 'White' : 'Black'} to move.`;
+          messageElement.textContent = `¡Jaque! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
           messageShown = true;
         }
       }
       
-      // Switch turn - only update message if no check/checkmate message shown
-      gameContext.currentColor = opponentColor;
+      // Actualizar mensaje si no se mostró otro
       if (!messageShown) {
-        messageElement.textContent = `${opponentColor === 'w' ? 'White' : 'Black'}'s turn`;
+        if (isRookCastling) {
+          messageElement.textContent = `¡Enroque realizado! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+        } else {
+          messageElement.textContent = `Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+        }
       }
+    } else {
+      messageElement.textContent = `Movimiento no válido. Intenta otro movimiento.`;
     }
     
-    // Reset selection
+    // Resetear selección
     gameContext.selected = null;
     gameContext.renderBoard();
   }
@@ -110,110 +114,4 @@ export function updateScore(player, gameContext) {
     gameContext.score2++;
     document.getElementById('score2').textContent = gameContext.score2;
   }
-}
-
-// Find the king's position
-export function findKing(color, gameContext) {
-  const { board } = gameContext;
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
-      if (piece && piece.type === 'k' && piece.color === color) {
-        return [r, c];
-      }
-    }
-  }
-  return null;
-}
-
-// Check if a king is in check
-export function isInCheck(color, gameContext) {
-  const originalValue = gameContext.checkDetection;
-  gameContext.checkDetection = true;
-  const { board } = gameContext;
-  const kingPos = findKing(color, gameContext);
-  if (!kingPos) {
-    gameContext.checkDetection = originalValue;
-    return false;
-  }
-  
-  const [kr, kc] = kingPos;
-  const opponentColor = color === 'w' ? 'b' : 'w';
-
-  let inCheck = false;
-  
-  // Check if any opponent piece can capture the king
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
-      if (piece && piece.color === opponentColor) {
-        if (gameContext.isLegalMove(r, c, kr, kc)) {
-          inCheck = true;
-          gameContext.checkDetection = originalValue;
-          return true;
-        }
-      }
-    }
-    if (inCheck) break;
-  }
-  gameContext.checkDetection = originalValue;
-  return inCheck;
-}
-
-// Check if a move causes check
-export function moveCausesCheck(fr, fc, tr, tc, playerColor, gameContext) {
-  const { board } = gameContext;
-  // Save current state
-  const savedPiece = board[tr][tc];
-  const movingPiece = board[fr][fc];
-  
-  // Make temporary move
-  board[tr][tc] = movingPiece;
-  board[fr][fc] = null;
-  
-  // Check if the king is in check
-  const inCheck = gameContext.isInCheck(playerColor);
-  
-  // Restore state
-  board[fr][fc] = movingPiece;
-  board[tr][tc] = savedPiece;
-  
-  return inCheck;
-}
-
-// Check for checkmate
-export function isCheckmate(color, gameContext) {
-  if (!gameContext.isInCheck(color)) return false;
-  
-  // Set flag to bypass turn restriction
-  const savedFlag = gameContext.checkingCheckmate;
-  gameContext.checkingCheckmate = true;
-  
-  // Look for any legal move that gets the king out of check
-  let hasEscape = false;
-  for (let r1 = 0; r1 < 8; r1++) {
-    for (let c1 = 0; c1 < 8; c1++) {
-      const piece = gameContext.board[r1][c1];
-      if (piece && piece.color === color) {
-        // Check all possible moves
-        for (let r2 = 0; r2 < 8; r2++) {
-          for (let c2 = 0; c2 < 8; c2++) {
-            if (gameContext.isLegalMove(r1, c1, r2, c2) && 
-                !gameContext.moveCausesCheck(r1, c1, r2, c2, color)) {
-              hasEscape = true;
-              break;
-            }
-          }
-          if (hasEscape) break;
-        }
-      }
-      if (hasEscape) break;
-    }
-    if (hasEscape) break;
-  }
-  
-  // Restore original flag
-  gameContext.checkingCheckmate = savedFlag;
-  
-  return !hasEscape;
 }

@@ -15,6 +15,9 @@ export function renderBoard(gameContext) {
   const { board, boardElement, selected, getPossibleMoves, getSymbol } = gameContext;
   boardElement.innerHTML = '';
 
+  // Verificar si el rey actual está en jaque
+  const kingInCheck = gameContext.isInCheck(gameContext.currentColor);
+
   // Calcular movimientos posibles para la pieza seleccionada
   let possibleMoves = [];
   if (selected) {
@@ -36,6 +39,11 @@ export function renderBoard(gameContext) {
             cell.textContent = symbol;
             cell.classList.add("piece");
             cell.classList.add(piece.color === 'w' ? 'player1-piece' : 'player2-piece');
+
+            // Resaltar rey en jaque
+            if (piece.type === 'k' && piece.color === gameContext.currentColor && kingInCheck) {
+              cell.classList.add("king-in-check");
+            }
         }
 
         // Resaltar pieza seleccionada
