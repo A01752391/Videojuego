@@ -16,7 +16,7 @@ export function renderBoard(gameContext) {
   boardElement.innerHTML = '';
 
   // Verificar si el rey actual está en jaque
-  const kingInCheck = gameContext.isInCheck(gameContext.currentColor);
+  const kingInCheck = gameContext.isKingInCheck(gameContext.currentColor);
 
   // Calcular movimientos posibles para la pieza seleccionada
   let possibleMoves = [];
