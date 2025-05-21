@@ -8,7 +8,6 @@ export function handleClick(r, c, gameContext) {
     if (piece && piece.color === currentColor) {
       const possibleMoves = gameContext.getPossibleMoves(r, c);
       if (possibleMoves.length === 0) {
-        // Verificar si hay alguna pieza que sí pueda moverse
         const hasAnyMove = board.some((row, rowIndex) =>
           row.some((cell, colIndex) => {
             return cell && cell.color === currentColor &&
@@ -18,11 +17,11 @@ export function handleClick(r, c, gameContext) {
 
         if (!hasAnyMove) {
           if (gameContext.isKingInCheck(currentColor)) {
-            messageElement.textContent = `¡Jaque mate! ${currentColor === 'w' ? 'Negras' : 'Blancas'} ganan!`;
+            gameContext.declareWinner(currentColor === 'w' ? 'w' : 'b');
           } else {
             messageElement.textContent = `¡Tablas por ahogo!`;
+            gameContext.gameOver = true;
           }
-          gameContext.gameOver = true;
         } else {
           messageElement.textContent = `Esta pieza no tiene movimientos legales.`;
         }
@@ -75,9 +74,8 @@ export function handleClick(r, c, gameContext) {
       );
 
       if (kingInCheck && !anyMoves) {
-        messageElement.textContent = `¡Jaque mate! ${currentColor === 'w' ? 'Blancas' : 'Negras'} ganan!`;
+        gameContext.declareWinner(currentColor);
         messageShown = true;
-        gameContext.gameOver = true;
       } else if (!kingInCheck && !anyMoves) {
         messageElement.textContent = `¡Tablas por ahogo!`;
         messageShown = true;

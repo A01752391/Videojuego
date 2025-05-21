@@ -2,6 +2,53 @@ import { getSymbol, coordsToAlgebraic } from './utils.js';
 
 const EMPTY = null;
 
+// Control de rondas
+let round = 1;
+let winsWhite = 0;
+let winsBlack = 0;
+
+function updateRoundWinsDisplay() {
+  const whiteRounds = document.getElementById('rounds1');
+  const blackRounds = document.getElementById('rounds2');
+  if (whiteRounds) whiteRounds.textContent = winsWhite;
+  if (blackRounds) blackRounds.textContent = winsBlack;
+}
+
+function createNextRoundButton(gameContext) {
+  const btn = document.createElement('button');
+  btn.textContent = `Empezar Ronda ${round + 1}`;
+  btn.className = 'reset-button';
+  btn.addEventListener('click', () => {
+    round++;
+    btn.remove();
+    resetGame(gameContext);
+  });
+  document.body.appendChild(btn);
+}
+
+function resetGame(gameContext, fullReset = false) {
+  gameContext.board = gameContext.initialBoard();
+  gameContext.currentColor = 'w';
+  gameContext.selected = null;
+  gameContext.gameOver = false;
+  gameContext.powerUpsWhite = [];
+  gameContext.powerUpsBlack = [];
+  gameContext.nextThresholdWhite = 5;
+  gameContext.nextThresholdBlack = 5;
+  if (fullReset) {
+    round = 1;
+    winsWhite = 0;
+    winsBlack = 0;
+    gameContext.score1 = 0;
+    gameContext.score2 = 0;
+    document.getElementById('score1').textContent = '0';
+    document.getElementById('score2').textContent = '0';
+  }
+  updateRoundWinsDisplay();
+  gameContext.messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
+  gameContext.renderBoard();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const boardElement = document.getElementById('board');
   const messageElement = document.getElementById('message');
@@ -28,8 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let selected = null;
         let score1 = 0;
         let score2 = 0;
-
-        // NUEVO: sistema de power-ups
         let powerUpsWhite = [];
         let powerUpsBlack = [];
         let nextThresholdWhite = 5;
@@ -67,10 +112,34 @@ document.addEventListener('DOMContentLoaded', () => {
           grantPowerUp: (color, type) => {
             const inventory = color === 'w' ? powerUpsWhite : powerUpsBlack;
             if (inventory.length < 5) inventory.push(type);
-          }
+          },
+          declareWinner: (winner) => {
+            if (winner === 'w') winsWhite++;
+            if (winner === 'b') winsBlack++;
+            updateRoundWinsDisplay();
+            const msg = `Jugador ${winner === 'w' ? 'Blancas' : 'Negras'} gana la Ronda ${round}!`;
+            gameContext.messageElement.textContent = msg;
+            gameContext.gameOver = true;
+
+            if (winsWhite === 2 || winsBlack === 2 || round === 3) {
+              gameContext.messageElement.textContent += `\n\nJugador ${winsWhite > winsBlack ? 'Blancas' : 'Negras'} gana la partida!`;
+              const finalBtn = document.createElement('button');
+              finalBtn.textContent = 'Reiniciar Partida';
+              finalBtn.className = 'reset-button';
+              finalBtn.addEventListener('click', () => {
+                finalBtn.remove();
+                resetGame(gameContext, true);
+              });
+              document.body.appendChild(finalBtn);
+            } else {
+              createNextRoundButton(gameContext);
+            }
+          },
+          initialBoard
         };
 
         renderBoard(gameContext);
+        updateRoundWinsDisplay();
 
         boardElement.addEventListener('click', (event) => {
           const cell = event.target.closest('.cell');
@@ -83,25 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const resetButton = document.getElementById('reset');
         if (resetButton) {
-          resetButton.addEventListener('click', () => {
-            gameContext.board = initialBoard();
-            gameContext.currentColor = 'w';
-            gameContext.selected = null;
-            gameContext.score1 = 0;
-            gameContext.score2 = 0;
-            gameContext.gameOver = false;
-            gameContext.powerUpsWhite = [];
-            gameContext.powerUpsBlack = [];
-            gameContext.nextThresholdWhite = 5;
-            gameContext.nextThresholdBlack = 5;
-            document.getElementById('score1').textContent = '0';
-            document.getElementById('score2').textContent = '0';
-            messageElement.textContent = "Juego reiniciado. Turno de las Blancas.";
-            renderBoard(gameContext);
-          });
+          resetButton.addEventListener('click', () => resetGame(gameContext, true));
         }
 
-        messageElement.textContent = `${currentColor === 'w' ? 'Blancas' : 'Negras'} comienzan`;
+        messageElement.textContent = `Ronda ${round}. ${currentColor === 'w' ? 'Blancas' : 'Negras'} comienzan`;
       });
     });
   });
