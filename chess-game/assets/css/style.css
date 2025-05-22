@@ -33,11 +33,11 @@ body {
   cursor: pointer;
 }
 
-.white {
+.white-cell {
   background-color: #d8a225;
 }
 
-.black {
+.black-cell {
   background-color: #522c58;
 }
 
@@ -117,4 +117,60 @@ body {
 .king-in-check {
   background-color: rgba(255, 0, 0, 0.5) !important;
   box-shadow: 0 0 10px red;
+}
+
+/* ... existing styles ... */
+
+.fenced-tile {
+  position: relative; /* For positioning the marker */
+  /* background-color: rgba(100, 100, 100, 0.3); Slightly darken or indicate blockage */
+}
+
+.fenced-tile .fence-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%; /* Adjust size as needed */
+  height: 70%;
+  background-image: url('../Imagenes/fence.png'); /* Create a simple fence icon */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.8;
+  pointer-events: none; /* So it doesn't interfere with clicks on the cell */
+}
+
+/* Styles for power-up display areas and buttons */
+#powerups-container {
+    display: flex;
+    justify-content: space-around;
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+}
+
+.powerup-inventory {
+    padding: 5px;
+    border: 1px solid #ccc;
+    min-width: 200px; /* Adjust as needed */
+}
+
+.powerup-button {
+  background-color: #4CAF50; /* Green */
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 2px 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.powerup-button:hover {
+  background-color: #45a049;
 }
