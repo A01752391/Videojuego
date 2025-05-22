@@ -1,147 +1,263 @@
+import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
+
+/**
+ * Processes active power-ups at the start of a player's turn.
+ * This includes decrementing durations and deactivating expired power-ups.
+ * @param {object} gameContext - The current game context.
+ */
+function processTurnStartPowerUps(gameContext) {
+    if (gameContext.activePowerUps && gameContext.activePowerUps.length > 0) {
+        let boardNeedsRender = false;
+        // Iterate backwards for safe removal if a power-up deactivates itself
+        for (let i = gameContext.activePowerUps.length - 1; i >= 0; i--) {
+            const activeInstanceData = gameContext.activePowerUps[i];
+            const powerUpBlueprint = createPowerUpInstance(activeInstanceData.type); // Get the class methods
+
+            if (powerUpBlueprint && typeof powerUpBlueprint.onTurnStart === 'function') {
+                // Pass the specific instance data from activePowerUps
+                powerUpBlueprint.onTurnStart(gameContext, activeInstanceData);
+                // onTurnStart might modify activePowerUps (e.g., by calling deactivate)
+                // or change game state requiring a re-render.
+                // If a power-up deactivates, its deactivate method should handle removal
+                // from gameContext.activePowerUps and potentially trigger a render.
+            }
+        }
+        // If any power-up modified the board state directly or expired, a re-render might be needed.
+        // The individual power-up's deactivate method should call renderBoard if necessary.
+        // For simplicity, we can ensure a render if activePowerUps changed.
+        // However, it's better if individual deactivations handle their own rendering needs.
+    }
+}
+
+/**
+ * Handles clicks on the chessboard cells.
+ * Manages piece selection, movement, and power-up targeting/activation.
+ * @param {number} r - The row clicked.
+ * @param {number} c - The column clicked.
+ * @param {object} gameContext - The current game context.
+ */
 export function handleClick(r, c, gameContext) {
-  const { board, currentColor, selected, messageElement } = gameContext;
+    let { board, currentColor, selected, messageElement, awaitingPowerUpTarget, powerUpsWhite, powerUpsBlack } = gameContext;
 
-  if (gameContext.gameOver) return;
+    if (gameContext.gameOver) return;
 
-  if (!selected) {
-    const piece = board[r][c];
-    if (piece && piece.color === currentColor) {
-      const possibleMoves = gameContext.getPossibleMoves(r, c);
-      if (possibleMoves.length === 0) {
-        const hasAnyMove = board.some((row, rowIndex) =>
-          row.some((cell, colIndex) => {
-            return cell && cell.color === currentColor &&
-              gameContext.getPossibleMoves(rowIndex, colIndex).length > 0;
-          })
-        );
-
-        if (!hasAnyMove) {
-          if (gameContext.isKingInCheck(currentColor)) {
-            gameContext.declareWinner(currentColor === 'w' ? 'w' : 'b');
-          } else {
-            messageElement.textContent = `¡Tablas por ahogo!`;
-            gameContext.gameOver = true;
-          }
+    // 1. Handle Power-Up Targeting and Activation
+    if (awaitingPowerUpTarget && awaitingPowerUpTarget.playerColor === currentColor) {
+        const powerUp = createPowerUpInstance(awaitingPowerUpTarget.powerUpType);
+        if (powerUp) {
+            // Pass target data for canActivate if it needs it (e.g. to check if target is valid before activation attempt)
+            if (powerUp.canActivate(gameContext, currentColor, { row: r, col: c })) {
+                const activationSuccessful = powerUp.activate(gameContext, currentColor, { row: r, col: c });
+                if (activationSuccessful) {
+                    const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
+                    const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
+                    if (index > -1) {
+                        inventory.splice(index, 1);
+                    }
+                    // renderPowerUpInventories is called by renderBoard in board.js
+                }
+            }
+            // canActivate or activate should set messageElement if there's an issue
+            gameContext.awaitingPowerUpTarget = null;
+            gameContext.renderBoard(); // Re-render for any visual changes from power-up
+            return; // End handleClick after power-up attempt
         } else {
-          messageElement.textContent = `Esta pieza no tiene movimientos legales.`;
+            console.error("Failed to create power-up instance for targeting:", awaitingPowerUpTarget.powerUpType);
+            gameContext.awaitingPowerUpTarget = null; // Clear invalid state
+        }
+    }
+
+    // 2. Handle Piece Selection / Deselection
+    if (!selected) {
+        const piece = board[r][c];
+        if (gameContext.fencedTiles && gameContext.fencedTiles.find(tile => tile.row === r && tile.col === c)) {
+            messageElement.textContent = "No se puede seleccionar una casilla con valla.";
+            return;
+        }
+        if (piece && piece.color === currentColor) {
+            gameContext.selected = [r, c];
+            gameContext.renderBoard();
+        } else if (piece) {
+            messageElement.textContent = `Es el turno de ${currentColor === 'w' ? 'Blancas' : 'Negras'}!`;
         }
         return;
-      }
-
-      gameContext.selected = [r, c];
-      gameContext.renderBoard();
-    } else if (piece) {
-      messageElement.textContent = `Es el turno de ${currentColor === 'w' ? 'Blancas' : 'Negras'}!`;
     }
-  } else {
+
+    // 3. Handle Piece Movement
     const [fr, fc] = selected;
-    if (gameContext.isLegalMove(fr, fc, r, c)) {
-      const piece = board[fr][fc];
-      const isRookCastling = piece.type === 'k' && Math.abs(c - fc) === 2;
-      const capturedPiece = board[r][c];
-      if (capturedPiece) {
-        updateScoreWithPowerups(currentColor === 'w' ? 'white' : 'black', gameContext, capturedPiece);
-      }
-      board[r][c] = board[fr][fc];
-      board[fr][fc].hasMoved = true;
-      board[fr][fc] = null;
+    console.log(`Attempting move from ${fr},${fc} to ${r},${c}`);
 
-      if (isRookCastling) {
-        const rookCol = c > fc ? 7 : 0;
-        const newRookCol = c > fc ? c - 1 : c + 1;
-        board[r][newRookCol] = board[r][rookCol];
-        board[r][newRookCol].hasMoved = true;
-        board[r][rookCol] = null;
-      }
+    if (gameContext.fencedTiles && gameContext.fencedTiles.find(tile => tile.row === r && tile.col === c)) {
+        messageElement.textContent = "No se puede mover a una casilla con valla.";
+        gameContext.selected = null;
+        gameContext.renderBoard();
+        return;
+    }
 
-      const movedPiece = board[r][c];
-      if (movedPiece.type === 'p') {
-        if ((movedPiece.color === 'w' && r === 0) || (movedPiece.color === 'b' && r === 7)) {
-          board[r][c] = { type: 'q', color: movedPiece.color, hasMoved: true };
-          messageElement.textContent = `¡Peón promovido a Reina!`;
+    const kingCurrentlyInCheck = gameContext.isKingInCheck(gameContext.board, currentColor);
+
+    if (gameContext.isLegalMove(fr, fc, r, c)) { // isLegalMove considers self-check
+        console.log(`Move from ${fr},${fc} to ${r},${c} IS LEGAL`);
+        // --- Actual Move Execution ---
+        const pieceToMove = board[fr][fc];
+        const capturedPiece = board[r][c]; // Store captured piece before overwriting
+
+        if (capturedPiece) {
+            updateScoreWithPowerups(currentColor, gameContext, capturedPiece);
         }
-      }
 
-      const opponentColor = currentColor === 'w' ? 'b' : 'w';
-      let messageShown = false;
-      gameContext.currentColor = opponentColor;
+        board[r][c] = pieceToMove;
+        board[r][c].hasMoved = true;
+        board[fr][fc] = null;
 
-      const kingInCheck = gameContext.isKingInCheck(opponentColor);
-      const anyMoves = board.some((row, ri) =>
-        row.some((cell, ci) =>
-          cell && cell.color === opponentColor && gameContext.getPossibleMoves(ri, ci).length > 0
-        )
-      );
+        // Handle Castling: Move the rook
+        const isCastlingMove = pieceToMove.type === 'k' && Math.abs(c - fc) === 2;
+        if (isCastlingMove) {
+            const rookStartCol = c > fc ? 7 : 0; // Rook's original column
+            const rookEndCol = c > fc ? c - 1 : c + 1; // Rook's new column
+            board[r][rookEndCol] = board[r][rookStartCol];
+            if (board[r][rookEndCol]) { // Ensure rook exists before setting hasMoved
+                 board[r][rookEndCol].hasMoved = true;
+            }
+            board[r][rookStartCol] = null;
+        }
 
-      if (kingInCheck && !anyMoves) {
-        gameContext.declareWinner(currentColor);
-        messageShown = true;
-      } else if (!kingInCheck && !anyMoves) {
-        messageElement.textContent = `¡Tablas por ahogo!`;
-        messageShown = true;
-        gameContext.gameOver = true;
-      } else if (kingInCheck) {
-        messageElement.textContent = `¡Jaque! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
-        messageShown = true;
-      }
+        // Handle Pawn Promotion
+        if (pieceToMove.type === 'p') {
+            if ((pieceToMove.color === 'w' && r === 0) || (pieceToMove.color === 'b' && r === 7)) {
+                board[r][c] = { type: 'q', color: pieceToMove.color, hasMoved: true }; // Auto-promote to Queen
+                messageElement.textContent = `¡Peón promovido a Reina!`;
+            }
+        }
 
-      if (!messageShown) {
-        if (isRookCastling) {
-          messageElement.textContent = `¡Enroque realizado! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+        // --- End of Turn Logic ---
+        const opponentColor = currentColor === 'w' ? 'b' : 'w';
+        gameContext.currentColor = opponentColor;
+        gameContext.selected = null;
+
+        // Process duration-based power-ups for the new current player (whose turn it now is)
+        processTurnStartPowerUps(gameContext); // This updates durations, deactivates if needed
+
+        // Check for checkmate/stalemate for the opponent (now current player)
+        const opponentKingNowInCheck = gameContext.isKingInCheck(opponentColor);
+        let opponentHasLegalMoves = false;
+        for (let r1 = 0; r1 < 8 && !opponentHasLegalMoves; r1++) {
+            for (let c1 = 0; c1 < 8 && !opponentHasLegalMoves; c1++) {
+                const p = board[r1][c1];
+                if (p && p.color === opponentColor) {
+                    if (gameContext.getPossibleMoves(r1, c1).length > 0) {
+                        opponentHasLegalMoves = true;
+                    }
+                }
+            }
+        }
+
+        let turnMessage = "";
+        if (opponentKingNowInCheck && !opponentHasLegalMoves) {
+            // Current player (who just moved) delivered checkmate
+            gameContext.declareWinner(currentColor); // Winner is the one who made the move
+            turnMessage = `¡Jaque Mate! ${currentColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
+        } else if (!opponentKingNowInCheck && !opponentHasLegalMoves) {
+            messageElement.textContent = "¡Tablas por Ahogado!";
+            gameContext.gameOver = true; // Or handle draw differently for rounds
+            // Potentially call a gameContext.declareDraw() or similar
+        } else if (opponentKingNowInCheck) {
+            turnMessage = `¡Jaque! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
         } else {
-          messageElement.textContent = `Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+            turnMessage = `Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
         }
-      }
-    } else {
-      messageElement.textContent = `Movimiento no válido. Intenta otro movimiento.`;
-    }
+        
+        // Only update message if game is not over by checkmate (declareWinner sets its own message)
+        if (!gameContext.gameOver || (gameContext.gameOver && messageElement.textContent.includes("Ahogado"))) {
+             if (messageElement.textContent.includes("Reina!") && turnMessage.startsWith("Turno de")) {
+                // Append to promotion message
+                messageElement.textContent += " " + turnMessage;
+            } else if (messageElement.textContent.includes("Reina!") && turnMessage.startsWith("¡Jaque!")) {
+                messageElement.textContent += " " + turnMessage;
+            }
+            else if (!messageElement.textContent.includes("gana la ronda")) { // Avoid overwriting win message
+                 messageElement.textContent = turnMessage;
+            }
+        }
 
-    gameContext.selected = null;
-    gameContext.renderBoard();
-  }
+
+    } else { // Move was not legal (e.g., put self in check, or basic rules)
+        messageElement.textContent = "Movimiento inválido.";
+        gameContext.selected = null; // Deselect
+    }
+    gameContext.renderBoard(); // Render at the end of any action
 }
 
+/**
+ * Selects a random power-up type from the available ones.
+ * @returns {string|null} The type name of the power-up, or null if none are available.
+ */
 function getRandomPowerUp() {
-  const pool = ['ExtraMove', 'Shield', 'Swap', 'Teleport', 'Blast', 'Reducer'];
-  return pool[Math.floor(Math.random() * pool.length)];
+    const availableTypes = getAvailablePowerUpTypes();
+    if (availableTypes.length === 0) {
+        console.warn("No power-up types available to grant.");
+        return null;
+    }
+    const randomIndex = Math.floor(Math.random() * availableTypes.length);
+    return availableTypes[randomIndex];
 }
 
-function updateScoreWithPowerups(playerColor, gameContext, capturedPiece = null) {
-  let points = 0;
-  if (!capturedPiece) return;
+/**
+ * Updates player scores and grants power-ups based on captures.
+ * @param {string} playerColor - The color of the player who made the capture ('w' or 'b').
+ * @param {object} gameContext - The current game context.
+ * @param {object} capturedPiece - The piece that was captured.
+ */
+function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
+    if (!capturedPiece) return;
 
-  switch (capturedPiece.type) {
-    case 'p': points = 2; break;
-    case 'n':
-    case 'b': points = 4; break;
-    case 'r': points = 6; break;
-    case 'q': points = 9; break;
-    case 'k': points = 12; break;
-  }
+    let points = 0;
+    switch (capturedPiece.type) {
+        case 'p': points = 2; break;
+        case 'n': case 'b': points = 4; break;
+        case 'r': points = 6; break;
+        case 'q': points = 9; break;
+        // Capturing a king is not standard for points, but you can add if needed for a variant
+        default: points = 0;
+    }
 
-  if (playerColor === 'white') {
-    gameContext.score1 += points;
-    document.getElementById('score1').textContent = gameContext.score1;
-    if (gameContext.score1 >= gameContext.nextThresholdWhite) {
-      gameContext.grantPowerUp('w', getRandomPowerUp());
-      gameContext.nextThresholdWhite += 5;
+    if (points > 0) {
+        const playerDisplayColor = playerColor === 'w' ? 'Blancas' : 'Negras';
+        // gameContext.messageElement.textContent = `${playerDisplayColor} capturan ${capturedPiece.type} y ganan ${points} puntos.`;
+        // This message might be overwritten by check/checkmate/turn message, consider appending or a separate log area.
     }
-  } else {
-    gameContext.score2 += points;
-    document.getElementById('score2').textContent = gameContext.score2;
-    if (gameContext.score2 >= gameContext.nextThresholdBlack) {
-      gameContext.grantPowerUp('b', getRandomPowerUp());
-      gameContext.nextThresholdBlack += 5;
+
+    if (playerColor === 'w') {
+        gameContext.score1 += points;
+        document.getElementById('score1').textContent = gameContext.score1;
+        if (gameContext.score1 >= gameContext.nextThresholdWhite) {
+            const newPowerUp = getRandomPowerUp();
+            if (newPowerUp) gameContext.grantPowerUp('w', newPowerUp);
+            gameContext.nextThresholdWhite += 5;
+        }
+    } else { // 'b'
+        gameContext.score2 += points;
+        document.getElementById('score2').textContent = gameContext.score2;
+        if (gameContext.score2 >= gameContext.nextThresholdBlack) {
+            const newPowerUp = getRandomPowerUp();
+            if (newPowerUp) gameContext.grantPowerUp('b', newPowerUp);
+            gameContext.nextThresholdBlack += 5;
+        }
     }
-  }
 }
 
+// This function seems redundant if updateScoreWithPowerups handles all scoring.
+// If it's for other types of score updates, keep it. Otherwise, it can be removed.
+// For now, assuming it might be used elsewhere or was part of an older system.
 export function updateScore(player, gameContext) {
-  if (player === 'white') {
-    gameContext.score1++;
-    document.getElementById('score1').textContent = gameContext.score1;
-  } else {
-    gameContext.score2++;
-    document.getElementById('score2').textContent = gameContext.score2;
-  }
+    // This function is currently not called by handleClick if captures handle points.
+    // If it's for round wins or other non-capture points, its logic would differ.
+    // For now, let's assume it's for a generic point increment if needed.
+    if (player === 'white') { // Assuming 'white'/'black' string
+        gameContext.score1++;
+        document.getElementById('score1').textContent = gameContext.score1;
+    } else {
+        gameContext.score2++;
+        document.getElementById('score2').textContent = gameContext.score2;
+    }
 }
