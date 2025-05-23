@@ -1,9 +1,12 @@
 import { FencePowerUp } from './powerups/FencePowerUp.js';
+import { PawnRangePowerUp } from './powerups/PawnRangePowerUp.js';
+
 // Import other power-up classes here as you create them
 // import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 
 const powerUpBlueprints = {
   Fence: FencePowerUp,
+  'Pawn Range': PawnRangePowerUp,
   // ExtraMove: ExtraMovePowerUp,
   // Add other power-up classes here
 };
