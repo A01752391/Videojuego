@@ -58,6 +58,23 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
         case 'p': // Pawn
             const dir = piece.color === 'w' ? -1 : 1;
             const startRow = piece.color === 'w' ? 6 : 1;
+
+            // 2-square move if Pawn Range is active or if it is the first move
+            if (dc === 0 && !targetPiece) {
+                const isPawnRangeActive = gameContext.pawnRangeActive?.[piece.color];
+                const isInitialPosition = (piece.color === 'w' && fr === 6) || (piece.color === 'b' && fr === 1);
+
+                if ((isPawnRangeActive || isInitialPosition) && dr === 2 * dir) {
+                const intermediateRow = fr + dir;
+                if (
+                    board[intermediateRow][fc] === null &&
+                    !(fencedTiles?.some(tile => tile.row === intermediateRow && tile.col === fc))
+                ) {
+                    return true;
+                }
+                }
+            }
+
             // Standard 1-square move
             if (dc === 0 && dr === dir && !targetPiece) return true;
             // Initial 2-square move
