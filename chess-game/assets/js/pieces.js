@@ -103,30 +103,43 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
             return isPathClear(fr, fc, tr, tc, gameContext);
 
         case 'k': // King
-            // Normal 1-square move
-            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
-            // Castling
-            if (!piece.hasMoved && dr === 0 && Math.abs(dc) === 2) {
-                if (isKingInCheck(board, piece.color)) return false; // Cannot castle while in check
+            // If Crazy King is active, the king moves like a queen
+            const isCrazyKingActive = gameContext.activePowerUps?.some(
+                powerUp => powerUp.type === "Crazy King" && powerUp.placedBy === piece.color
+            );
 
-                const rookCol = dc > 0 ? 7 : 0; // King moves right (kingside) or left (queenside)
-                const rook = board[fr][rookCol];
+            if (isCrazyKingActive) {
+                // Horizontal/vertical/diagonal movent as queen
+                if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
+                if (targetPiece?.color === piece.color) return false; // No targeting same color pieces
+                return isPathClear(fr, fc, tr, tc, gameContext); // Verify path to avoid check and other issues
+            } else {
+                // Normal 1-square move
+                if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true;
 
-                if (rook && rook.type === 'r' && !rook.hasMoved) {
-                    // Check path between king and rook is clear (of pieces and fences)
-                    if (!isPathClear(fr, fc, fr, rookCol, gameContext)) return false;
+                // Castling
+                if (!piece.hasMoved && dr === 0 && Math.abs(dc) === 2) {
+                    if (isKingInCheck(board, piece.color)) return false; // Cannot castle while in check
 
-                    // Check squares king moves over are not attacked and not fenced
-                    const step = dc > 0 ? 1 : -1;
-                    if (isSquareAttacked(fr, fc + step, piece.color === 'w' ? 'b' : 'w', gameContext) ||
-                        (fencedTiles && fencedTiles.find(tile => tile.row === fr && tile.col === fc + step))) return false;
-                    if (isSquareAttacked(fr, fc + 2 * step, piece.color === 'w' ? 'b' : 'w', gameContext) ||
-                        (fencedTiles && fencedTiles.find(tile => tile.row === fr && tile.col === fc + 2 * step))) return false;
-                    
-                    return true;
+                    const rookCol = dc > 0 ? 7 : 0; // King moves right (kingside) or left (queenside)
+                    const rook = board[fr][rookCol];
+
+                    if (rook && rook.type === 'r' && !rook.hasMoved) {
+                        // Check path between king and rook is clear (of pieces and fences)
+                        if (!isPathClear(fr, fc, fr, rookCol, gameContext)) return false;
+
+                        // Check squares king moves over are not attacked and not fenced
+                        const step = dc > 0 ? 1 : -1;
+                        if (isSquareAttacked(fr, fc + step, piece.color === 'w' ? 'b' : 'w', gameContext) ||
+                            (fencedTiles && fencedTiles.find(tile => tile.row === fr && tile.col === fc + step))) return false;
+                        if (isSquareAttacked(fr, fc + 2 * step, piece.color === 'w' ? 'b' : 'w', gameContext) ||
+                            (fencedTiles && fencedTiles.find(tile => tile.row === fr && tile.col === fc + 2 * step))) return false;
+                        
+                        return true;
+                    }
                 }
-            }
             return false;
+        }
     }
     return false;
 }

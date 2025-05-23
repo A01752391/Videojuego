@@ -116,7 +116,9 @@ function resetGame(gameContext, fullReset = false) {
     gameContext.fencedTiles = [];
     gameContext.activePowerUps = [];
     gameContext.awaitingPowerUpTarget = null;
+    
     gameContext.pawnRangeActive = {};
+    gameContext.crazyKingActive = {};
 
     updateRoundWinsDisplay();
     if(gameContext.messageElement) gameContext.messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
