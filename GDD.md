@@ -118,19 +118,19 @@ The triggerable in-game events:
 - _Power-Up_Use:_ On your turn, you can activate a power-up instead of making a traditional move, or as an enhancement to a move (depending on the power-up type). Click to select the power-up, then click on the target (a piece, square, or zone) to apply its effect.
 - _Available Power-Ups:_
   1. Piece powerups
-    - Shield: Temporarily protects a piece from capture for one turn.
-    - Blast: Destroys a selected enemy piece instantly (just for pawn, knight and bishop).
-    - Swap: Swap positions of any two of your pieces on the board. You'll lose your turn by using it.
-    - Extra move: Grants an immediate second move within the same turn (different pieces).
+  - Shield: Temporarily protects a piece from capture for one turn.
+  - Blast: Destroys a selected enemy piece instantly (just for pawn, knight and bishop).
+  - Swap: Swap positions of any two of your pieces on the board. You'll lose your turn by using it.
+  - Extra move: Grants an immediate second move within the same turn (different pieces).
   2. Board powerups
-    - Fence: Lock a tile for three turns.
-    - Horizontal portal: Allows a piece to move from one end of the board to the other one (just for knight and queen).
-    - Cage: Immobilizes the piece for three turns.
-    - Evolution: Allows you to select a random tile, if a pawn falls there it transforms in a knight or bishop.
+  - Fence: Lock a tile for three turns.
+  - Horizontal portal: Allows a piece to move from one end of the board to the other one (just for rook and queen).
+  - Cage: Immobilizes the piece for three turns.
+  - Evolution: Allows you to select a random tile, if a pawn falls there it transforms in a knight or bishop.
   3. Movement powerups
-    - Pawn range: Changes the range of movement of the pawn. Moves two tiles, instead of moving one tile.
-    - Reducer: Reduces the range of motion of a piece (just for knight, bishop and queen).
-    - Crazy king: Change the king's range of movement to act as queen for three turns.
+  - Pawn range: Changes the range of movement of the pawn. Moves two tiles, instead of moving one tile.
+  - Reducer: Reduces the range of motion of a piece (just for knight, bishop and queen).
+  - Crazy king: Change the king's range of movement to act as queen for three turns.
 - _Two Rounds:_
   1. _Round 1:_ standard mid‑game setup—race for points and powers.
   2. _Round 2:_ fresh mid‑game layout where the trailing player receives an _advantaged formation_:
@@ -291,36 +291,44 @@ The triggerable in-game events:
 ## _Schedule_
 
 ---
+
 ### Semana 1
-- [ ] Grid & piece movement  
-- [ ] Highlights  
-- [ ] Capture scoring  
-- [ ] UI  
+
+- [ ] Grid & piece movement
+- [ ] Highlights
+- [ ] Capture scoring
+- [ ] UI
 
 ### Semana 2
-- [ ] Threshold detection  
-- [ ] Power spawn  
-- [ ] Implement each power effect  
+
+- [ ] Threshold detection
+- [ ] Power spawn
+- [ ] Implement each power effect
 
 ### Semana 3
-- [ ] Round transitions  
-- [ ] Round summaries  
-- [ ] Handicap layout (favor trailing player in Round 2)  
+
+- [ ] Round transitions
+- [ ] Round summaries
+- [ ] Handicap layout (favor trailing player in Round 2)
 
 ### Semana 4
-- [ ] Integrate final graphics  
-- [ ] Animations  
-- [ ] Add SFX & music  
+
+- [ ] Integrate final graphics
+- [ ] Animations
+- [ ] Add SFX & music
 
 ### Semana 5
-- [ ] Playtesting  
-- [ ] Balancing  
+
+- [ ] Playtesting
+- [ ] Balancing
 
 ### Semana 6
-- [ ] Polish  
-- [ ] Bug fixes  
+
+- [ ] Polish
+- [ ] Bug fixes
 
 ### Semana 7
-- [ ] Final build  
-- [ ] Extra QA if needed  
+
+- [ ] Final build
+- [ ] Extra QA if needed
 - [ ] Buffer for unexpected issues

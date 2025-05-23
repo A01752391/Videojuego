@@ -95,12 +95,33 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
             return isPathClear(fr, fc, tr, tc, gameContext);
 
         case 'r': // Rook
+            if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color)) {
+                // Movement with horizontal portal
+                if (dr === 0) return true;
+            }
+            // Normal movement
             if (dr !== 0 && dc !== 0) return false;
             return isPathClear(fr, fc, tr, tc, gameContext);
 
+case 'q': // Queen
+    if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color)) {
+        // Con portal activo: movimiento horizontal completo sin verificar camino
+        if (dr === 0) return true;
+    }
+    // Movimiento normal (diagonal/horizontal/vertical)
+    if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
+    return isPathClear(fr, fc, tr, tc, gameContext);
+
         case 'q': // Queen
-            if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
-            return isPathClear(fr, fc, tr, tc, gameContext);
+                // Regular movements
+            if (Math.abs(dr) === Math.abs(dc) || dr === 0 || dc === 0) {
+                // For horizontal portal
+                if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color) && dr === 0) {
+                    return true;
+                }
+                return isPathClear(fr, fc, tr, tc, gameContext);
+            }
+            return false;
 
         case 'k': // King
             // If Crazy King is active, the king moves like a queen
@@ -270,6 +291,21 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
     return true;
 }
 
+// Logic for using the power up Horizontal Portal
+function getHorizontalPortalMoves(r, c, gameContext, piece) {
+    const moves = [];
+    if (piece.type === 'r' || piece.type === 'q') {
+        // Movimientos horizontales completos (para torre y reina)
+        for (let tc = 0; tc < 8; tc++) {
+            if (tc !== c) {
+                moves.push({row: r, col: tc});
+            }
+        }
+    }
+    return moves;
+}
+
+
 /**
  * Calculates all possible legal moves for a piece at a given position.
  * @param {number} r - Row of the piece.
@@ -294,6 +330,28 @@ export function getPossibleMoves(r, c, gameContext) {
                 });
             }
         }
+    }
+    // If horizontal portal is active, change the behavior of the queen and rooks
+    const isPortalActive = gameContext.activePowerUps?.some(
+        p => p.type === "Horizontal Portal" && p.placedBy === piece.color
+    );
+
+    if (isPortalActive && (piece.type === 'r' || piece.type === 'q')) {
+        const portalMoves = getHorizontalPortalMoves(r, c, gameContext, piece);
+        portalMoves.forEach(move => {
+            if (!possibleMoves.some(m => m.row === move.row && m.col === move.col)) {
+                const targetPiece = board[move.row][move.col];
+                if (!targetPiece || targetPiece.color !== piece.color) {
+                    if (!gameContext.fencedTiles?.some(t => t.row === move.row && t.col === move.col)) {
+                        possibleMoves.push({
+                            row: move.row,
+                            col: move.col,
+                            capture: !!targetPiece
+                        });
+                    }
+                }
+            }
+        });
     }
     return possibleMoves;
 }
