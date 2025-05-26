@@ -1,5 +1,6 @@
 import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
-import { ShieldPowerUp } from './powerups/ShieldPowerUp.js'; // SOLO SHIELD
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
+import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -148,46 +149,65 @@ export function handleClick(r, c, gameContext) {
         }
 
         // --- End of Turn Logic ---
-        const opponentColor = currentColor === 'w' ? 'b' : 'w';
-        gameContext.currentColor = opponentColor;
-        gameContext.selected = null;
-
-        // Process duration-based power-ups for the new current player (whose turn it now is)
-        processTurnStartPowerUps(gameContext); // This updates durations, deactivates if needed
+        // LÓGICA SÚPER SIMPLE: Extra Move
+        if (gameContext.extraMoveActive) {
+            const turnChanged = ExtraMovePowerUp.processExtraMove(gameContext);
+            
+            if (!turnChanged) {
+                gameContext.selected = null;
+                // Continuar con el mismo jugador - NO cambiar turno
+            } else {
+                gameContext.selected = null;
+                processTurnStartPowerUps(gameContext);
+            }
+        } else {
+            // Lógica normal de cambio de turno
+            const opponentColor = currentColor === 'w' ? 'b' : 'w';
+            gameContext.currentColor = opponentColor;
+            gameContext.selected = null;
+            processTurnStartPowerUps(gameContext);
+        }
 
         // NUEVA IMPLEMENTACIÓN: Usar funciones mejoradas de pieces.js
         let turnMessage = "";
         
         // Verificar jaque mate usando la nueva función
-        if (gameContext.isCheckmate(opponentColor)) {
-            // El jugador que acaba de mover (currentColor antes del cambio) gana
-            const winnerColor = currentColor === 'w' ? 'b' : 'w'; // currentColor ya cambió
+        if (gameContext.isCheckmate(gameContext.currentColor)) {
+            // El jugador que acaba de mover gana
+            const winnerColor = currentColor;
             gameContext.declareWinner(winnerColor);
             turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
         } 
         // Verificar ahogado usando la nueva función
-        else if (gameContext.isStalemate && gameContext.isStalemate(opponentColor)) {
+        else if (gameContext.isStalemate && gameContext.isStalemate(gameContext.currentColor)) {
             messageElement.textContent = "¡Tablas por Ahogado!";
             gameContext.gameOver = true;
         } 
         // Verificar jaque simple
-        else if (gameContext.isKingInCheck(gameContext.board, opponentColor)) {
-            turnMessage = `¡Jaque! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+        else if (gameContext.isKingInCheck(gameContext.board, gameContext.currentColor)) {
+            const currentColorName = gameContext.currentColor === 'w' ? 'Blancas' : 'Negras';
+            turnMessage = `¡Jaque! Turno de ${currentColorName}.`;
         } 
         // Juego continúa normalmente
         else {
-            turnMessage = `Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
+            const currentColorName = gameContext.currentColor === 'w' ? 'Blancas' : 'Negras';
+            if (gameContext.extraMoveActive) {
+                // El mensaje ya se maneja en processExtraMove
+                turnMessage = "";
+            } else {
+                turnMessage = `Turno de ${currentColorName}.`;
+            }
         }
         
         // Only update message if game is not over by checkmate (declareWinner sets its own message)
         if (!gameContext.gameOver || (gameContext.gameOver && messageElement.textContent.includes("Ahogado"))) {
-             if (messageElement.textContent.includes("Reina!") && turnMessage.startsWith("Turno de")) {
+             if (messageElement.textContent.includes("Reina!") && turnMessage.startsWith("Turno")) {
                 // Append to promotion message
                 messageElement.textContent += " " + turnMessage;
             } else if (messageElement.textContent.includes("Reina!") && turnMessage.startsWith("¡Jaque!")) {
                 messageElement.textContent += " " + turnMessage;
             }
-            else if (!messageElement.textContent.includes("gana la ronda")) { // Avoid overwriting win message
+            else if (!messageElement.textContent.includes("gana la ronda") && turnMessage !== "") { // Avoid overwriting win message
                  messageElement.textContent = turnMessage;
             }
         }
