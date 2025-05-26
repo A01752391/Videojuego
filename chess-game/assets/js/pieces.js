@@ -1,5 +1,5 @@
-// AGREGAR este import al inicio
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
+import { CagePowerUp } from './powerups/CagePowerUp.js'; // NUEVA LÍNEA
 
 /**
  * Checks if the path between two squares is clear of other pieces and fences.
@@ -293,8 +293,13 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
         return false;
     }
 
-    // VERIFICACIÓN DE SHIELD - AGREGAR ESTA LÍNEA
+    // VERIFICACIÓN DE SHIELD - Protección contra capturas
     if (ShieldPowerUp.isMovementBlockedByShield(gameContext, fr, fc, tr, tc)) {
+        return false;
+    }
+
+    // VERIFICACIÓN DE CAGE - Inmovilización de piezas
+    if (CagePowerUp.isMovementBlockedByCage(gameContext, fr, fc)) {
         return false;
     }
 
