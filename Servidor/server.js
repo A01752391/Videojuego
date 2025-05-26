@@ -2,19 +2,25 @@
 
 import express from "express";
 import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
-app.use(express.static('../chess-game'));
-app.use(express.static('../Imagenes'))
+app.use('/css', express.static(path.join(process.cwd(), '../chess-game/assets/css')));
+app.use('/js', express.static(path.join(process.cwd(), '../chess-game/assets/js')));
+app.use('/images', express.static(path.join(process.cwd(), '../Imagenes')));
+
+app.use(express.static(path.join(process.cwd(), '../chess-game')));
 
 app.get('/', (req, res) => {
-    fs.readFile('/assets/html/index.html', 'utf8', 
+    const indexPath = path.join(process.cwd(), '../chess-game/assets/html/index.html');
+    fs.readFile(indexPath, 'utf8', 
         (err, html) => {
             if(err) {
+                console.error('Error reading index.html', err);
                 res.status(500).send('There was an error: ' + err)
                 return
             }

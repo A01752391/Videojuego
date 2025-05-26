@@ -108,6 +108,9 @@ export class ShieldPowerUp extends PowerUpBase {
       gameContext.messageElement.textContent = `¡${playerColorName} protegen su ${pieceName} con Shield por 1 turno!`;
     }
 
+    
+    this.triggerRadialIllumination(gameContext, row, col, 'shield');
+
     this.triggerShieldAnimation(gameContext, row, col);
 
     const activeInstanceData = {

@@ -1,5 +1,4 @@
 import { PowerUpBase } from './PowerUpBase.js';
-import { getRandomPowerUpType } from '../powerUpManager.js';
 
 export class CagePowerUp extends PowerUpBase {
   constructor() {
@@ -133,6 +132,9 @@ export class CagePowerUp extends PowerUpBase {
     if (gameContext.messageElement) {
       gameContext.messageElement.textContent = `¡${playerColorName} enjaulan el ${pieceName} de ${opponentColorName} por 3 turnos!`;
     }
+
+    
+    this.triggerRadialIllumination(gameContext, row, col, 'cage');
 
     // Activar animación visual
     this.triggerCageAnimation(gameContext, row, col);

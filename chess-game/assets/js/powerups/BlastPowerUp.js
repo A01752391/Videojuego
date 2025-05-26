@@ -174,6 +174,9 @@ export class BlastPowerUp extends PowerUpBase {
       gameContext.messageElement.textContent = `¡${playerColorName} eliminan el ${pieceName} de ${opponentColorName} con Blast!`;
     }
 
+    // NUEVO: Activar iluminación radial específica para Blast
+    this.triggerRadialIllumination(gameContext, row, col, 'blast');
+    
     // Activar animación visual si está disponible
     this.triggerBlastAnimation(gameContext, row, col);
 
