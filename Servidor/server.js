@@ -8,7 +8,7 @@ const port = 3000;
 
 app.use(express.json());
 
-app.use(express.static('./chess-game/assets'));
+app.use(express.static('../chess-game'));
 
 app.get('/', (req, res) => {
     fs.readFile('../chess-game/assets/html/index.html', 'utf8', 

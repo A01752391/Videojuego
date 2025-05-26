@@ -131,6 +131,10 @@ function renderPowerUpInventories(gameContext) {
  * @param {object} gameContext - The current game context.
  */
 function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
+
+    if (gameContext.pauseManager && gameContext.pauseManager.isGamePaused) {
+        return;
+    }
     if (gameContext.gameOver || gameContext.currentColor !== playerColor) {
         gameContext.messageElement.textContent = "No es tu turno o la partida ha terminado.";
         return;

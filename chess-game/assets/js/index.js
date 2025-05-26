@@ -150,8 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
         import('./board.js'),
         import('./pieces.js'),
         import('./game.js'),
+        import('./UI/pauseManager.js'),
         // import('./powerUpManager.js') // Not directly used here, but by game.js
-    ]).then(([boardModule, piecesModule, gameModule]) => {
+    ]).then(([boardModule, piecesModule, gameModule, pauseModule]) => {
         const { initialBoard: standardInitialBoardFunc, renderBoard: renderBoardFunc } = boardModule;
         const { 
             isLegalMove, 
@@ -161,9 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
             findKing, 
             isKingInCheck, 
             isCheckmate,
-            isStalemate // NUEVA IMPORTACIÓN para detectar ahogado
+            isStalemate 
         } = piecesModule;
         const { updateScore: updateScoreFunc, handleClick: handleClickFunc } = gameModule;
+        const { PauseManager } = pauseModule;
 
         round = 1; // Initialize for the very first game load
         winsWhite = 0;
@@ -211,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             handleClick: (r, c) => handleClickFunc(r, c, gameContext),
             renderBoard: () => renderBoardFunc(gameContext),
             standardInitialBoard: standardInitialBoardFunc,
+            resetGame: resetGame,
 
             grantPowerUp: (color, type) => {
                 if (!type) {
@@ -279,11 +282,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // Initialize pause manager
+        const pauseManager = new PauseManager(gameContext);
+        gameContext.pauseManager = pauseManager;
+
         updateRoundWinsDisplay();
         messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
         gameContext.renderBoard();
 
         boardElement.addEventListener('click', (event) => {
+            if (pauseManager.isGamePaused) {
+                return;
+            }
             const cell = event.target.closest('.cell');
             if (cell && cell.dataset.row && cell.dataset.col) {
                 const row = parseInt(cell.dataset.row);
@@ -292,7 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        resetButton.addEventListener('click', () => resetGame(gameContext, true));
+        resetButton.addEventListener('click', () => {
+          if (pauseManager.isGamePaused) {
+                return;
+            }
+            resetGame(gameContext, true);
+        });
 
     }).catch(error => {
         console.error("Error loading game modules:", error);
