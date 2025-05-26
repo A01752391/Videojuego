@@ -2,16 +2,16 @@ import { FencePowerUp } from './powerups/FencePowerUp.js';
 import { PawnRangePowerUp } from './powerups/PawnRangePowerUp.js';
 import { CrazyKingPowerUp } from './powerups/CrazyKingPowerUp.js';
 import { HorizontalPortalPowerUp } from './powerups/HorizontalPortalPowerUp.js';
-
-// Import other power-up classes here as you create them
-// import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
+import { BlastPowerUp } from './powerups/BlastPowerUp.js';
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 
 const powerUpBlueprints = {
-  Fence: FencePowerUp,
+  'Fence': FencePowerUp,
   'Pawn Range': PawnRangePowerUp,
   'Crazy King': CrazyKingPowerUp,
   'Horizontal Portal': HorizontalPortalPowerUp,
-  // ExtraMove: ExtraMovePowerUp,
+  'Blast': BlastPowerUp,
+  'Shield': ShieldPowerUp,
   // Add other power-up classes here
 };
 
@@ -37,4 +37,59 @@ export function createPowerUpInstance(powerUpType) {
  */
 export function getAvailablePowerUpTypes() {
   return Object.keys(powerUpBlueprints);
+}
+
+/**
+ * Gets a random power-up type.
+ * @returns {string} - Random power-up type name.
+ */
+export function getRandomPowerUpType() {
+  const types = getAvailablePowerUpTypes();
+  const randomIndex = Math.floor(Math.random() * types.length);
+  return types[randomIndex];
+}
+
+/**
+ * Validates if a power-up type exists.
+ * @param {string} type - The power-up type to validate.
+ * @returns {boolean} - True if the type exists, false otherwise.
+ */
+export function isValidPowerUpType(type) {
+  return powerUpBlueprints.hasOwnProperty(type);
+}
+
+/**
+ * Gets power-up information without creating an instance.
+ * @param {string} type - The power-up type.
+ * @returns {object|null} - Power-up info object or null if invalid.
+ */
+export function getPowerUpInfo(type) {
+  const PowerUpClass = powerUpBlueprints[type];
+  if (PowerUpClass) {
+    // Create a temporary instance to get the info
+    const tempInstance = new PowerUpClass();
+    return {
+      name: tempInstance.name,
+      description: tempInstance.description,
+      requiresTarget: tempInstance.requiresTarget,
+      duration: tempInstance.duration,
+      uiIcon: tempInstance.uiIcon
+    };
+  }
+  return null;
+}
+
+/**
+ * Gets all power-up information for UI display.
+ * @returns {object} - Object with all power-up types and their info.
+ */
+export function getAllPowerUpInfo() {
+  const allInfo = {};
+  const types = getAvailablePowerUpTypes();
+  
+  types.forEach(type => {
+    allInfo[type] = getPowerUpInfo(type);
+  });
+  
+  return allInfo;
 }
