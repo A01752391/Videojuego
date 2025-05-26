@@ -53,7 +53,6 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
     if (fencedTiles && fencedTiles.find(tile => tile.row === tr && tile.col === tc)) return false;
     if (fencedTiles && fencedTiles.find(tile => tile.row === fr && tile.col === fc)) return false;
 
-
     switch (piece.type) {
         case 'p': // Pawn
             const dir = piece.color === 'w' ? -1 : 1;
@@ -103,25 +102,14 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
             if (dr !== 0 && dc !== 0) return false;
             return isPathClear(fr, fc, tr, tc, gameContext);
 
-case 'q': // Queen
-    if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color)) {
-        // Con portal activo: movimiento horizontal completo sin verificar camino
-        if (dr === 0) return true;
-    }
-    // Movimiento normal (diagonal/horizontal/vertical)
-    if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
-    return isPathClear(fr, fc, tr, tc, gameContext);
-
         case 'q': // Queen
-                // Regular movements
-            if (Math.abs(dr) === Math.abs(dc) || dr === 0 || dc === 0) {
-                // For horizontal portal
-                if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color) && dr === 0) {
-                    return true;
-                }
-                return isPathClear(fr, fc, tr, tc, gameContext);
+            if (gameContext.activePowerUps?.some(p => p.type === "Horizontal Portal" && p.placedBy === piece.color)) {
+                // Con portal activo: movimiento horizontal completo sin verificar camino
+                if (dr === 0) return true;
             }
-            return false;
+            // Movimiento normal (diagonal/horizontal/vertical)
+            if (Math.abs(dr) !== Math.abs(dc) && dr !== 0 && dc !== 0) return false;
+            return isPathClear(fr, fc, tr, tc, gameContext);
 
         case 'k': // King
             // If Crazy King is active, the king moves like a queen
@@ -140,7 +128,7 @@ case 'q': // Queen
 
                 // Castling
                 if (!piece.hasMoved && dr === 0 && Math.abs(dc) === 2) {
-                    if (isKingInCheck(board, piece.color)) return false; // Cannot castle while in check
+                    if (isKingInCheck(board, piece.color, gameContext)) return false; // Cannot castle while in check
 
                     const rookCol = dc > 0 ? 7 : 0; // King moves right (kingside) or left (queenside)
                     const rook = board[fr][rookCol];
@@ -246,6 +234,39 @@ export function isKingInCheck(board, kingColor, gameContext) { // Pass full game
 }
 
 /**
+ * Simula un movimiento y verifica si deja al rey en jaque
+ * @param {number} fr - Fila origen
+ * @param {number} fc - Columna origen
+ * @param {number} tr - Fila destino
+ * @param {number} tc - Columna destino
+ * @param {string} playerColor - Color del jugador que mueve
+ * @param {object} gameContext - Contexto del juego
+ * @returns {boolean} True si el movimiento deja al rey en jaque
+ */
+function wouldMoveLeaveKingInCheck(fr, fc, tr, tc, playerColor, gameContext) {
+    const { board } = gameContext;
+    
+    // Crear copia profunda del tablero
+    const tempBoard = board.map(row => row.map(piece => piece ? { ...piece } : null));
+    
+    // Simular el movimiento
+    const movingPiece = tempBoard[fr][fc];
+    if (!movingPiece) return true; // No hay pieza para mover
+    
+    tempBoard[tr][tc] = movingPiece;
+    tempBoard[fr][fc] = null;
+    
+    // Crear contexto temporal
+    const tempGameContext = {
+        ...gameContext,
+        board: tempBoard
+    };
+    
+    // Verificar si el rey estaría en jaque
+    return isKingInCheck(tempBoard, playerColor, tempGameContext);
+}
+
+/**
  * Checks if a move is fully legal, including whether it leaves the player's own king in check.
  * @param {number} fr - From row.
  * @param {number} fc - From column.
@@ -269,21 +290,9 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
         return false;
     }
 
-    // Simulate the move on a temporary board
-    const tempBoard = board.map(row => row.map(p => p ? {...p} : null)); // Deep copy
-    const movingPiece = tempBoard[fr][fc];
-    if (movingPiece) {
-        tempBoard[tr][tc] = movingPiece;
-        tempBoard[fr][fc] = null;
-    } else {
-        console.error("Error en isLegalMove: movingPiece es null después de copiar el tablero.");
-        return false;
-    }
-
-    // Check if this move leaves the current player's king in check
-    const kingInCheckAfterMove = gameContext.isKingInCheck(tempBoard, currentColor);
-    console.log(`isLegalMove: King in check after simulated move: ${kingInCheckAfterMove}`);
-    if (kingInCheckAfterMove) {
+    // Verificar si el movimiento deja al rey en jaque usando la nueva función
+    if (wouldMoveLeaveKingInCheck(fr, fc, tr, tc, piece.color, gameContext)) {
+        console.log(`isLegalMove: Move would leave king in check`);
         return false;
     }
 
@@ -305,6 +314,53 @@ function getHorizontalPortalMoves(r, c, gameContext, piece) {
     return moves;
 }
 
+/**
+ * Obtiene todos los movimientos posibles para una pieza (solo básicos, sin filtrar por jaque)
+ * @param {number} r - Fila de la pieza
+ * @param {number} c - Columna de la pieza
+ * @param {Array} board - Tablero del juego
+ * @param {string} color - Color de la pieza
+ * @param {object} gameContext - Contexto del juego
+ * @returns {Array} Array de movimientos posibles {r, c}
+ */
+export function getPossibleMovesForPiece(r, c, board, color, gameContext) {
+    const possibleMoves = [];
+    const piece = board[r][c];
+
+    if (!piece || piece.color !== color) return possibleMoves;
+
+    // Crear contexto temporal para verificar movimientos
+    const tempContext = { ...gameContext, board: board, currentColor: color };
+
+    for (let tr = 0; tr < 8; tr++) {
+        for (let tc = 0; tc < 8; tc++) {
+            if (isBasicLegalMove(r, c, tr, tc, tempContext)) {
+                possibleMoves.push({ r: tr, c: tc });
+            }
+        }
+    }
+
+    // Si horizontal portal está activo, agregar movimientos especiales
+    const isPortalActive = gameContext.activePowerUps?.some(
+        p => p.type === "Horizontal Portal" && p.placedBy === piece.color
+    );
+
+    if (isPortalActive && (piece.type === 'r' || piece.type === 'q')) {
+        const portalMoves = getHorizontalPortalMoves(r, c, gameContext, piece);
+        portalMoves.forEach(move => {
+            if (!possibleMoves.some(m => m.r === move.row && m.c === move.col)) {
+                const targetPiece = board[move.row][move.col];
+                if (!targetPiece || targetPiece.color !== piece.color) {
+                    if (!gameContext.fencedTiles?.some(t => t.row === move.row && t.col === move.col)) {
+                        possibleMoves.push({ r: move.row, c: move.col });
+                    }
+                }
+            }
+        });
+    }
+
+    return possibleMoves;
+}
 
 /**
  * Calculates all possible legal moves for a piece at a given position.
@@ -331,29 +387,36 @@ export function getPossibleMoves(r, c, gameContext) {
             }
         }
     }
-    // If horizontal portal is active, change the behavior of the queen and rooks
-    const isPortalActive = gameContext.activePowerUps?.some(
-        p => p.type === "Horizontal Portal" && p.placedBy === piece.color
-    );
 
-    if (isPortalActive && (piece.type === 'r' || piece.type === 'q')) {
-        const portalMoves = getHorizontalPortalMoves(r, c, gameContext, piece);
-        portalMoves.forEach(move => {
-            if (!possibleMoves.some(m => m.row === move.row && m.col === move.col)) {
-                const targetPiece = board[move.row][move.col];
-                if (!targetPiece || targetPiece.color !== piece.color) {
-                    if (!gameContext.fencedTiles?.some(t => t.row === move.row && t.col === move.col)) {
-                        possibleMoves.push({
-                            row: move.row,
-                            col: move.col,
-                            capture: !!targetPiece
-                        });
+    return possibleMoves;
+}
+
+/**
+ * Verifica si un jugador tiene movimientos legales disponibles
+ * @param {string} playerColor - Color del jugador ('w' o 'b')
+ * @param {object} gameContext - Contexto del juego
+ * @returns {boolean} True si tiene movimientos legales
+ */
+function hasLegalMoves(playerColor, gameContext) {
+    const { board } = gameContext;
+    
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (piece && piece.color === playerColor) {
+                // Obtener movimientos básicos usando getPossibleMovesForPiece
+                const basicMoves = getPossibleMovesForPiece(r, c, board, playerColor, gameContext);
+                
+                // Verificar si algún movimiento básico es legal (no deja rey en jaque)
+                for (const move of basicMoves) {
+                    if (!wouldMoveLeaveKingInCheck(r, c, move.r, move.c, playerColor, gameContext)) {
+                        return true; // Encontró al menos un movimiento legal
                     }
                 }
             }
-        });
+        }
     }
-    return possibleMoves;
+    return false;
 }
 
 /**
@@ -363,21 +426,27 @@ export function getPossibleMoves(r, c, gameContext) {
  * @returns {boolean} True if the player is in checkmate, false otherwise.
  */
 export function isCheckmate(playerColor, gameContext) {
+    // Primero verificar si el rey está en jaque
     if (!isKingInCheck(gameContext.board, playerColor, gameContext)) {
-        return false; // Not in check, so not checkmate
+        return false; // No está en jaque, no puede ser jaque mate
     }
-    // Check if there are any legal moves for the player
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            const piece = gameContext.board[r][c];
-            if (piece && piece.color === playerColor) {
-                // Temporarily set currentColor for getPossibleMoves context
-                const tempContext = { ...gameContext, currentColor: playerColor };
-                if (getPossibleMoves(r, c, tempContext).length > 0) {
-                    return false; // Found a legal move
-                }
-            }
-        }
+
+    // Verificar si hay movimientos legales disponibles
+    return !hasLegalMoves(playerColor, gameContext);
+}
+
+/**
+ * Verifica si un jugador está en ahogado (stalemate)
+ * @param {string} playerColor - Color del jugador ('w' o 'b')
+ * @param {object} gameContext - Contexto del juego
+ * @returns {boolean} True si está en ahogado
+ */
+export function isStalemate(playerColor, gameContext) {
+    // Verificar que el rey NO esté en jaque
+    if (isKingInCheck(gameContext.board, playerColor, gameContext)) {
+        return false; // No puede ser ahogado si está en jaque
     }
-    return true; // No legal moves and in check
+
+    // Verificar si no hay movimientos legales disponibles
+    return !hasLegalMoves(playerColor, gameContext);
 }
