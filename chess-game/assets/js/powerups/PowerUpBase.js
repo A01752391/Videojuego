@@ -33,6 +33,66 @@ export class PowerUpBase {
   }
 
   /**
+   * Triggers a radial illumination effect when the power-up is activated
+   * @param {object} gameContext - The current game context
+   * @param {number} row - Target row (optional)
+   * @param {number} col - Target column (optional)
+   * @param {string} effectType - Type of effect for different colors
+   */
+triggerRadialIllumination(gameContext, row = null, col = null, effectType = 'default') {
+  console.log('triggerRadialIllumination called:', { row, col, effectType });
+  
+  const { boardElement } = gameContext;
+  if (!boardElement) {
+    console.warn('No boardElement found');
+    return;
+  }
+
+  let targetCell = null;
+  
+  if (row !== null && col !== null) {
+    // Target-specific illumination
+    targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    console.log('Target cell found:', !!targetCell);
+  } else {
+    // Board-wide illumination effect
+    const allCells = boardElement.querySelectorAll('[data-row][data-col]');
+    console.log('Applying to all cells:', allCells.length);
+    allCells.forEach(cell => {
+      this.applyCellIllumination(cell, effectType);
+    });
+    return;
+  }
+
+  if (targetCell) {
+    console.log('Applying illumination to target cell');
+    this.applyCellIllumination(targetCell, effectType);
+  } else {
+    console.warn('Target cell not found for row:', row, 'col:', col);
+  }
+}
+
+  /**
+   * Applies illumination effect to a specific cell
+   */
+  applyCellIllumination(cell, effectType) {
+  console.log('applyCellIllumination:', effectType, cell);
+  
+  // Remove any existing illumination
+  cell.classList.remove('powerup-radial-effect', 'blast', 'shield', 'cage', 'default');
+  
+  // Add the new illumination effect
+  cell.classList.add('powerup-radial-effect', effectType);
+  console.log('Classes added:', cell.className);
+  
+  // Remove the effect after animation completes
+  setTimeout(() => {
+    cell.classList.remove('powerup-radial-effect', effectType);
+    console.log('Animation classes removed');
+  }, 1500);
+}
+
+  /**
    * Called at the beginning of each turn for active, duration-based power-ups.
    * @param {object} gameContext - The current game context.
    * @param {object} activePowerUpInstance - The specific instance of this power-up that is active.
