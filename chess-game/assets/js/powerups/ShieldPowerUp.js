@@ -1,5 +1,4 @@
 import { PowerUpBase } from './PowerUpBase.js';
-import { getRandomPowerUpType } from '../powerUpManager.js';
 
 export class ShieldPowerUp extends PowerUpBase {
   constructor() {
