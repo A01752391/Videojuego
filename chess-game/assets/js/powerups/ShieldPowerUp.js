@@ -205,17 +205,63 @@ export class ShieldPowerUp extends PowerUpBase {
     return false;
   }
 
+  /**
+   * MEJORADO: Remueve el shield visual buscando en todo el tablero
+   */
   removeShieldVisual(gameContext, row, col) {
     const { boardElement } = gameContext;
     if (!boardElement) return;
     
-    const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    if (!targetCell) return;
+    // Buscar en TODA la tablero por si la pieza se movió
+    const allCells = boardElement.querySelectorAll('[data-row][data-col]');
     
-    const shieldElement = targetCell.querySelector('.shield-effect');
-    if (shieldElement) {
+    allCells.forEach(cell => {
+      const shieldElement = cell.querySelector('.shield-effect');
+      if (shieldElement) {
         shieldElement.remove();
-    }
+      }
+    });
+  }
+
+  /**
+   * NUEVO: Actualiza la posición visual del shield cuando la pieza protegida se mueve
+   */
+  static updateShieldPosition(gameContext, oldRow, oldCol, newRow, newCol) {
+    const { boardElement } = gameContext;
+    if (!boardElement) return;
+    
+    // Buscar shield en la posición anterior
+    const oldCell = boardElement.querySelector(`[data-row="${oldRow}"][data-col="${oldCol}"]`);
+    if (!oldCell) return;
+    
+    const shieldElement = oldCell.querySelector('.shield-effect');
+    if (!shieldElement) return;
+    
+    // Remover shield de la posición anterior
+    shieldElement.remove();
+    
+    // Agregar shield a la nueva posición
+    const newCell = boardElement.querySelector(`[data-row="${newRow}"][data-col="${newCol}"]`);
+    if (!newCell) return;
+    
+    // Crear nuevo elemento shield en la nueva posición
+    const newShieldEffect = document.createElement('div');
+    newShieldEffect.className = 'shield-effect';
+    newShieldEffect.textContent = '🛡️';
+    newShieldEffect.style.cssText = `
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 1.2em;
+      color: #4CAF50;
+      text-shadow: 0 0 3px rgba(76, 175, 80, 0.8);
+      pointer-events: none;
+      z-index: 999;
+      animation: shieldPulse 2s infinite;
+    `;
+    
+    newCell.style.position = 'relative';
+    newCell.appendChild(newShieldEffect);
   }
 
   static triggerBlockAnimation(gameContext, row, col) {

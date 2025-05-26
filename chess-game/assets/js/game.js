@@ -1,4 +1,5 @@
 import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js'; // SOLO SHIELD
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -109,6 +110,22 @@ export function handleClick(r, c, gameContext) {
         board[r][c] = pieceToMove;
         board[r][c].hasMoved = true;
         board[fr][fc] = null;
+
+        // NUEVA INTEGRACIÓN: Actualizar Shield cuando se mueve una pieza
+        if (gameContext.activePowerUps) {
+            gameContext.activePowerUps.forEach(powerUp => {
+                // Actualizar Shield
+                if (powerUp.type === 'Shield' && 
+                    powerUp.targetRow === fr && 
+                    powerUp.targetCol === fc &&
+                    powerUp.remainingDuration > 0) {
+                    
+                    powerUp.targetRow = r;
+                    powerUp.targetCol = c;
+                    ShieldPowerUp.updateShieldPosition(gameContext, fr, fc, r, c);
+                }
+            });
+        }
 
         // Handle Castling: Move the rook
         const isCastlingMove = pieceToMove.type === 'k' && Math.abs(c - fc) === 2;
