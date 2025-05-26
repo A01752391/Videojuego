@@ -98,25 +98,35 @@ function resetGame(gameContext, fullReset = false) {
     }
     gameContext.board = newBoard;
 
-    // Reset scores for the new round
-    gameContext.score1 = 0;
-    gameContext.score2 = 0;
-    const score1El = document.getElementById('score1');
-    const score2El = document.getElementById('score2');
-    if (score1El) score1El.textContent = '0';
-    if (score2El) score2El.textContent = '0';
+    // MODIFICACIÓN: Solo resetear puntos y power-ups en reset completo
+    if (fullReset) {
+        // Reset scores for a full game restart
+        gameContext.score1 = 0;
+        gameContext.score2 = 0;
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
+        if (score1El) score1El.textContent = '0';
+        if (score2El) score2El.textContent = '0';
 
+        // Reset power-ups for a full game restart
+        gameContext.powerUpsWhite = [];
+        gameContext.powerUpsBlack = [];
+        gameContext.nextThresholdWhite = 5;
+        gameContext.nextThresholdBlack = 5;
+    }
+    // NOTA: Los puntos y power-ups se mantienen entre rondas (solo se resetean en fullReset)
+
+    // Reset game state (esto se resetea siempre)
     gameContext.currentColor = 'w';
     gameContext.selected = null;
     gameContext.gameOver = false;
-    gameContext.powerUpsWhite = [];
-    gameContext.powerUpsBlack = [];
-    gameContext.nextThresholdWhite = 5;
-    gameContext.nextThresholdBlack = 5;
+    
+    // Reset power-ups activos y vallas (estos sí se resetean cada ronda)
     gameContext.fencedTiles = [];
     gameContext.activePowerUps = [];
     gameContext.awaitingPowerUpTarget = null;
     
+    // Reset efectos temporales de power-ups
     gameContext.pawnRangeActive = {};
     gameContext.crazyKingActive = {};
 
@@ -143,7 +153,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // import('./powerUpManager.js') // Not directly used here, but by game.js
     ]).then(([boardModule, piecesModule, gameModule]) => {
         const { initialBoard: standardInitialBoardFunc, renderBoard: renderBoardFunc } = boardModule;
-        const { isLegalMove, getPossibleMoves, isBasicLegalMove, isSquareAttacked, findKing, isKingInCheck, isCheckmate } = piecesModule;
+        const { 
+            isLegalMove, 
+            getPossibleMoves, 
+            isBasicLegalMove, 
+            isSquareAttacked, 
+            findKing, 
+            isKingInCheck, 
+            isCheckmate,
+            isStalemate // NUEVA IMPORTACIÓN para detectar ahogado
+        } = piecesModule;
         const { updateScore: updateScoreFunc, handleClick: handleClickFunc } = gameModule;
 
         round = 1; // Initialize for the very first game load
@@ -184,7 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
             findKing: (board, color) => findKing(board, color),
             // Pass full gameContext to isKingInCheck as it's needed by isSquareAttacked
             isKingInCheck: (boardToCheck, kingColor) => isKingInCheck(boardToCheck || gameContext.board, kingColor, { ...gameContext, board: boardToCheck || gameContext.board }),
+            // NUEVA FUNCIÓN: Agregar isCheckmate al gameContext
             isCheckmate: (color) => isCheckmate(color, gameContext),
+            // NUEVA FUNCIÓN: Agregar isStalemate al gameContext (opcional para detectar ahogado)
+            isStalemate: (color) => isStalemate(color, gameContext),
             updateScore: (player, capturedPiece) => updateScoreFunc(player, capturedPiece, gameContext), // Ensure updateScoreFunc is correctly defined in game.js
             handleClick: (r, c) => handleClickFunc(r, c, gameContext),
             renderBoard: () => renderBoardFunc(gameContext),
@@ -220,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const existingFinalBtn = document.querySelector('button.final-reset-button');
                 if(existingFinalBtn) existingFinalBtn.remove();
 
-
                 if (winsWhite === 2 || winsBlack === 2 || (round === 3 && (winsWhite > 0 || winsBlack > 0) )) { // Game ends if someone wins 2 rounds or after 3 rounds if not 0-0
                     let gameWinnerName = "";
                     if (winsWhite > winsBlack) gameWinnerName = "Blancas";
@@ -229,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (round === 3 && winsWhite === 0 && winsBlack === 0) { // No one won any round
                          messageElement.textContent = `Fin de la partida. No hubo ganador en las rondas.`;
                     }
-
 
                     if (gameWinnerName) {
                         messageElement.textContent += `\n\n¡Jugador ${gameWinnerName} gana la partida!`;

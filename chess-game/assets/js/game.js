@@ -138,32 +138,27 @@ export function handleClick(r, c, gameContext) {
         // Process duration-based power-ups for the new current player (whose turn it now is)
         processTurnStartPowerUps(gameContext); // This updates durations, deactivates if needed
 
-        // Check for checkmate/stalemate for the opponent (now current player)
-        const opponentKingNowInCheck = gameContext.isKingInCheck(opponentColor);
-        let opponentHasLegalMoves = false;
-        for (let r1 = 0; r1 < 8 && !opponentHasLegalMoves; r1++) {
-            for (let c1 = 0; c1 < 8 && !opponentHasLegalMoves; c1++) {
-                const p = board[r1][c1];
-                if (p && p.color === opponentColor) {
-                    if (gameContext.getPossibleMoves(r1, c1).length > 0) {
-                        opponentHasLegalMoves = true;
-                    }
-                }
-            }
-        }
-
+        // NUEVA IMPLEMENTACIÓN: Usar funciones mejoradas de pieces.js
         let turnMessage = "";
-        if (opponentKingNowInCheck && !opponentHasLegalMoves) {
-            // Current player (who just moved) delivered checkmate
-            gameContext.declareWinner(currentColor); // Winner is the one who made the move
-            turnMessage = `¡Jaque Mate! ${currentColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
-        } else if (!opponentKingNowInCheck && !opponentHasLegalMoves) {
+        
+        // Verificar jaque mate usando la nueva función
+        if (gameContext.isCheckmate(opponentColor)) {
+            // El jugador que acaba de mover (currentColor antes del cambio) gana
+            const winnerColor = currentColor === 'w' ? 'b' : 'w'; // currentColor ya cambió
+            gameContext.declareWinner(winnerColor);
+            turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
+        } 
+        // Verificar ahogado usando la nueva función
+        else if (gameContext.isStalemate && gameContext.isStalemate(opponentColor)) {
             messageElement.textContent = "¡Tablas por Ahogado!";
-            gameContext.gameOver = true; // Or handle draw differently for rounds
-            // Potentially call a gameContext.declareDraw() or similar
-        } else if (opponentKingNowInCheck) {
+            gameContext.gameOver = true;
+        } 
+        // Verificar jaque simple
+        else if (gameContext.isKingInCheck(gameContext.board, opponentColor)) {
             turnMessage = `¡Jaque! Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
-        } else {
+        } 
+        // Juego continúa normalmente
+        else {
             turnMessage = `Turno de ${opponentColor === 'w' ? 'Blancas' : 'Negras'}.`;
         }
         
@@ -179,7 +174,6 @@ export function handleClick(r, c, gameContext) {
                  messageElement.textContent = turnMessage;
             }
         }
-
 
     } else { // Move was not legal (e.g., put self in check, or basic rules)
         messageElement.textContent = "Movimiento inválido.";
