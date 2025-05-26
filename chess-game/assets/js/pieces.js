@@ -1,3 +1,6 @@
+// AGREGAR este import al inicio
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
+
 /**
  * Checks if the path between two squares is clear of other pieces and fences.
  * Does not check the destination square itself, only the path.
@@ -287,6 +290,11 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
     }
 
     if (!isBasicLegalMove(fr, fc, tr, tc, gameContext)) {
+        return false;
+    }
+
+    // VERIFICACIÓN DE SHIELD - AGREGAR ESTA LÍNEA
+    if (ShieldPowerUp.isMovementBlockedByShield(gameContext, fr, fc, tr, tc)) {
         return false;
     }
 

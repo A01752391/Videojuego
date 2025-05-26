@@ -3,9 +3,7 @@ import { PawnRangePowerUp } from './powerups/PawnRangePowerUp.js';
 import { CrazyKingPowerUp } from './powerups/CrazyKingPowerUp.js';
 import { HorizontalPortalPowerUp } from './powerups/HorizontalPortalPowerUp.js';
 import { BlastPowerUp } from './powerups/BlastPowerUp.js';
-
-// Import other power-up classes here as you create them
-// import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 
 const powerUpBlueprints = {
   'Fence': FencePowerUp,
@@ -13,7 +11,7 @@ const powerUpBlueprints = {
   'Crazy King': CrazyKingPowerUp,
   'Horizontal Portal': HorizontalPortalPowerUp,
   'Blast': BlastPowerUp,
-  // ExtraMove: ExtraMovePowerUp,
+  'Shield': ShieldPowerUp,
   // Add other power-up classes here
 };
 
@@ -42,14 +40,33 @@ export function getAvailablePowerUpTypes() {
 }
 
 /**
- * Gets information about a specific power-up type without creating an instance.
- * Useful for displaying power-up descriptions in UI.
- * @param {string} powerUpType - The type/name of the power-up.
- * @returns {object|null} Object with power-up info, or null if type not found.
+ * Gets a random power-up type.
+ * @returns {string} - Random power-up type name.
  */
-export function getPowerUpInfo(powerUpType) {
-  const PowerUpClass = powerUpBlueprints[powerUpType];
+export function getRandomPowerUpType() {
+  const types = getAvailablePowerUpTypes();
+  const randomIndex = Math.floor(Math.random() * types.length);
+  return types[randomIndex];
+}
+
+/**
+ * Validates if a power-up type exists.
+ * @param {string} type - The power-up type to validate.
+ * @returns {boolean} - True if the type exists, false otherwise.
+ */
+export function isValidPowerUpType(type) {
+  return powerUpBlueprints.hasOwnProperty(type);
+}
+
+/**
+ * Gets power-up information without creating an instance.
+ * @param {string} type - The power-up type.
+ * @returns {object|null} - Power-up info object or null if invalid.
+ */
+export function getPowerUpInfo(type) {
+  const PowerUpClass = powerUpBlueprints[type];
   if (PowerUpClass) {
+    // Create a temporary instance to get the info
     const tempInstance = new PowerUpClass();
     return {
       name: tempInstance.name,
@@ -59,65 +76,20 @@ export function getPowerUpInfo(powerUpType) {
       uiIcon: tempInstance.uiIcon
     };
   }
-  console.error(`PowerUp type "${powerUpType}" not found.`);
   return null;
 }
 
 /**
- * Validates if a power-up type exists in the system.
- * @param {string} powerUpType - The type/name of the power-up to validate.
- * @returns {boolean} True if the power-up type exists, false otherwise.
+ * Gets all power-up information for UI display.
+ * @returns {object} - Object with all power-up types and their info.
  */
-export function isValidPowerUpType(powerUpType) {
-  return powerUpBlueprints.hasOwnProperty(powerUpType);
-}
-
-/**
- * Gets a random power-up type from the available ones.
- * @param {string[]} [excludeTypes=[]] - Array of power-up types to exclude from selection.
- * @returns {string|null} Random power-up type name, or null if none available.
- */
-export function getRandomPowerUpType(excludeTypes = []) {
-  const availableTypes = getAvailablePowerUpTypes().filter(type => !excludeTypes.includes(type));
+export function getAllPowerUpInfo() {
+  const allInfo = {};
+  const types = getAvailablePowerUpTypes();
   
-  if (availableTypes.length === 0) {
-    console.warn("No power-up types available after exclusions.");
-    return null;
-  }
+  types.forEach(type => {
+    allInfo[type] = getPowerUpInfo(type);
+  });
   
-  const randomIndex = Math.floor(Math.random() * availableTypes.length);
-  return availableTypes[randomIndex];
-}
-
-/**
- * Gets all power-up types that require targeting.
- * @returns {string[]} Array of power-up type names that require target selection.
- */
-export function getTargetingPowerUpTypes() {
-  return getAvailablePowerUpTypes().filter(type => {
-    const info = getPowerUpInfo(type);
-    return info && info.requiresTarget;
-  });
-}
-
-/**
- * Gets all power-up types that have duration (are not instant).
- * @returns {string[]} Array of power-up type names that have duration.
- */
-export function getDurationPowerUpTypes() {
-  return getAvailablePowerUpTypes().filter(type => {
-    const info = getPowerUpInfo(type);
-    return info && info.duration > 0;
-  });
-}
-
-/**
- * Gets all power-up types that are instant (no duration).
- * @returns {string[]} Array of power-up type names that are instant.
- */
-export function getInstantPowerUpTypes() {
-  return getAvailablePowerUpTypes().filter(type => {
-    const info = getPowerUpInfo(type);
-    return info && info.duration === 0;
-  });
+  return allInfo;
 }
