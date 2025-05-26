@@ -1,5 +1,5 @@
 {
-  "name": "servidor",
+  "name": "pawned",
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
@@ -7,7 +7,7 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "eslint": "^9.27.0",
