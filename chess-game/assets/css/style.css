@@ -151,11 +151,8 @@ body {
   box-shadow: 0 0 10px red;
 }
 
-/* ... existing styles ... */
-
 .fenced-tile {
-  position: relative; /* For positioning the marker */
-  /* background-color: rgba(100, 100, 100, 0.3); Slightly darken or indicate blockage */
+  position: relative; 
 }
 
 .fenced-tile .fence-marker {
@@ -163,9 +160,9 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 70%; /* Adjust size as needed */
-  height: 70%;
-  background-image: url('../Imagenes/fence.png'); /* Create a simple fence icon */
+  width: 90%; /* Adjust size as needed */
+  height: 90%;
+  background-image: url('../../../Imagenes/fenceImg.png'); /* Create a simple fence icon */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
