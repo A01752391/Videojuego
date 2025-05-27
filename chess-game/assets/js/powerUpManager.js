@@ -5,7 +5,8 @@ import { HorizontalPortalPowerUp } from './powerups/HorizontalPortalPowerUp.js';
 import { BlastPowerUp } from './powerups/BlastPowerUp.js';
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
-import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js'; // NUEVO IMPORT
+import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
+import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; // NUEVO IMPORT
 
 const powerUpBlueprints = {
   'Fence': FencePowerUp,
@@ -15,7 +16,8 @@ const powerUpBlueprints = {
   'Blast': BlastPowerUp,
   'Shield': ShieldPowerUp,
   'Cage': CagePowerUp,
-  'Extra Move': ExtraMovePowerUp, // NUEVA LÍNEA
+  'Extra Move': ExtraMovePowerUp,
+  'Evolution': EvolutionPowerUp, // NUEVA LÍNEA
   // Add other power-up classes here
 };
 
