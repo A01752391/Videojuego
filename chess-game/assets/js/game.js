@@ -3,6 +3,7 @@ import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
+import { ReducerPowerUp } from './powerups/ReducerPowerUp.js'; // NUEVO IMPORT
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -137,7 +138,14 @@ export function handleClick(r, c, gameContext) {
             CagePowerUp.removeCageIfPieceCaptured(gameContext, r, c, capturedPiece);
         }
 
-       
+        // NUEVA VERIFICACIÓN: Limpiar reducer si la pieza reducida fue capturada
+        if (capturedPiece) {
+            ReducerPowerUp.removeReducerIfPieceCaptured(gameContext, r, c, capturedPiece);
+        }
+
+        // Evolution ahora es instantáneo al activarse, no requiere verificación de movimientos
+        // (las líneas problemáticas de checkPawnEvolution fueron removidas)
+
         // NUEVA INTEGRACIÓN: Actualizar Shield cuando se mueve una pieza
         if (gameContext.activePowerUps) {
             gameContext.activePowerUps.forEach(powerUp => {
