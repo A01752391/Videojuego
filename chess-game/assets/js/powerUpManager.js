@@ -8,6 +8,7 @@ import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; 
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
+import { SwapPowerUp } from './powerups/SwapPowerUp.js';
 
 const powerUpBlueprints = {
   'Fence': FencePowerUp,
@@ -20,6 +21,7 @@ const powerUpBlueprints = {
   'Extra Move': ExtraMovePowerUp,
   'Evolution': EvolutionPowerUp, 
   'Reducer': ReducerPowerUp,
+  'Swap': SwapPowerUp,
   
 };
 

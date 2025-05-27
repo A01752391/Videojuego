@@ -33,7 +33,6 @@ export function renderBoard(gameContext) {
     // It's better to pass the full gameContext to isKingInCheck
     const kingIsCurrentlyInCheck = gameContext.isKingInCheck(gameContext.board, currentColor, gameContext);
 
-
     let possibleMovesList = [];
     if (selected) {
         possibleMovesList = gameContext.getPossibleMoves(selected[0], selected[1]);
@@ -77,6 +76,25 @@ export function renderBoard(gameContext) {
             const isPossibleMove = possibleMovesList.find(move => move.row === r && move.col === c);
             if (isPossibleMove) {
                 cell.classList.add(isPossibleMove.capture ? "possible-capture" : "possible-move");
+            }
+
+            // NUEVA FUNCIONALIDAD: Mostrar selección de swap si está activa
+            if (gameContext.swapSelection && gameContext.swapSelection.pieces.length > 0) {
+                gameContext.swapSelection.pieces.forEach((piece, index) => {
+                    if (piece.row === r && piece.col === c) {
+                        if (index === 0) {
+                            // Primera pieza seleccionada - verde
+                            cell.style.background = 'linear-gradient(45deg, #4CAF50, #81C784)';
+                            cell.style.border = '3px solid #2E7D32';
+                            cell.style.boxShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
+                        } else {
+                            // Segunda pieza seleccionada - azul
+                            cell.style.background = 'linear-gradient(45deg, #2196F3, #64B5F6)';
+                            cell.style.border = '3px solid #1565C0';
+                            cell.style.boxShadow = '0 0 10px rgba(33, 150, 243, 0.7)';
+                        }
+                    }
+                });
             }
 
             boardElement.appendChild(cell);
@@ -131,7 +149,6 @@ function renderPowerUpInventories(gameContext) {
  * @param {object} gameContext - The current game context.
  */
 function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
-
     if (gameContext.pauseManager && gameContext.pauseManager.isGamePaused) {
         return;
     }
@@ -164,7 +181,13 @@ function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
 
     if (powerUpInstance.requiresTarget) {
         gameContext.awaitingPowerUpTarget = { powerUpType, playerColor };
-        gameContext.messageElement.textContent = `Selecciona un objetivo en el tablero para ${powerUpType}.`;
+        
+        // MENSAJE ESPECIAL PARA SWAP
+        if (powerUpType === 'Swap') {
+            gameContext.messageElement.textContent = `Selecciona la primera pieza para intercambiar con ${powerUpType}.`;
+        } else {
+            gameContext.messageElement.textContent = `Selecciona un objetivo en el tablero para ${powerUpType}.`;
+        }
     } else {
         // Activate directly if no target is required
         const activationSuccessful = powerUpInstance.activate(gameContext, playerColor, null);
@@ -175,5 +198,104 @@ function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
             // renderPowerUpInventories will be called by renderBoard
         }
         gameContext.renderBoard(); // Re-render for any immediate effects and to update inventory display
+    }
+}
+
+/**
+ * NUEVA FUNCIÓN: Cancelar selección de Swap desde la UI
+ * @param {object} gameContext - The current game context.
+ */
+export function cancelSwapSelection(gameContext) {
+    if (gameContext.swapSelection) {
+        gameContext.swapSelection = null;
+        gameContext.awaitingPowerUpTarget = null;
+        if (gameContext.messageElement) {
+            gameContext.messageElement.textContent = "Selección de Swap cancelada.";
+        }
+        gameContext.renderBoard();
+    }
+}
+
+/**
+ * NUEVA FUNCIÓN: Agregar botón de cancelar swap cuando sea necesario
+ * @param {object} gameContext - The current game context.
+ */
+export function addSwapCancelButton(gameContext) {
+    // Verificar si ya existe un botón de cancelar
+    let cancelButton = document.getElementById('cancel-swap-button');
+    
+    if (!cancelButton && gameContext.swapSelection && gameContext.swapSelection.count > 0) {
+        cancelButton = document.createElement('button');
+        cancelButton.id = 'cancel-swap-button';
+        cancelButton.textContent = 'Cancelar Swap';
+        cancelButton.className = 'powerup-button cancel-button';
+        cancelButton.style.cssText = `
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        `;
+        
+        cancelButton.onclick = () => {
+            cancelSwapSelection(gameContext);
+            cancelButton.remove();
+        };
+        
+        // Agregar el botón después del contenedor de power-ups
+        const powerUpsContainer = document.getElementById('white-powerups-display') || document.getElementById('black-powerups-display');
+        if (powerUpsContainer && powerUpsContainer.parentNode) {
+            powerUpsContainer.parentNode.insertBefore(cancelButton, powerUpsContainer.nextSibling);
+        } else {
+            document.body.appendChild(cancelButton);
+        }
+    } else if (cancelButton && (!gameContext.swapSelection || gameContext.swapSelection.count === 0)) {
+        // Remover el botón si ya no es necesario
+        cancelButton.remove();
+    }
+}
+
+/**
+ * NUEVA FUNCIÓN: Mostrar información de ayuda para Swap
+ * @param {object} gameContext - The current game context.
+ */
+export function showSwapHelp(gameContext) {
+    if (gameContext.awaitingPowerUpTarget && gameContext.awaitingPowerUpTarget.powerUpType === 'Swap') {
+        const helpElement = document.getElementById('swap-help');
+        if (!helpElement) {
+            const help = document.createElement('div');
+            help.id = 'swap-help';
+            help.className = 'swap-help-info';
+            help.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-size: 12px;
+                max-width: 200px;
+                z-index: 1000;
+            `;
+            
+            help.innerHTML = `
+                <strong>Swap Power-Up:</strong><br>
+                1. Selecciona la primera pieza<br>
+                2. Selecciona la segunda pieza<br>
+                3. Las piezas intercambiarán posiciones<br>
+                <em>¡Tu turno terminará automáticamente!</em>
+            `;
+            
+            document.body.appendChild(help);
+        }
+    } else {
+        const helpElement = document.getElementById('swap-help');
+        if (helpElement) {
+            helpElement.remove();
+        }
     }
 }

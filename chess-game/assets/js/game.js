@@ -3,7 +3,8 @@ import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
-import { ReducerPowerUp } from './powerups/ReducerPowerUp.js'; // NUEVO IMPORT
+import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
+import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -50,22 +51,94 @@ export function handleClick(r, c, gameContext) {
     if (awaitingPowerUpTarget && awaitingPowerUpTarget.playerColor === currentColor) {
         const powerUp = createPowerUpInstance(awaitingPowerUpTarget.powerUpType);
         if (powerUp) {
-            // Pass target data for canActivate if it needs it (e.g. to check if target is valid before activation attempt)
-            if (powerUp.canActivate(gameContext, currentColor, { row: r, col: c })) {
-                const activationSuccessful = powerUp.activate(gameContext, currentColor, { row: r, col: c });
-                if (activationSuccessful) {
-                    const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
-                    const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
-                    if (index > -1) {
-                        inventory.splice(index, 1);
-                    }
-                    // renderPowerUpInventories is called by renderBoard in board.js
+            // NUEVA LÓGICA ESPECIAL PARA SWAP - necesita 2 piezas
+            if (awaitingPowerUpTarget.powerUpType === 'Swap') {
+                // Inicializar selección de piezas para swap si no existe
+                if (!gameContext.swapSelection) {
+                    gameContext.swapSelection = { pieces: [], count: 0 };
                 }
+
+                // Verificar si hay una pieza en la casilla clickeada
+                const clickedPiece = board[r][c];
+                if (!clickedPiece) {
+                    if (gameContext.messageElement) {
+                        gameContext.messageElement.textContent = "Debes seleccionar una casilla con pieza para intercambiar.";
+                    }
+                    return;
+                }
+
+                // Agregar pieza a la selección
+                const pieceData = { row: r, col: c };
+                
+                // Verificar si ya seleccionó esta pieza
+                const alreadySelected = gameContext.swapSelection.pieces.some(p => 
+                    p.row === r && p.col === c);
+                
+                if (alreadySelected) {
+                    if (gameContext.messageElement) {
+                        gameContext.messageElement.textContent = "Ya seleccionaste esta pieza. Elige otra diferente.";
+                    }
+                    return;
+                }
+
+                gameContext.swapSelection.pieces.push(pieceData);
+                gameContext.swapSelection.count++;
+
+                if (gameContext.swapSelection.count === 1) {
+                    // Primera pieza seleccionada
+                    if (gameContext.messageElement) {
+                        const pieceName = {
+                            'p': 'Peón', 'n': 'Caballo', 'b': 'Alfil', 
+                            'r': 'Torre', 'q': 'Reina', 'k': 'Rey'
+                        }[clickedPiece.type];
+                        const pieceColor = clickedPiece.color === 'w' ? 'Blancas' : 'Negras';
+                        gameContext.messageElement.textContent = 
+                            `Swap: ${pieceName} de ${pieceColor} seleccionado. Ahora selecciona la segunda pieza para intercambiar.`;
+                    }
+                    gameContext.renderBoard(); // Mostrar selección
+                    return;
+                } else if (gameContext.swapSelection.count === 2) {
+                    // Segunda pieza seleccionada - activar swap
+                    const targetData = {
+                        piece1: gameContext.swapSelection.pieces[0],
+                        piece2: gameContext.swapSelection.pieces[1]
+                    };
+
+                    if (powerUp.canActivate(gameContext, currentColor, targetData)) {
+                        const activationSuccessful = powerUp.activate(gameContext, currentColor, targetData);
+                        if (activationSuccessful) {
+                            const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
+                            const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
+                            if (index > -1) {
+                                inventory.splice(index, 1);
+                            }
+                        }
+                    }
+                    
+                    // Limpiar selección de swap
+                    gameContext.swapSelection = null;
+                    gameContext.awaitingPowerUpTarget = null;
+                    gameContext.renderBoard();
+                    return;
+                }
+            } else {
+                // Lógica normal para otros power-ups (SIN CAMBIOS)
+                if (powerUp.canActivate(gameContext, currentColor, { row: r, col: c })) {
+                    const activationSuccessful = powerUp.activate(gameContext, currentColor, { row: r, col: c });
+                    if (activationSuccessful) {
+                        const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
+                        const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
+                        if (index > -1) {
+                            inventory.splice(index, 1);
+                        }
+                        // renderPowerUpInventories is called by renderBoard in board.js
+                    }
+                }
+                // canActivate or activate should set messageElement if there's an issue
+                gameContext.awaitingPowerUpTarget = null;
+                gameContext.renderBoard(); // Re-render for any visual changes from power-up
+                return; // End handleClick after power-up attempt
             }
-            // canActivate or activate should set messageElement if there's an issue
-            gameContext.awaitingPowerUpTarget = null;
-            gameContext.renderBoard(); // Re-render for any visual changes from power-up
-            return; // End handleClick after power-up attempt
         } else {
             console.error("Failed to create power-up instance for targeting:", awaitingPowerUpTarget.powerUpType);
             gameContext.awaitingPowerUpTarget = null; // Clear invalid state
@@ -308,6 +381,43 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
             if (newPowerUp) gameContext.grantPowerUp('b', newPowerUp);
             gameContext.nextThresholdBlack += 5;
         }
+    }
+}
+
+/**
+ *  Configurar funciones auxiliares para gameContext
+ */
+export function setupGameContext(gameContext) {
+    // Asegurar que gameContext.switchTurn esté definido para SwapPowerUp
+    if (!gameContext.switchTurn) {
+        gameContext.switchTurn = function() {
+            const opponentColor = gameContext.currentColor === 'w' ? 'b' : 'w';
+            gameContext.currentColor = opponentColor;
+            
+            // Procesar power-ups al inicio del turno
+            processTurnStartPowerUps(gameContext);
+            
+            const currentColorName = gameContext.currentColor === 'w' ? 'Blancas' : 'Negras';
+            if (gameContext.messageElement && !gameContext.messageElement.textContent.includes("intercambian")) {
+                gameContext.messageElement.textContent = `Turno de ${currentColorName}.`;
+            }
+            
+            gameContext.renderBoard();
+        };
+    }
+}
+
+/**
+ *  Cancelar selección de Swap
+ */
+export function cancelSwapSelection(gameContext) {
+    if (gameContext.swapSelection) {
+        gameContext.swapSelection = null;
+        gameContext.awaitingPowerUpTarget = null;
+        if (gameContext.messageElement) {
+            gameContext.messageElement.textContent = "Selección de Swap cancelada.";
+        }
+        gameContext.renderBoard();
     }
 }
 
