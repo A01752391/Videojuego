@@ -363,4 +363,56 @@ export class CagePowerUp extends PowerUpBase {
     targetCell.style.position = 'relative';
     targetCell.appendChild(cageEffect);
   }
+
+  /**
+   * NUEVO: Remueve la cage si la pieza enjaulada fue capturada.
+   */
+  static removeCageIfPieceCaptured(gameContext, captureRow, captureCol, capturedPiece) {
+    if (!gameContext.activePowerUps || !capturedPiece) return;
+
+    // Buscar si la pieza capturada tenía una jaula
+    const cageIndex = gameContext.activePowerUps.findIndex(powerUp => 
+        powerUp.type === 'Cage' && 
+        powerUp.targetRow === captureRow && 
+        powerUp.targetCol === captureCol &&
+        powerUp.remainingDuration > 0
+    );
+
+    if (cageIndex !== -1) {
+        const cage = gameContext.activePowerUps[cageIndex];
+        
+        // Remover visual de la jaula (aunque ya no esté la pieza)
+        const { boardElement } = gameContext;
+        if (boardElement) {
+            const targetCell = boardElement.querySelector(`[data-row="${captureRow}"][data-col="${captureCol}"]`);
+            if (targetCell) {
+                const cageElement = targetCell.querySelector('.cage-effect');
+                if (cageElement) {
+                    cageElement.remove();
+                }
+            }
+        }
+        
+        // Remover la cage de activePowerUps
+        gameContext.activePowerUps.splice(cageIndex, 1);
+        
+        // Mostrar mensaje (solo si no hay mensajes más importantes)
+        if (gameContext.messageElement) {
+            const pieceNames = {
+                'p': 'Peón', 'r': 'Torre', 'n': 'Caballo', 
+                'b': 'Alfil', 'q': 'Reina', 'k': 'Rey'
+            };
+            const pieceName = pieceNames[capturedPiece.type];
+            const capturedColorName = capturedPiece.color === 'w' ? 'Blancas' : 'Negras';
+            
+            // No sobreescribir mensajes importantes
+            if (!gameContext.messageElement.textContent.includes("capturado") && 
+                !gameContext.messageElement.textContent.includes("ganan la ronda")) {
+                gameContext.messageElement.textContent = `El ${pieceName} de ${capturedColorName} fue capturado. La jaula desaparece.`;
+            }
+        }
+        
+        console.log(`Cage removed: piece at (${captureRow}, ${captureCol}) was captured`);
+    }
+  }
 }

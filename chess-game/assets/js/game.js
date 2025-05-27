@@ -1,7 +1,8 @@
 import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
-import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; // NUEVO IMPORT
+import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
+import { CagePowerUp } from './powerups/CagePowerUp.js';
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -113,7 +114,30 @@ export function handleClick(r, c, gameContext) {
         board[r][c].hasMoved = true;
         board[fr][fc] = null;
 
+        // NUEVA VERIFICACIÓN: Detectar captura del rey como jaque mate automático
+        if (capturedPiece && capturedPiece.type === 'k') {
+            // El rey ha sido capturado - jaque mate automático
+            const winnerColor = currentColor; // El jugador que capturó gana
+            const capturedKingColor = capturedPiece.color;
+            const winnerColorName = winnerColor === 'w' ? 'Blancas' : 'Negras';
+            const capturedKingColorName = capturedKingColor === 'w' ? 'Blancas' : 'Negras';
+            
+            if (gameContext.messageElement) {
+                gameContext.messageElement.textContent = `¡Rey de ${capturedKingColorName} capturado! ${winnerColorName} ganan la ronda.`;
+            }
+            
+            // Declarar ganador inmediatamente
+            gameContext.declareWinner(winnerColor);
+            gameContext.renderBoard();
+            return; // Terminar la función inmediatamente
+        }
 
+        // NUEVA VERIFICACIÓN: Limpiar cage si la pieza enjaulada fue capturada
+        if (capturedPiece) {
+            CagePowerUp.removeCageIfPieceCaptured(gameContext, r, c, capturedPiece);
+        }
+
+       
         // NUEVA INTEGRACIÓN: Actualizar Shield cuando se mueve una pieza
         if (gameContext.activePowerUps) {
             gameContext.activePowerUps.forEach(powerUp => {
