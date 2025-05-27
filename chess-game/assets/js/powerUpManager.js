@@ -6,7 +6,8 @@ import { BlastPowerUp } from './powerups/BlastPowerUp.js';
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
-import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; // NUEVO IMPORT
+import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; 
+import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 
 const powerUpBlueprints = {
   'Fence': FencePowerUp,
@@ -17,8 +18,9 @@ const powerUpBlueprints = {
   'Shield': ShieldPowerUp,
   'Cage': CagePowerUp,
   'Extra Move': ExtraMovePowerUp,
-  'Evolution': EvolutionPowerUp, // NUEVA LÍNEA
-  // Add other power-up classes here
+  'Evolution': EvolutionPowerUp, 
+  'Reducer': ReducerPowerUp,
+  
 };
 
 /**

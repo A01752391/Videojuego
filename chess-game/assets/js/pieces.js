@@ -1,5 +1,6 @@
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
-import { CagePowerUp } from './powerups/CagePowerUp.js'; // NUEVA LÍNEA
+import { CagePowerUp } from './powerups/CagePowerUp.js';
+import { ReducerPowerUp } from './powerups/ReducerPowerUp.js'; // NUEVO IMPORT
 
 /**
  * Checks if the path between two squares is clear of other pieces and fences.
@@ -90,6 +91,20 @@ export function isBasicLegalMove(fr, fc, tr, tc, gameContext) {
             return false;
 
         case 'n': // Knight
+            // NUEVO: Si el caballo tiene reducer, permitir movimiento diagonal de 1 casilla
+            if (gameContext.activePowerUps?.some(powerUp => 
+                powerUp.type === 'Reducer' && 
+                powerUp.targetRow === fr && 
+                powerUp.targetCol === fc &&
+                powerUp.remainingDuration > 0)) {
+                
+                // Caballo reducido: solo diagonales de 1 casilla
+                const rowDistance = Math.abs(tr - fr);
+                const colDistance = Math.abs(tc - fc);
+                return (rowDistance === 1 && colDistance === 1);
+            }
+            
+            // Movimiento normal del caballo (L-shape)
             return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
 
         case 'b': // Bishop
@@ -300,6 +315,11 @@ export function isLegalMove(fr, fc, tr, tc, gameContext) {
 
     // VERIFICACIÓN DE CAGE - Inmovilización de piezas
     if (CagePowerUp.isMovementBlockedByCage(gameContext, fr, fc)) {
+        return false;
+    }
+
+    // VERIFICACIÓN DE REDUCER - Limitación de movimiento
+    if (ReducerPowerUp.isMovementReducedByReducer(gameContext, fr, fc, tr, tc, piece.type)) {
         return false;
     }
 
