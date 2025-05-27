@@ -1,5 +1,6 @@
 import { getSymbol, coordsToAlgebraic } from './utils.js';
 import { midgameBoards } from './boards/midgameBoards.js';
+import { setupGameContext } from './game.js'; // NUEVO IMPORT
 
 const EMPTY = null;
 
@@ -126,6 +127,9 @@ function resetGame(gameContext, fullReset = false) {
     gameContext.activePowerUps = [];
     gameContext.awaitingPowerUpTarget = null;
     
+    // NUEVO: Reset específico para Swap
+    gameContext.swapSelection = null;
+    
     // Reset efectos temporales de power-ups
     gameContext.pawnRangeActive = {};
     gameContext.crazyKingActive = {};
@@ -164,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isCheckmate,
             isStalemate 
         } = piecesModule;
-        const { updateScore: updateScoreFunc, handleClick: handleClickFunc } = gameModule;
+        const { updateScore: updateScoreFunc, handleClick: handleClickFunc, setupGameContext: setupGameContextFunc } = gameModule;
         const { PauseManager } = pauseModule;
 
         round = 1; // Initialize for the very first game load
@@ -195,6 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
             fencedTiles: [],
             activePowerUps: [],
             awaitingPowerUpTarget: null,
+
+            // NUEVO: Estado específico para Swap Power-Up
+            swapSelection: null,
 
             getSymbol, // from utils.js
             coordsToAlgebraic, // from utils.js
@@ -282,6 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // NUEVO: Configurar funciones auxiliares para gameContext (incluyendo switchTurn para Swap)
+        setupGameContextFunc(gameContext);
+
         // Initialize pause manager
         const pauseManager = new PauseManager(gameContext);
         gameContext.pauseManager = pauseManager;
@@ -308,6 +318,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             resetGame(gameContext, true);
         });
+
+        // NUEVO: Agregar listener para tecla ESC para cancelar selección de Swap
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && gameContext.swapSelection) {
+                import('./game.js').then(gameModule => {
+                    gameModule.cancelSwapSelection(gameContext);
+                });
+            }
+        });
+
+        // NUEVO: Agregar funciones de ayuda para debug (opcional)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.gameContext = gameContext; // Para debug en consola
+            window.debugSwap = {
+                showSelection: () => console.log('Swap Selection:', gameContext.swapSelection),
+                clearSelection: () => {
+                    gameContext.swapSelection = null;
+                    gameContext.renderBoard();
+                },
+                testSwap: (r1, c1, r2, c2) => {
+                    const SwapPowerUp = gameContext.board && gameContext.board[0] ? 
+                        import('./powerups/SwapPowerUp.js') : null;
+                    if (SwapPowerUp) {
+                        SwapPowerUp.then(module => {
+                            console.log('Can swap:', module.SwapPowerUp.canSwapPieces(gameContext, r1, c1, r2, c2));
+                        });
+                    }
+                }
+            };
+        }
 
     }).catch(error => {
         console.error("Error loading game modules:", error);
