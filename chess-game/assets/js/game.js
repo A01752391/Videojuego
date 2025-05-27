@@ -1,6 +1,7 @@
 import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
+import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js'; // NUEVO IMPORT
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -111,6 +112,7 @@ export function handleClick(r, c, gameContext) {
         board[r][c] = pieceToMove;
         board[r][c].hasMoved = true;
         board[fr][fc] = null;
+
 
         // NUEVA INTEGRACIÓN: Actualizar Shield cuando se mueve una pieza
         if (gameContext.activePowerUps) {
