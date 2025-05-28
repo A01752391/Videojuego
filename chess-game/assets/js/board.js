@@ -2,7 +2,19 @@ import { getSymbol, getPieceImageClass } from './utils.js'; // Assuming getSymbo
 import { createPowerUpInstance } from './powerUpManager.js'; // For attemptActivatePowerUp
 
 /**
- * Creates the initial board setup.
+ * Creates the i        // Find buttons that should disappear (not in current powerup list)
+        existingBlackButtons.forEach(btn => {
+            const powerUpType = btn.getAttribute('data-powerup-type');
+            if (powerUpType && !currentBlackPowerUps.includes(powerUpType)) {
+                // Apply disappearing animation
+                btn.classList.add('powerup-disappearing');
+                setTimeout(() => {
+                    if (btn.parentNode) {
+                        btn.parentNode.removeChild(btn);
+                    }
+                }, 400); // Animation duration
+            }
+        });setup.
  * @returns {Array<Array<object|null>>} The initial 8x8 board array.
  */
 export function initialBoard() {
@@ -108,6 +120,71 @@ export function renderBoard(gameContext) {
 function renderPowerUpInventories(gameContext) {
     const whitePowerUpsContainer = document.getElementById('white-powerups-display');
     const blackPowerUpsContainer = document.getElementById('black-powerups-display');
+    
+    // Standardized animation duration
+    const ANIMATION_DURATION = 600; // ms
+    const PULSE_DELAY = 300; // ms
+    const PULSE_DURATION = 1500; // ms
+    const CLEANUP_DELAY = 2000; // ms for tracking cleanup
+
+    // Helper function to create powerup button
+    function createPowerUpButton(powerUpType, playerColor, gameContext) {
+        const btn = document.createElement('button');
+        btn.setAttribute('data-powerup-type', powerUpType);
+        
+        // Map powerup names to their corresponding images
+        const powerupImageMap = {
+            'Shield': 'pwrshieldbutton.png',
+            'Pawn Range': 'pwrpawnrangebutton.png',
+            'Fence': 'pwrfencebutton.png',
+            'Extra Move': 'pwrextramovebutton.PNG',
+            'Evolution': 'pwrevolutionbutton.png',
+            'Crazy King': 'pwrcrazykingbutton.PNG',
+            'Blast': 'pwrblastbutton.png',
+            'Cage': 'pwrcagebutton.png',
+            'Horizontal Portal': 'pwrhorizontalportalbutton.png',
+            'Reducer': 'pwrreducerbutton.PNG',
+            'Swap': 'pwrswapbutton.PNG'
+        };
+        
+        // Check if the powerup has a corresponding image
+        if (powerupImageMap[powerUpType]) {
+            // Create image button
+            btn.className = 'powerup-button image-powerup-button';
+            const img = document.createElement('img');
+            img.src = `/images/${powerupImageMap[powerUpType]}`;
+            img.alt = powerUpType;
+            img.className = 'powerup-button-image';
+            btn.appendChild(img);
+        } else {
+            // Fallback to text button for powerups without images
+            btn.textContent = powerUpType;
+            btn.className = 'powerup-button';
+        }
+        
+        btn.onclick = () => attemptActivatePowerUp(powerUpType, playerColor, gameContext);
+        
+        // Check if this is a newly added powerup for appearing animation
+        const colorKey = playerColor === 'w' ? 'white' : 'black';
+        if (gameContext.newlyAddedPowerUps && gameContext.newlyAddedPowerUps[colorKey] && 
+            gameContext.newlyAddedPowerUps[colorKey].includes(powerUpType)) {
+            btn.classList.add('powerup-appearing');
+            
+            // Add pulse effect for extra visual impact
+            setTimeout(() => {
+                if (btn.parentNode) { // Ensure button still exists
+                    btn.classList.add('powerup-pulse');
+                    setTimeout(() => {
+                        if (btn.parentNode) {
+                            btn.classList.remove('powerup-pulse');
+                        }
+                    }, PULSE_DURATION);
+                }
+            }, PULSE_DELAY);
+        }
+        
+        return btn;
+    }
 
     // Handle white player powerups
     if (whitePowerUpsContainer) {
@@ -115,28 +192,47 @@ function renderPowerUpInventories(gameContext) {
         const whitePowerupTray = whitePowerUpsContainer.closest('.powerup-tray');
         const whitePowerupLabel = whitePowerupTray ? whitePowerupTray.querySelector('.powerup-label') : null;
         
-        // Clear the container
-        whitePowerUpsContainer.innerHTML = '';
+        // Get existing buttons to track for disappearing animations
+        const existingWhiteButtons = Array.from(whitePowerUpsContainer.querySelectorAll('.powerup-button'));
+        const currentWhitePowerUps = gameContext.powerUpsWhite || [];
         
-        if (gameContext.powerUpsWhite.length > 0) {
-            // Hide the "Poderes" label when powerups are present
-            if (whitePowerupLabel) {
-                whitePowerupLabel.classList.add('hidden');
+        // Find buttons that should disappear (not in current powerup list)
+        let hasDisappearingButtons = false;
+        existingWhiteButtons.forEach(btn => {
+            const powerUpType = btn.getAttribute('data-powerup-type');
+            if (powerUpType && !currentWhitePowerUps.includes(powerUpType) && !btn.classList.contains('powerup-disappearing')) {
+                // Apply disappearing animation
+                btn.classList.add('powerup-disappearing');
+                hasDisappearingButtons = true;
+                setTimeout(() => {
+                    if (btn.parentNode) {
+                        btn.parentNode.removeChild(btn);
+                    }
+                }, ANIMATION_DURATION);
             }
+        });
+        
+        // Clear the container after disappearing animations complete
+        setTimeout(() => {
+            whitePowerUpsContainer.innerHTML = '';
             
-            gameContext.powerUpsWhite.forEach(powerUpType => {
-                const btn = document.createElement('button');
-                btn.textContent = powerUpType;
-                btn.className = 'powerup-button';
-                btn.onclick = () => attemptActivatePowerUp(powerUpType, 'w', gameContext);
-                whitePowerUpsContainer.appendChild(btn);
-            });
-        } else {
-            // Show the "Poderes" label when no powerups are present
-            if (whitePowerupLabel) {
-                whitePowerupLabel.classList.remove('hidden');
+            if (currentWhitePowerUps.length > 0) {
+                // Hide the "POWER-UPS" label when powerups are present
+                if (whitePowerupLabel) {
+                    whitePowerupLabel.classList.add('hidden');
+                }
+                
+                currentWhitePowerUps.forEach((powerUpType) => {
+                    const btn = createPowerUpButton(powerUpType, 'w', gameContext);
+                    whitePowerUpsContainer.appendChild(btn);
+                });
+            } else {
+                // Show the "POWER-UPS" label when no powerups are present
+                if (whitePowerupLabel) {
+                    whitePowerupLabel.classList.remove('hidden');
+                }
             }
-        }
+        }, hasDisappearingButtons ? ANIMATION_DURATION : 0);
     }
 
     // Handle black player powerups
@@ -145,28 +241,54 @@ function renderPowerUpInventories(gameContext) {
         const blackPowerupTray = blackPowerUpsContainer.closest('.powerup-tray');
         const blackPowerupLabel = blackPowerupTray ? blackPowerupTray.querySelector('.powerup-label') : null;
         
-        // Clear the container
-        blackPowerUpsContainer.innerHTML = '';
+        // Get existing buttons to track for disappearing animations
+        const existingBlackButtons = Array.from(blackPowerUpsContainer.querySelectorAll('.powerup-button'));
+        const currentBlackPowerUps = gameContext.powerUpsBlack || [];
         
-        if (gameContext.powerUpsBlack.length > 0) {
-            // Hide the "Poderes" label when powerups are present
-            if (blackPowerupLabel) {
-                blackPowerupLabel.classList.add('hidden');
+        // Find buttons that should disappear (not in current powerup list)
+        let hasDisappearingButtons = false;
+        existingBlackButtons.forEach(btn => {
+            const powerUpType = btn.getAttribute('data-powerup-type');
+            if (powerUpType && !currentBlackPowerUps.includes(powerUpType) && !btn.classList.contains('powerup-disappearing')) {
+                // Apply disappearing animation
+                btn.classList.add('powerup-disappearing');
+                hasDisappearingButtons = true;
+                setTimeout(() => {
+                    if (btn.parentNode) {
+                        btn.parentNode.removeChild(btn);
+                    }
+                }, ANIMATION_DURATION);
             }
+        });
+        
+        // Clear the container after disappearing animations complete
+        setTimeout(() => {
+            blackPowerUpsContainer.innerHTML = '';
             
-            gameContext.powerUpsBlack.forEach(powerUpType => {
-                const btn = document.createElement('button');
-                btn.textContent = powerUpType;
-                btn.className = 'powerup-button';
-                btn.onclick = () => attemptActivatePowerUp(powerUpType, 'b', gameContext);
-                blackPowerUpsContainer.appendChild(btn);
-            });
-        } else {
-            // Show the "Poderes" label when no powerups are present
-            if (blackPowerupLabel) {
-                blackPowerupLabel.classList.remove('hidden');
+            if (currentBlackPowerUps.length > 0) {
+                // Hide the "POWER-UPS" label when powerups are present
+                if (blackPowerupLabel) {
+                    blackPowerupLabel.classList.add('hidden');
+                }
+                
+                currentBlackPowerUps.forEach((powerUpType) => {
+                    const btn = createPowerUpButton(powerUpType, 'b', gameContext);
+                    blackPowerUpsContainer.appendChild(btn);
+                });
+            } else {
+                // Show the "POWER-UPS" label when no powerups are present
+                if (blackPowerupLabel) {
+                    blackPowerupLabel.classList.remove('hidden');
+                }
             }
-        }
+        }, hasDisappearingButtons ? ANIMATION_DURATION : 0);
+    }
+    
+    // Clear the newly added powerups tracking after animations complete
+    if (gameContext.newlyAddedPowerUps) {
+        setTimeout(() => {
+            gameContext.newlyAddedPowerUps = null;
+        }, CLEANUP_DELAY);
     }
 }
 
@@ -222,8 +344,24 @@ function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
         if (activationSuccessful) {
             const inventory = playerColor === 'w' ? gameContext.powerUpsWhite : gameContext.powerUpsBlack;
             const index = inventory.indexOf(powerUpType);
-            if (index > -1) inventory.splice(index, 1);
-            // renderPowerUpInventories will be called by renderBoard
+            if (index > -1) {
+                // Find and animate the button before removing it
+                const containerSelector = playerColor === 'w' ? '#white-powerups-display' : '#black-powerups-display';
+                const container = document.querySelector(containerSelector);
+                if (container) {
+                    const button = container.querySelector(`[data-powerup-type="${powerUpType}"]`);
+                    if (button) {
+                        button.classList.add('powerup-disappearing');                        // Remove from inventory after animation starts
+                        setTimeout(() => {
+                            inventory.splice(index, 1);
+                            gameContext.renderBoard(); // Re-render after removal
+                        }, 600);
+                        return; // Early return to prevent immediate re-render
+                    }
+                }
+                // Fallback if button not found
+                inventory.splice(index, 1);
+            }
         }
         gameContext.renderBoard(); // Re-render for any immediate effects and to update inventory display
     }
