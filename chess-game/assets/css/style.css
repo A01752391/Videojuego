@@ -28,9 +28,9 @@ body {
 }
 
 #title {
-  margin-top: 30px;
-  height: 96px;
-  max-width: 360px;
+  margin-top: 20px;
+  height: 80px;
+  max-width: 320px;
   object-fit: contain;
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
 }
@@ -71,9 +71,9 @@ body {
 }
 
 #message {
-  margin-top: 25px;
-  margin-bottom: 25px;
-  font-size: 18px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+  font-size: 16px;
 }
 
 #game-container {
@@ -208,33 +208,102 @@ body {
 }
 
 .powerup-inventory {
-  min-height: 40px;
-  margin-top: 15px;
+  min-height: 140px;
+  margin-top: 5px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px;
+  gap: 2px;
   padding: 5px;
   background-color: rgba(255, 64, 129, 0.1);
   border-radius: 8px;
+  align-items: flex-start;
+  align-content: flex-start;
 }
 
 .powerup-button {
-  background-color: #e91e63; /* Green */
+  background-color: #e91e63;
   border: none;
   color: white;
-  padding: 8px 12px;
+  padding: 4px 8px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
-  font-size: 14px;
-  margin: 2px 2px;
+  font-size: 10px;
+  margin: 1px 1px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
+  width: 85px !important;
+  height: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px #c2185b;
 }
 
 .powerup-button:hover {
-  background-color: #45a049;
+  background-color: #c2185b;
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 64, 129, 0.6);
+  border-radius: 10px;
+}
+
+.powerup-button:active {
+  transform: scale(0.95) translateY(1px);
+  box-shadow: 0 2px #880e4f;
+}
+
+/* Estilos para botones de powerup con imágenes */
+.image-powerup-button {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 3px !important;
+  margin: 1px 1px !important;
+  cursor: pointer;
+  border-radius: 8px;
+  display: inline-block;
+  width: 85px !important;
+  height: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease;
+  box-shadow: none !important;
+}
+
+.image-powerup-button:hover {
+  background-color: transparent !important;
+  border: none !important;
+  transform: none;
+  box-shadow: none !important;
+}
+
+.image-powerup-button:active {
+  transform: none;
+  box-shadow: none !important;
+}
+
+.powerup-button-image {
+  width: 75px;
+  height: auto;
+  max-height: 55px;
+  border-radius: 6px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  transition: all 0.3s ease;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+.powerup-button-image:hover {
+  transform: scale(1.1) translateY(-2px);
+  filter: drop-shadow(0 6px 12px rgba(255, 64, 129, 0.6)) brightness(1.2);
+}
+
+.image-powerup-button:active .powerup-button-image {
+  transform: scale(0.95) translateY(1px);
+  filter: drop-shadow(0 2px 4px rgba(255, 64, 129, 0.8)) brightness(1.1);
 }
 
 .pause-overlay {
@@ -298,6 +367,94 @@ body {
 .pause-button.main-menu {
   background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
 }
+
+/* ===== POWERUP ANIMATION EFFECTS ===== */
+
+/* Keyframes for powerup appearing animation - Simple pop-up effect */
+@keyframes powerupAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Keyframes for powerup disappearing animation - Simple pop-out effect */
+@keyframes powerupDisappear {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Keyframes for powerup pulse effect */
+@keyframes powerupPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+  }
+  25% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 5px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px 10px rgba(255, 215, 0, 0.6);
+  }
+  75% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 5px rgba(255, 215, 0, 0.4);
+  }
+}
+
+/* Animation classes applied by JavaScript - Simple and clean */
+.powerup-appearing {
+  animation: powerupAppear 0.6s ease-out forwards;
+}
+
+.powerup-disappearing {
+  animation: powerupDisappear 0.4s ease-in forwards;
+}
+
+.powerup-pulse {
+  animation: powerupPulse 2s ease-in-out infinite;
+}
+
+/* Enhanced hover effects for animated powerup buttons */
+.powerup-button.powerup-appearing:hover,
+.image-powerup-button.powerup-appearing:hover {
+  animation-play-state: paused;
+}
+
+.powerup-button.powerup-pulse:hover,
+.image-powerup-button.powerup-pulse:hover {
+  animation-duration: 1s;
+}
+
+/* Remove the gradient background effect that was causing blue background */
+
+/* Ensure buttons maintain proper positioning during animations */
+.powerup-button, .image-powerup-button {
+  position: relative;
+  overflow: visible;
+}
+
+/* ===== END POWERUP ANIMATIONS ===== */
 
 /* Power-up radial illumination effects */
 @keyframes radialIllumination {
@@ -580,7 +737,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 15px;
   padding: 20px;
   min-width: 550px;
 }
@@ -589,7 +746,7 @@ body {
 #scores-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   width: 100%;
   max-width: 500px;
 }
@@ -599,36 +756,37 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 1px;
   width: 100%;
 }
 
 /* Player logo styling */
 .player-logo {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  margin-bottom: 5px;
+  margin-bottom: 0px;
   filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
 }
 
 /* Player boxes container */
 .player-boxes {
   display: flex;
-  gap: 10px;
+  gap: 3px;
   width: 100%;
 }
 
 /* Info tray - smaller for scores */
 .info-tray {
   flex: 0 0 140px;
-  min-height: 80px;
+  min-height: 75px;
 }
 
 /* Powerup tray - larger for powerups */
 .powerup-tray {
   flex: 1;
-  min-height: 100px;
+  min-height: 170px;
+  max-height: 200px;
 }
 
 /* Player info styling */
@@ -654,7 +812,7 @@ body {
   text-align: center;
   font-size: 12px;
   font-weight: bold;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
   color: #ffd54f;
 }
 
@@ -663,13 +821,14 @@ body {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
+  gap: 2px;
+  align-items: flex-start;
+  align-content: flex-start;
   justify-content: flex-start;
-  min-height: 50px;
-  max-height: 80px;
+  min-height: 140px;
+  max-height: 180px;
   padding: 5px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Buttons container */
@@ -677,6 +836,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 8px;
+  margin-top: 15px;
 }

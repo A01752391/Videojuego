@@ -234,9 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             handleClick: (r, c) => handleClickFunc(r, c, gameContext),
             renderBoard: () => renderBoardFunc(gameContext),
             standardInitialBoard: standardInitialBoardFunc,
-            resetGame: resetGame,
-
-            grantPowerUp: (color, type) => {
+            resetGame: resetGame,            grantPowerUp: (color, type) => {
                 if (!type) {
                     console.warn("Attempted to grant an undefined power-up type.");
                     return;
@@ -244,6 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const inventory = color === 'w' ? gameContext.powerUpsWhite : gameContext.powerUpsBlack;
                 if (inventory.length < 5) {
                     inventory.push(type);
+                    
+                    // Track newly added powerups for animation
+                    if (!gameContext.newlyAddedPowerUps) {
+                        gameContext.newlyAddedPowerUps = { white: [], black: [] };
+                    }
+                    const colorKey = color === 'w' ? 'white' : 'black';
+                    gameContext.newlyAddedPowerUps[colorKey].push(type);
+                    
                     gameContext.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} obtienen poder: ${type}!`;
                     renderBoardFunc(gameContext); // Re-render to update power-up display
                 } else {

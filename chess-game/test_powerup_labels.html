@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Powerup Labels</title>
+    <style>
+        .powerup-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            margin-bottom: 8px;
+            transition: opacity 0.3s ease;
+        }
+
+        .powerup-label.hidden {
+            display: none;
+        }
+
+        .powerup-tray {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            width: 200px;
+        }
+
+        .powerup-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .test-buttons {
+            margin: 20px;
+        }
+
+        .test-buttons button {
+            margin: 5px;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Powerup Label Functionality</h1>
+    
+    <div class="test-buttons">
+        <button onclick="testAddPowerup('w')">Add White Powerup</button>
+        <button onclick="testAddPowerup('b')">Add Black Powerup</button>
+        <button onclick="testRemovePowerup('w')">Remove White Powerup</button>
+        <button onclick="testRemovePowerup('b')">Remove Black Powerup</button>
+        <button onclick="testClearAll()">Clear All</button>
+    </div>
+
+    <div class="powerup-tray">
+        <h3>White Player</h3>
+        <div class="powerup-label">Poderes</div>
+        <div id="white-powerups-display"></div>
+    </div>
+
+    <div class="powerup-tray">
+        <h3>Black Player</h3>
+        <div class="powerup-label">Poderes</div>
+        <div id="black-powerups-display"></div>
+    </div>
+
+    <script>
+        const gameContext = {
+            powerUpsWhite: [],
+            powerUpsBlack: []
+        };
+
+        const testPowerups = ['Blast', 'Shield', 'Fence', 'Reducer', 'Extra Move'];
+
+        function renderPowerUpInventories() {
+            const whitePowerUpsContainer = document.getElementById('white-powerups-display');
+            const blackPowerUpsContainer = document.getElementById('black-powerups-display');
+
+            // Handle white player powerups
+            if (whitePowerUpsContainer) {
+                const whitePowerupTray = whitePowerUpsContainer.closest('.powerup-tray');
+                const whitePowerupLabel = whitePowerupTray ? whitePowerupTray.querySelector('.powerup-label') : null;
+                
+                whitePowerUpsContainer.innerHTML = '';
+                
+                if (gameContext.powerUpsWhite.length > 0) {
+                    if (whitePowerupLabel) {
+                        whitePowerupLabel.classList.add('hidden');
+                    }
+                    
+                    gameContext.powerUpsWhite.forEach(powerUpType => {
+                        const btn = document.createElement('button');
+                        btn.textContent = powerUpType;
+                        btn.className = 'powerup-button';
+                        btn.onclick = () => console.log(`Activated ${powerUpType} for white`);
+                        whitePowerUpsContainer.appendChild(btn);
+                    });
+                } else {
+                    if (whitePowerupLabel) {
+                        whitePowerupLabel.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Handle black player powerups
+            if (blackPowerUpsContainer) {
+                const blackPowerupTray = blackPowerUpsContainer.closest('.powerup-tray');
+                const blackPowerupLabel = blackPowerupTray ? blackPowerupTray.querySelector('.powerup-label') : null;
+                
+                blackPowerUpsContainer.innerHTML = '';
+                
+                if (gameContext.powerUpsBlack.length > 0) {
+                    if (blackPowerupLabel) {
+                        blackPowerupLabel.classList.add('hidden');
+                    }
+                    
+                    gameContext.powerUpsBlack.forEach(powerUpType => {
+                        const btn = document.createElement('button');
+                        btn.textContent = powerUpType;
+                        btn.className = 'powerup-button';
+                        btn.onclick = () => console.log(`Activated ${powerUpType} for black`);
+                        blackPowerUpsContainer.appendChild(btn);
+                    });
+                } else {
+                    if (blackPowerupLabel) {
+                        blackPowerupLabel.classList.remove('hidden');
+                    }
+                }
+            }
+        }
+
+        function testAddPowerup(color) {
+            const randomPowerup = testPowerups[Math.floor(Math.random() * testPowerups.length)];
+            if (color === 'w') {
+                gameContext.powerUpsWhite.push(randomPowerup);
+            } else {
+                gameContext.powerUpsBlack.push(randomPowerup);
+            }
+            renderPowerUpInventories();
+            console.log(`Added ${randomPowerup} to ${color === 'w' ? 'white' : 'black'} player`);
+        }
+
+        function testRemovePowerup(color) {
+            if (color === 'w' && gameContext.powerUpsWhite.length > 0) {
+                const removed = gameContext.powerUpsWhite.pop();
+                console.log(`Removed ${removed} from white player`);
+            } else if (color === 'b' && gameContext.powerUpsBlack.length > 0) {
+                const removed = gameContext.powerUpsBlack.pop();
+                console.log(`Removed ${removed} from black player`);
+            }
+            renderPowerUpInventories();
+        }
+
+        function testClearAll() {
+            gameContext.powerUpsWhite = [];
+            gameContext.powerUpsBlack = [];
+            renderPowerUpInventories();
+            console.log('Cleared all powerups');
+        }
+
+        // Initial render
+        renderPowerUpInventories();
+    </script>
+</body>
+</html>
