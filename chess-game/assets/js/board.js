@@ -109,9 +109,21 @@ function renderPowerUpInventories(gameContext) {
     const whitePowerUpsContainer = document.getElementById('white-powerups-display');
     const blackPowerUpsContainer = document.getElementById('black-powerups-display');
 
+    // Handle white player powerups
     if (whitePowerUpsContainer) {
-        whitePowerUpsContainer.innerHTML = '<strong>Poderes Blancas:</strong> ';
+        // Get the powerup label for white player
+        const whitePowerupTray = whitePowerUpsContainer.closest('.powerup-tray');
+        const whitePowerupLabel = whitePowerupTray ? whitePowerupTray.querySelector('.powerup-label') : null;
+        
+        // Clear the container
+        whitePowerUpsContainer.innerHTML = '';
+        
         if (gameContext.powerUpsWhite.length > 0) {
+            // Hide the "Poderes" label when powerups are present
+            if (whitePowerupLabel) {
+                whitePowerupLabel.classList.add('hidden');
+            }
+            
             gameContext.powerUpsWhite.forEach(powerUpType => {
                 const btn = document.createElement('button');
                 btn.textContent = powerUpType;
@@ -120,13 +132,28 @@ function renderPowerUpInventories(gameContext) {
                 whitePowerUpsContainer.appendChild(btn);
             });
         } else {
-            whitePowerUpsContainer.innerHTML += ' Ninguno';
+            // Show the "Poderes" label when no powerups are present
+            if (whitePowerupLabel) {
+                whitePowerupLabel.classList.remove('hidden');
+            }
         }
     }
 
+    // Handle black player powerups
     if (blackPowerUpsContainer) {
-        blackPowerUpsContainer.innerHTML = '<strong>Poderes Negras:</strong> ';
+        // Get the powerup label for black player
+        const blackPowerupTray = blackPowerUpsContainer.closest('.powerup-tray');
+        const blackPowerupLabel = blackPowerupTray ? blackPowerupTray.querySelector('.powerup-label') : null;
+        
+        // Clear the container
+        blackPowerUpsContainer.innerHTML = '';
+        
         if (gameContext.powerUpsBlack.length > 0) {
+            // Hide the "Poderes" label when powerups are present
+            if (blackPowerupLabel) {
+                blackPowerupLabel.classList.add('hidden');
+            }
+            
             gameContext.powerUpsBlack.forEach(powerUpType => {
                 const btn = document.createElement('button');
                 btn.textContent = powerUpType;
@@ -135,7 +162,10 @@ function renderPowerUpInventories(gameContext) {
                 blackPowerUpsContainer.appendChild(btn);
             });
         } else {
-            blackPowerUpsContainer.innerHTML += ' Ninguno';
+            // Show the "Poderes" label when no powerups are present
+            if (blackPowerupLabel) {
+                blackPowerupLabel.classList.remove('hidden');
+            }
         }
     }
 }

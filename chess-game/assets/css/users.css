@@ -1,10 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
+
 body {
   margin: 0;
   padding: 20px;
   min-height: 100vh;
-  background: #2c1e2e;
+  background-image: url('/images/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-color: #2c1e2e;
   color: #ffd54f;
-  font-family: 'Arial Black', Arial, sans-serif;
+  font-family: 'Fredoka', Arial, sans-serif;
 }
 
 h1 {
