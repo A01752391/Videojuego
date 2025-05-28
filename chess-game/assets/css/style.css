@@ -841,3 +841,52 @@ body {
   margin-top: 15px;
   flex-wrap: wrap;
 }
+
+/* For power up styles */
+.powerup-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2c1e2e;
+    border: 2px solid #ff4081;
+    border-radius: 8px;
+    padding: 10px;
+    width: 200px;
+    text-align: center;
+    z-index: 1000;
+    font-size: 14px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.powerup-button:hover .powerup-tooltip,
+.image-powerup-button:hover .powerup-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+.powerup-tooltip-title {
+    font-weight: bold;
+    color: #ffd54f;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.powerup-tooltip-desc {
+    color: #f9e5a7;
+    font-size: 14px;
+}
+
+.powerup-tray {
+    position: relative;
+}
+
+.powerup-inventory-vertical {
+    position: relative;
+    min-height: 140px;
+}
