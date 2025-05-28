@@ -1,5 +1,6 @@
 import { getSymbol, getPieceImageClass } from './utils.js'; // Assuming getSymbol is in utils.js
 import { createPowerUpInstance } from './powerUpManager.js'; // For attemptActivatePowerUp
+import { getPowerUpInfo } from './powerUpManager.js';
 
 /**
  * Creates the i        // Find buttons that should disappear (not in current powerup list)
@@ -132,6 +133,9 @@ function renderPowerUpInventories(gameContext) {
         const btn = document.createElement('button');
         btn.setAttribute('data-powerup-type', powerUpType);
         
+        // Get power up info
+        const powerUpInfo = getPowerUpInfo(powerUpType);
+
         // Map powerup names to their corresponding images
         const powerupImageMap = {
             'Shield': 'pwrshieldbutton.png',
@@ -146,6 +150,21 @@ function renderPowerUpInventories(gameContext) {
             'Reducer': 'pwrreducerbutton.PNG',
             'Swap': 'pwrswapbutton.PNG'
         };
+
+        // Create tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'powerup-tooltip';
+        
+        const title = document.createElement('div');
+        title.className = 'powerup-tooltip-title';
+        title.textContent = powerUpInfo.name;
+        
+        const desc = document.createElement('div');
+        desc.className = 'powerup-tooltip-desc';
+        desc.textContent = powerUpInfo.description;
+        
+        tooltip.appendChild(title);
+        tooltip.appendChild(desc);
         
         // Check if the powerup has a corresponding image
         if (powerupImageMap[powerUpType]) {
@@ -161,6 +180,9 @@ function renderPowerUpInventories(gameContext) {
             btn.textContent = powerUpType;
             btn.className = 'powerup-button';
         }
+
+        // Add tooltip to the button
+        btn.appendChild(tooltip);
         
         btn.onclick = () => attemptActivatePowerUp(powerUpType, playerColor, gameContext);
         
