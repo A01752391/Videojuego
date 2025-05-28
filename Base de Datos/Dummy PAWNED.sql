@@ -107,6 +107,7 @@ VALUES
 (44, 45, '2025-08-06 04:00:00', '2025-08-06 04:20:00', 44, '00:20:00'),
 (3, 5, '2025-08-07 05:00:00', '2025-08-07 05:35:00', 5, '00:35:00'),
 (4, 6, '2025-08-08 06:00:00', '2025-08-08 06:25:00', 6, '00:25:00');
+COMMIT;
 
 -- Insert pieces
 INSERT INTO Pieza (id_partida, id_jugador, tipo, capturada, protegida, posicion_inicial)
@@ -157,6 +158,7 @@ VALUES
 (22, 44, 'Peón', TRUE, FALSE, 'E7'),
 (23, 45, 'Torre', FALSE, TRUE, 'H1'),
 (23, 3, 'Alfil', FALSE, FALSE, 'A8');
+COMMIT;
 
 -- Insert turns
 INSERT INTO Turno (id_partida, id_pieza, turno_numero, posicion_origen, posicion_destino)
@@ -207,6 +209,7 @@ VALUES
 (22, 44, '2', 'E7', 'E5'),
 (23, 45, '1', 'H1', 'H2'),
 (23, 46, '2', 'A8', 'B8');
+COMMIT;
 
 -- Insertar rounds
 INSERT INTO Ronda (id_partida, ganador_id, ventaja_aplicada, numero_ronda)
@@ -257,6 +260,7 @@ VALUES
 (44, 44, TRUE, 1),
 (45, 5, FALSE, 1),
 (46, 6, TRUE, 1);
+COMMIT;
 
 -- Insert power ups
 INSERT INTO Powerup (nombre, descripcion)
@@ -272,6 +276,7 @@ VALUES
 ('Pawn range', 'Changes the range of movement of the pawn. Moves two tiles, instead of moving one tile'),
 ('Reducer', 'Reduces the range of motion of a piece (just for knight, bishop and queen)'),
 ('Crazy king', 'Change the range of movement of the kingto act as queen for three turns');
+COMMIT;
 
 -- Insert used power ups
 INSERT INTO Powerup_usado (id_jugador, id_powerup, id_partida, id_ronda)
@@ -322,6 +327,7 @@ VALUES
 (44, 11, 44, 44),
 (5, 1, 45, 45),
 (6, 2, 46, 46);
+COMMIT;
 
 -- Insert elements for `jugador_partida`
 INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
@@ -368,6 +374,7 @@ VALUES
 (5, 45, 'Negro', 15, 8),
 (4, 46, 'Blanco', 14, 7),
 (6, 46, 'Negro', 18, 9);
+COMMIT;
 
 -- Insert elements for `Estadistica_partida`
 INSERT INTO Estadistica_partida (id_partida, id_jugador, piezas_capturadas, muertes, powerups_usados, piezas_movidas)
@@ -416,6 +423,7 @@ VALUES
 (45, 3, 6, 2, 1, 14),
 (46, 6, 9, 1, 3, 17),
 (46, 4, 6, 2, 1, 14);
+COMMIT;
 
 -- Insert elements for `Estadistica_ronda`
 INSERT INTO Estadistica_ronda (id_ronda, id_jugador, piezas_capturadas, piezas_perdidas, powerups_usados, turnos_tomados)
@@ -466,3 +474,4 @@ VALUES
 (45, 3, 2, 2, 0, 6),
 (46, 6, 5, 0, 1, 9),
 (46, 4, 3, 2, 0, 7);
+COMMIT;
