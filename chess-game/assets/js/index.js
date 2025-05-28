@@ -47,8 +47,15 @@ function createNextRoundButton(gameContext) {
     if (existingBtn) existingBtn.remove(); // Remove if one already exists
 
     const btn = document.createElement('button');
-    btn.textContent = 'Siguiente Ronda';
-    btn.className = 'reset-button next-round-button'; // Use general styling, add specific class
+    btn.className = 'reset-button next-round-button image-button-game'; // Use general styling, add specific class
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = '/images/nextroundbutton.png';
+    img.alt = 'Next Round';
+    img.className = 'game-button-image';
+    
+    btn.appendChild(img);
     btn.addEventListener('click', () => {
         round++;
         btn.remove();
@@ -259,15 +266,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (round === 3 && winsWhite === winsBlack && winsWhite > 0) gameWinnerName = "Nadie (Empate en rondas)"; // e.g. 1-1 after 3 rounds
                     else if (round === 3 && winsWhite === 0 && winsBlack === 0) { // No one won any round
                          messageElement.textContent = `Fin de la partida. No hubo ganador en las rondas.`;
-                    }
-
-                    if (gameWinnerName) {
+                    }                    if (gameWinnerName) {
                         messageElement.textContent += `\n\n¡Jugador ${gameWinnerName} gana la partida!`;
                     }
                     
                     const finalBtn = document.createElement('button');
-                    finalBtn.textContent = 'Reiniciar Partida Completa';
-                    finalBtn.className = 'reset-button final-reset-button';
+                    finalBtn.className = 'reset-button final-reset-button image-button-game';
+                    
+                    // Create image element
+                    const img = document.createElement('img');
+                    img.src = '/images/newgamebutton.png';
+                    img.alt = 'Reiniciar Partida Completa';
+                    img.className = 'game-button-image';
+                    
+                    finalBtn.appendChild(img);
                     finalBtn.addEventListener('click', () => {
                         finalBtn.remove();
                         resetGame(gameContext, true);
@@ -275,16 +287,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.body.appendChild(finalBtn);
                 } else if (round < 3) { // Continue to next round
                     createNextRoundButton(gameContext);
-                } else { // Game ends after 3 rounds, possibly a draw if scores are equal or no one won enough.
-                     messageElement.textContent += `\n\nFin de la partida tras ${round} rondas.`;
+                } else { // Game ends after 3 rounds, possibly a draw if scores are equal or no one won enough.                     messageElement.textContent += `\n\nFin de la partida tras ${round} rondas.`;
                      const finalBtn = document.createElement('button');
-                    finalBtn.textContent = 'Reiniciar Partida Completa';
-                    finalBtn.className = 'reset-button final-reset-button';
-                    finalBtn.addEventListener('click', () => {
-                        finalBtn.remove();
-                        resetGame(gameContext, true);
-                    });
-                    document.body.appendChild(finalBtn);
+                     finalBtn.className = 'reset-button final-reset-button image-button-game';
+                     
+                     // Create image element
+                     const img = document.createElement('img');
+                     img.src = '/images/newgamebutton.png';
+                     img.alt = 'Reiniciar Partida Completa';
+                     img.className = 'game-button-image';
+                     
+                     finalBtn.appendChild(img);
+                     finalBtn.addEventListener('click', () => {
+                         finalBtn.remove();
+                         resetGame(gameContext, true);
+                     });
+                     document.body.appendChild(finalBtn);
                 }
             }
         };

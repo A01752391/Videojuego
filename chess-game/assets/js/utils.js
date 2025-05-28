@@ -10,3 +10,7 @@ export function getSymbol(piece) {
 export function coordsToAlgebraic(r, c) {
   return String.fromCharCode(97 + c) + (8 - r);
 }
+
+export function getPieceImageClass(piece) {
+    return `piece-${piece.color}-${piece.type}`;
+}

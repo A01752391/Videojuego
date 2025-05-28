@@ -21,7 +21,10 @@ body {
 
 #title {
   margin-top: 30px;
-  text-shadow: 1px 1px 2px #000;
+  height: 96px;
+  max-width: 360px;
+  object-fit: contain;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
 }
 
 #board {
@@ -368,4 +371,171 @@ body {
 
 .powerup-radial-effect.default {
   animation-name: radialIllumination;
+}
+
+/* ===== IMÁGENES PARA LAS PIEZAS ===== */
+
+/* PIEZAS BLANCAS */
+.piece-w-p { 
+    background-image: url('/images/peonblanco.png');
+    background-size: 60%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-w-r { 
+    background-image: url('/images/torreblanca.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-w-n { 
+    background-image: url('/images/caballoblanco.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-w-b { 
+    background-image: url('/images/alfilblanco.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-w-q { 
+    background-image: url('/images/reinablanco.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-w-k { 
+    background-image: url('/images/reyblanco.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+/* PIEZAS NEGRAS */
+.piece-b-p { 
+    background-image: url('/images/peonnegro.png');
+    background-size: 60%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-b-r { 
+    background-image: url('/images/torrenegro.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-b-n { 
+    background-image: url('/images/caballonegro.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-b-b { 
+    background-image: url('/images/alfilnegro.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-b-q { 
+    background-image: url('/images/reinanegra.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+.piece-b-k { 
+    background-image: url('/images/reynegro.png');
+    background-size: 65%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent;
+}
+
+/* EFECTOS HOVER PARA PIEZAS CON IMAGEN */
+.piece-w-p:hover, .piece-b-p:hover {
+    background-size: 65%;
+    transition: background-size 0.2s ease;
+}
+
+.piece-w-r:hover, .piece-w-n:hover, 
+.piece-w-b:hover, .piece-w-q:hover, .piece-w-k:hover,
+.piece-b-r:hover, .piece-b-n:hover, 
+.piece-b-b:hover, .piece-b-q:hover, .piece-b-k:hover {
+    background-size: 70%;
+    transition: background-size 0.2s ease;
+}
+
+/* EFECTOS DE SELECCIÓN PARA PIEZAS CON IMAGEN */
+.selected-piece.piece-w-p, .selected-piece.piece-b-p {
+    background-size: 70%;
+    transform: scale(1.05);
+}
+
+.selected-piece.piece-w-r, .selected-piece.piece-w-n,
+.selected-piece.piece-w-b, .selected-piece.piece-w-q, .selected-piece.piece-w-k,
+.selected-piece.piece-b-r, .selected-piece.piece-b-n,
+.selected-piece.piece-b-b, .selected-piece.piece-b-q, .selected-piece.piece-b-k {
+    background-size: 75%;
+    transform: scale(1.05);
+}
+
+/* Estilos para botones con imágenes dentro del juego */
+.image-button-game {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 160px !important;
+  height: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 8px auto !important;
+}
+
+.image-button-game:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: scale(1.05);
+}
+
+.image-button-game:active {
+  transform: scale(0.95);
+  box-shadow: none !important;
+}
+
+.game-button-image {
+  width: 140px;
+  height: auto;
+  border-radius: 10px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: block;
+}
+
+.game-button-image:hover {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) brightness(1.1);
 }
