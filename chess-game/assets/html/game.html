@@ -6,31 +6,52 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <img id="title" src="/images/pawnedletraslogo.png" alt="PAWNED Logo">
-
-  <div id="game-container">
-    <div id="player1-score" class="score-panel">
-      Blancas<br>
-      Puntos: <span id="score1">0</span><br>
-      Rondas: <span id="rounds1">0</span>
-      <div id="white-powerups-display" class="powerup-inventory"></div>
-    </div>
-
-    <div id="board"></div>
-
-    <div id="player2-score" class="score-panel">
-      Negras<br>
-      Puntos: <span id="score2">0</span><br>
-      Rondas: <span id="rounds2">0</span>
-      <div id="black-powerups-display" class="powerup-inventory"></div>
+  <div id="main-layout">
+    <!-- Left side - Board -->
+    <div id="board-section">
+      <div id="board"></div>
+    </div>    <!-- Right side - Game info -->
+    <div id="info-section">
+      <img id="title" src="/images/pawnedletraslogo.png" alt="PAWNED Logo">
+      
+      <div id="message"></div>      <div id="scores-container">        <!-- Player 1 (Blancas) -->
+        <div class="player-section">
+          <img class="player-logo" src="/images/whitelogo.png" alt="White Player">
+          <div class="player-boxes">            <div class="score-panel info-tray">
+              <div class="player-info">
+                <div class="player-stats">
+                  <div>Puntos: <span id="score1">0</span></div>
+                  <div>Rondas: <span id="rounds1">0</span></div>
+                </div>
+              </div>
+            </div>            <div class="score-panel powerup-tray">
+              <div class="powerup-label">Poderes</div>
+              <div id="white-powerups-display" class="powerup-inventory-vertical"></div>
+            </div>
+          </div>
+        </div>        <!-- Player 2 (Negras) -->
+        <div class="player-section">
+          <img class="player-logo" src="/images/blacklogo.png" alt="Black Player">
+          <div class="player-boxes">            <div class="score-panel info-tray">
+              <div class="player-info">
+                <div class="player-stats">
+                  <div>Puntos: <span id="score2">0</span></div>
+                  <div>Rondas: <span id="rounds2">0</span></div>
+                </div>
+              </div>
+            </div>            <div class="score-panel powerup-tray">
+              <div class="powerup-label">Poderes</div>
+              <div id="black-powerups-display" class="powerup-inventory-vertical"></div>
+            </div>
+          </div>
+        </div>
+      </div><div id="buttons-container">
+        <button id="reset" class="reset-button image-button-game">
+          <img src="/images/resetgamebutton.png" alt="Reset Game" class="game-button-image" />
+        </button>
+      </div>
     </div>
   </div>
-
-  <div id="message"></div>
-
-  <button id="reset" class="reset-button image-button-game">
-    <img src="/images/resetgamebutton.png" alt="Reset Game" class="game-button-image" />
-  </button>
 
   <!-- Pause Menu Overlay -->
   <div id="pause-overlay" class="pause-overlay">

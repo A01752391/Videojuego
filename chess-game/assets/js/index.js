@@ -61,7 +61,14 @@ function createNextRoundButton(gameContext) {
         btn.remove();
         resetGame(gameContext, false); // false for not a full game reset
     });
-    document.body.appendChild(btn);
+    
+    // Append to buttons container instead of document.body
+    const buttonsContainer = document.getElementById('buttons-container');
+    if (buttonsContainer) {
+        buttonsContainer.appendChild(btn);
+    } else {
+        document.body.appendChild(btn);
+    }
 }
 
 /**
@@ -278,16 +285,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     img.src = '/images/newgamebutton.png';
                     img.alt = 'Reiniciar Partida Completa';
                     img.className = 'game-button-image';
-                    
-                    finalBtn.appendChild(img);
+                      finalBtn.appendChild(img);
                     finalBtn.addEventListener('click', () => {
                         finalBtn.remove();
                         resetGame(gameContext, true);
                     });
-                    document.body.appendChild(finalBtn);
+                    
+                    // Append to buttons container instead of document.body
+                    const buttonsContainer = document.getElementById('buttons-container');
+                    if (buttonsContainer) {
+                        buttonsContainer.appendChild(finalBtn);
+                    } else {
+                        document.body.appendChild(finalBtn);
+                    }
                 } else if (round < 3) { // Continue to next round
-                    createNextRoundButton(gameContext);
-                } else { // Game ends after 3 rounds, possibly a draw if scores are equal or no one won enough.                     messageElement.textContent += `\n\nFin de la partida tras ${round} rondas.`;
+                    createNextRoundButton(gameContext);                } else { // Game ends after 3 rounds, possibly a draw if scores are equal or no one won enough.                     messageElement.textContent += `\n\nFin de la partida tras ${round} rondas.`;
                      const finalBtn = document.createElement('button');
                      finalBtn.className = 'reset-button final-reset-button image-button-game';
                      
@@ -302,7 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
                          finalBtn.remove();
                          resetGame(gameContext, true);
                      });
-                     document.body.appendChild(finalBtn);
+                     
+                     // Append to buttons container instead of document.body
+                     const buttonsContainer = document.getElementById('buttons-container');
+                     if (buttonsContainer) {
+                         buttonsContainer.appendChild(finalBtn);
+                     } else {
+                         document.body.appendChild(finalBtn);
+                     }
                 }
             }
         };

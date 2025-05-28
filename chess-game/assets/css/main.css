@@ -1,10 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
+
 body {
   margin: 0;
   padding: 0;
   height: 100vh;
-  background:#2c1e2e;
+  background-image: url('/images/mainbackground.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-color: #2c1e2e;
   color: #ffd54f;
-  font-family: 'Arial Black', Arial, sans-serif;
+  font-family: 'Fredoka', Arial, sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -13,21 +20,19 @@ body {
 .container {
   text-align: center;
   padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .logo {
-  width: 450px;
-  max-width: 90%;
-  margin-bottom: 20px;
-  filter: drop-shadow(0 0 10px #ff4081);
+  width: 400px;
+  max-width: 80%;
+  margin-bottom: 40px;
+  filter: drop-shadow(0 0 15px #ff4081);
   border-radius: 20px;
-}
-
-.subtitle {
-  font-size: 18px;
-  color: #f48fb1;
-  margin-bottom: 30px;
-  text-shadow: 1px 1px 2px #000;
 }
 
 .menu-button {
@@ -96,4 +101,29 @@ body {
 
 .button-image:hover {
   filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.4)) brightness(1.1);
+}
+
+/* Menu horizontal layout */
+.menu {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+/* Update image button for horizontal layout */
+.image-button {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 200px !important;
+  height: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
 }

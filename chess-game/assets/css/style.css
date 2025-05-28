@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -11,12 +13,18 @@ html, body {
 }
 
 body {
+  background-image: url('/images/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   background-color: #2c1e2e;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  font-family: 'Courier New', monospace;
+  font-family: 'Fredoka', monospace;
   color: #f9e5a7;
+  padding: 20px;
 }
 
 #title {
@@ -29,33 +37,37 @@ body {
 
 #board {
   display: grid;
-  grid-template-columns: repeat(8, 60px);
-  grid-template-rows: repeat(8, 60px);
-  border: 10px solid #2c1e2e;
-  border-radius: 10px;
-  filter: drop-shadow(0 0 10px #ff4081);
-  background-color: #2c1e2e;
-  margin-top: 10px;
+  grid-template-columns: repeat(8, 75px);
+  grid-template-rows: repeat(8, 75px);
+  border: none;
+  border-radius: 0;
+  filter: drop-shadow(0 0 15px #ff4081);
+  background-image: url('/images/tablero.png');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 600px;
+  height: 600px;
 }
 
 
 .cell {
-  width: 60px;
-  height: 60px;
+  width: 75px;
+  height: 75px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 48px;
   font-weight: bold;
   cursor: pointer;
 }
 
 .white-cell {
-  background-color: #d8a225;
+  background-color: transparent;
 }
 
 .black-cell {
-  background-color: #522c58;
+  background-color: transparent;
 }
 
 #message {
@@ -153,8 +165,8 @@ body {
 .possible-capture::after {
   content: "";
   position: absolute;
-  width: 60px;
-  height: 60px;
+  width: 75px;
+  height: 75px;
   border-radius: 50%;
   border: 4px solid rgba(255, 0, 0, 0.6);
   box-sizing: border-box;
@@ -378,7 +390,7 @@ body {
 /* PIEZAS BLANCAS */
 .piece-w-p { 
     background-image: url('/images/peonblanco.png');
-    background-size: 60%;
+    background-size: 58%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -386,7 +398,7 @@ body {
 
 .piece-w-r { 
     background-image: url('/images/torreblanca.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -394,7 +406,7 @@ body {
 
 .piece-w-n { 
     background-image: url('/images/caballoblanco.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -402,7 +414,7 @@ body {
 
 .piece-w-b { 
     background-image: url('/images/alfilblanco.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -410,7 +422,7 @@ body {
 
 .piece-w-q { 
     background-image: url('/images/reinablanco.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -418,7 +430,7 @@ body {
 
 .piece-w-k { 
     background-image: url('/images/reyblanco.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -427,7 +439,7 @@ body {
 /* PIEZAS NEGRAS */
 .piece-b-p { 
     background-image: url('/images/peonnegro.png');
-    background-size: 60%;
+    background-size: 58%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -435,7 +447,7 @@ body {
 
 .piece-b-r { 
     background-image: url('/images/torrenegro.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -443,7 +455,7 @@ body {
 
 .piece-b-n { 
     background-image: url('/images/caballonegro.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -451,7 +463,7 @@ body {
 
 .piece-b-b { 
     background-image: url('/images/alfilnegro.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -459,7 +471,7 @@ body {
 
 .piece-b-q { 
     background-image: url('/images/reinanegra.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -467,7 +479,7 @@ body {
 
 .piece-b-k { 
     background-image: url('/images/reynegro.png');
-    background-size: 65%;
+    background-size: 62%;
     background-repeat: no-repeat;
     background-position: center;
     color: transparent;
@@ -475,7 +487,7 @@ body {
 
 /* EFECTOS HOVER PARA PIEZAS CON IMAGEN */
 .piece-w-p:hover, .piece-b-p:hover {
-    background-size: 65%;
+    background-size: 63%;
     transition: background-size 0.2s ease;
 }
 
@@ -483,13 +495,13 @@ body {
 .piece-w-b:hover, .piece-w-q:hover, .piece-w-k:hover,
 .piece-b-r:hover, .piece-b-n:hover, 
 .piece-b-b:hover, .piece-b-q:hover, .piece-b-k:hover {
-    background-size: 70%;
+    background-size: 67%;
     transition: background-size 0.2s ease;
 }
 
 /* EFECTOS DE SELECCIÓN PARA PIEZAS CON IMAGEN */
 .selected-piece.piece-w-p, .selected-piece.piece-b-p {
-    background-size: 70%;
+    background-size: 68%;
     transform: scale(1.05);
 }
 
@@ -497,7 +509,7 @@ body {
 .selected-piece.piece-w-b, .selected-piece.piece-w-q, .selected-piece.piece-w-k,
 .selected-piece.piece-b-r, .selected-piece.piece-b-n,
 .selected-piece.piece-b-b, .selected-piece.piece-b-q, .selected-piece.piece-b-k {
-    background-size: 75%;
+    background-size: 72%;
     transform: scale(1.05);
 }
 
@@ -538,4 +550,133 @@ body {
 
 .game-button-image:hover {
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) brightness(1.1);
+}
+
+
+
+/* Main layout container */
+#main-layout {
+  display: flex;
+  gap: 30px;
+  width: 100%;
+  max-width: 1400px;
+  height: 100vh;
+  align-items: center;
+}
+
+/* Board section - Left side */
+#board-section {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 20px;
+}
+
+/* Info section - Right side */
+#info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  min-width: 550px;
+}
+
+/* Scores container */
+#scores-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 500px;
+}
+
+/* Player section styling */
+.player-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Player logo styling */
+.player-logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  margin-bottom: 5px;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Player boxes container */
+.player-boxes {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Info tray - smaller for scores */
+.info-tray {
+  flex: 0 0 140px;
+  min-height: 80px;
+}
+
+/* Powerup tray - larger for powerups */
+.powerup-tray {
+  flex: 1;
+  min-height: 100px;
+}
+
+/* Player info styling */
+.player-info {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-stats {
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.player-stats div {
+  margin: 2px 0;
+}
+
+/* Powerup label */
+.powerup-label {
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #ffd54f;
+}
+
+/* Horizontal powerup inventory */
+.powerup-inventory-vertical {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 50px;
+  max-height: 80px;
+  padding: 5px;
+  overflow: hidden;
+}
+
+/* Buttons container */
+#buttons-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
 }
