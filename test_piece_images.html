@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chess Piece Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2c1e2e;
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .piece-test {
+            text-align: center;
+            padding: 10px;
+            border: 2px solid #ff4081;
+            border-radius: 8px;
+            background-color: rgba(255, 64, 129, 0.1);
+        }
+        .piece-test img {
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+            object-fit: contain;
+        }
+        .piece-test h3 {
+            margin: 10px 0 5px 0;
+            color: #ffd54f;
+            font-size: 14px;
+        }
+        .status {
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        .loaded { color: #4caf50; }
+        .error { color: #f44336; }
+        .filename {
+            margin-top: 5px;
+            font-size: 10px;
+            color: #ccc;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏰 Test: Chess Piece Images</h1>
+    <p>Testing chess piece images loading from /images/ path:</p>
+    
+    <div class="test-container">
+        <div class="piece-test">
+            <h3>White Pawn</h3>
+            <img src="/images/peonblanco.png" alt="White Pawn" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whitepawn">Loading...</div>
+            <div class="filename">peonblanco.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>White Rook</h3>
+            <img src="/images/torreblanca.png" alt="White Rook" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whiterook">Loading...</div>
+            <div class="filename">torreblanca.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black Pawn</h3>
+            <img src="/images/peonnegro.png" alt="Black Pawn" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackpawn">Loading...</div>
+            <div class="filename">peonnegro.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black Rook</h3>
+            <img src="/images/torrenegro.png" alt="Black Rook" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackrook">Loading...</div>
+            <div class="filename">torrenegro.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>White Knight</h3>
+            <img src="/images/caballoblanco.png" alt="White Knight" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whiteknight">Loading...</div>
+            <div class="filename">caballoblanco.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black Knight</h3>
+            <img src="/images/caballonegro.png" alt="Black Knight" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackknight">Loading...</div>
+            <div class="filename">caballonegro.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>White Bishop</h3>
+            <img src="/images/alfilblanco.png" alt="White Bishop" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whitebishop">Loading...</div>
+            <div class="filename">alfilblanco.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black Bishop</h3>
+            <img src="/images/alfilnegro.png" alt="Black Bishop" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackbishop">Loading...</div>
+            <div class="filename">alfilnegro.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>White Queen</h3>
+            <img src="/images/reinablanco.png" alt="White Queen" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whitequeen">Loading...</div>
+            <div class="filename">reinablanco.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black Queen</h3>
+            <img src="/images/reinanegra.png" alt="Black Queen" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackqueen">Loading...</div>
+            <div class="filename">reinanegra.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>White King</h3>
+            <img src="/images/reyblanco.png" alt="White King" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-whiteking">Loading...</div>
+            <div class="filename">reyblanco.png</div>
+        </div>
+        
+        <div class="piece-test">
+            <h3>Black King</h3>
+            <img src="/images/reynegro.png" alt="Black King" onload="showStatus(this, 'loaded')" onerror="showStatus(this, 'error')">
+            <div class="status" id="status-blackking">Loading...</div>
+            <div class="filename">reynegro.png</div>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(img, status) {
+            const pieceName = img.alt.toLowerCase().replace(/ /g, '').replace(/-/g, '');
+            const statusElement = document.getElementById('status-' + pieceName);
+            if (statusElement) {
+                if (status === 'loaded') {
+                    statusElement.textContent = '✓ Loaded correctly';
+                    statusElement.className = 'status loaded';
+                } else {
+                    statusElement.textContent = '✗ Error loading';
+                    statusElement.className = 'status error';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
