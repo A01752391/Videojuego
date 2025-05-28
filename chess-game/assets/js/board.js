@@ -1,4 +1,4 @@
-import { getSymbol } from './utils.js'; // Assuming getSymbol is in utils.js
+import { getSymbol, getPieceImageClass } from './utils.js'; // Assuming getSymbol is in utils.js
 import { createPowerUpInstance } from './powerUpManager.js'; // For attemptActivatePowerUp
 
 /**
@@ -56,11 +56,9 @@ export function renderBoard(gameContext) {
                 fenceMarker.classList.add("fence-marker");
                 fenceMarker.title = `Valla (${fence.remainingDuration} turnos restantes)`;
                 cell.appendChild(fenceMarker);
-            }
-
-            if (piece) {
-                const symbol = getSymbol(piece); // Make sure getSymbol is correctly imported/available
-                cell.textContent = symbol;
+            }            if (piece) {
+                const imageClass = getPieceImageClass(piece);
+                cell.classList.add(imageClass);
                 cell.classList.add("piece");
                 cell.classList.add(piece.color === 'w' ? 'player1-piece' : 'player2-piece');
 

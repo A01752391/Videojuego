@@ -58,3 +58,42 @@ body {
   transform: translateY(2px);
   box-shadow: 0 1px #880e4f;
 }
+
+/* Estilos para botones con imágenes */
+.image-button {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+  width: 220px !important;
+  height: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 12px auto !important;
+}
+
+.image-button:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: scale(1.05);
+}
+
+.image-button:active {
+  transform: scale(0.95);
+  box-shadow: none !important;
+}
+
+.button-image {
+  width: 180px;
+  height: auto;
+  border-radius: 12px;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: block;
+}
+
+.button-image:hover {
+  filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.4)) brightness(1.1);
+}
