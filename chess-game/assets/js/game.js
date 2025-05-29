@@ -6,6 +6,9 @@ import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
 
+// Sound effects
+const moveSound = new Audio('../Sonidos/moving-piece.mp3');
+
 /**
  * Processes active power-ups at the start of a player's turn.
  * This includes decrementing durations and deactivating expired power-ups.
@@ -33,6 +36,13 @@ function processTurnStartPowerUps(gameContext) {
         // For simplicity, we can ensure a render if activePowerUps changed.
         // However, it's better if individual deactivations handle their own rendering needs.
     }
+}
+
+// Chess pieces
+function playSound(soundFile) {
+    moveSound.currentTime = 0;
+    moveSound.volume = 0.3;
+    moveSound.play().catch(e => console.log("Error de audio:", e));
 }
 
 /**
@@ -176,6 +186,9 @@ export function handleClick(r, c, gameContext) {
 
     if (gameContext.isLegalMove(fr, fc, r, c)) { // isLegalMove considers self-check
         console.log(`Move from ${fr},${fc} to ${r},${c} IS LEGAL`);
+
+        playSound(moveSound);
+
         // --- Actual Move Execution ---
         const pieceToMove = board[fr][fc];
         const capturedPiece = board[r][c]; // Store captured piece before overwriting
