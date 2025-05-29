@@ -892,6 +892,487 @@ app.patch("/api/games/:id", async (req, res) => {
     }
 });
 
+// ENPOINTS PARA VISTA_POWERUPS_POPULARES
+
+// Obtener powerups más populares
+
+app.get("/api/powerups", async (req, res) => {
+    let connection = null;
+
+    try {
+        connection = await connectToDB();
+
+        const nombre_powerup = req.query.nombre_powerup;
+        const min_usos = req.query.min_usos ? parseInt(req.query.min_usos) : null;
+        
+        let query = 'SELECT * FROM vista_powerups_populares';
+        let params = [];
+        let whereConditions = [];
+
+        // Filtro por nombre de powerup
+        if (nombre_powerup) {
+            whereConditions.push('nombre LIKE ?');
+            params.push(`%${nombre_powerup}%`);
+        }
+
+        // Filtro por mínimo de usos
+        if (min_usos && !isNaN(min_usos)) {
+            whereConditions.push('veces_usado >= ?');
+            params.push(min_usos);
+        }
+
+        // Agregar WHERE si hay condiciones
+        if (whereConditions.length > 0) {
+            query += ' WHERE ' + whereConditions.join(' AND ');
+        }
+
+        // La vista ya viene ordenada por veces_usado DESC, pero podemos mantenerlo
+        query += ' ORDER BY veces_usado DESC';
+
+        console.log('Query:', query);
+        console.log('Params:', params);
+        
+        const [rows] = await connection.execute(query, params);
+
+        const powerups = rows.map(row => ({
+            nombre: row.nombre,
+            vecesUsado: row.veces_usado,
+            popularidad: row.veces_usado > 10 ? 'Alta' : 
+                        row.veces_usado > 5 ? 'Media' : 'Baja'
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: powerups,
+            total: powerups.length,
+            estadisticas: {
+                totalUsos: powerups.reduce((sum, p) => sum + p.vecesUsado, 0),
+                powerupMasPopular: powerups.length > 0 ? powerups[0].nombre : null,
+                powerupMenosPopular: powerups.length > 0 ? powerups[powerups.length - 1].nombre : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener powerups populares:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La vista vista_powerups_populares no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                success: false,
+                message: 'No se pudo conectar a la base de datos',
+                error: 'DATABASE_CONNECTION_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Crear nuevo powerup 
+
+app.post("/api/powerups", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { nombre, descripcion } = req.body;
+
+        // Validaciones básicas
+        if (!nombre) {
+            return res.status(400).json({
+                success: false,
+                message: 'El nombre del powerup es requerido',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        if (nombre.length < 3 || nombre.length > 100) {
+            return res.status(400).json({
+                success: false,
+                message: 'El nombre debe tener entre 3 y 100 caracteres',
+                error: 'INVALID_NAME_LENGTH'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el powerup no existe
+        const checkPowerupQuery = 'SELECT id_powerup FROM Powerup WHERE nombre = ?';
+        const [existingPowerup] = await connection.execute(checkPowerupQuery, [nombre]);
+
+        if (existingPowerup.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe un powerup con ese nombre',
+                error: 'POWERUP_ALREADY_EXISTS'
+            });
+        }
+
+        // Insertar nuevo powerup en tabla Powerup
+        const insertQuery = `
+            INSERT INTO Powerup (nombre, descripcion) 
+            VALUES (?, ?)
+        `;
+        
+        const [result] = await connection.execute(insertQuery, [
+            nombre, 
+            descripcion || null
+        ]);
+
+        // Como es un powerup nuevo, no aparecerá en la vista hasta que se use
+        // Pero podemos retornar los datos básicos
+        const powerupData = {
+            id_powerup: result.insertId,
+            nombre: nombre,
+            descripcion: descripcion || null,
+            vecesUsado: 0,
+            popularidad: 'Nueva'
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Powerup creado exitosamente',
+            data: powerupData,
+            nota: 'El powerup aparecerá en las estadísticas cuando sea usado por primera vez'
+        });
+
+    } catch (error) {
+        console.error('Error al crear powerup:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Ya existe un powerup con ese nombre',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else if (error.code === 'ER_DATA_TOO_LONG') {
+            res.status(400).json({
+                success: false,
+                message: 'Los datos proporcionados son demasiado largos',
+                error: 'DATA_TOO_LONG'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Update powerup
+
+app.patch("/api/powerups/:id", async (req, res) => {
+    let connection = null;
+
+    try {
+        const powerupId = parseInt(req.params.id);
+        
+        if (isNaN(powerupId) || powerupId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del powerup debe ser un número válido',
+                error: 'INVALID_POWERUP_ID'
+            });
+        }
+
+        const { nombre, descripcion } = req.body;
+
+        // Validar que al menos un campo esté presente
+        if (!nombre && descripcion === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se proporcionaron campos para actualizar',
+                error: 'NO_FIELDS_TO_UPDATE'
+            });
+        }
+
+        // Validaciones de campos
+        if (nombre && (nombre.length < 3 || nombre.length > 100)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El nombre debe tener entre 3 y 100 caracteres',
+                error: 'INVALID_NAME_LENGTH'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el powerup existe
+        const checkPowerupQuery = 'SELECT id_powerup, nombre FROM Powerup WHERE id_powerup = ?';
+        const [existingPowerup] = await connection.execute(checkPowerupQuery, [powerupId]);
+
+        if (existingPowerup.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Powerup no encontrado',
+                error: 'POWERUP_NOT_FOUND'
+            });
+        }
+
+        // Verificar duplicados si se está actualizando nombre
+        if (nombre && nombre !== existingPowerup[0].nombre) {
+            const checkNameQuery = 'SELECT id_powerup FROM Powerup WHERE nombre = ? AND id_powerup != ?';
+            const [existingName] = await connection.execute(checkNameQuery, [nombre, powerupId]);
+
+            if (existingName.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Ya existe otro powerup con ese nombre',
+                    error: 'NAME_ALREADY_EXISTS'
+                });
+            }
+        }
+
+        // Construir query UPDATE dinámicamente
+        let updateFields = [];
+        let values = [];
+
+        if (nombre) {
+            updateFields.push('nombre = ?');
+            values.push(nombre);
+        }
+
+        if (descripcion !== undefined) {
+            updateFields.push('descripcion = ?');
+            values.push(descripcion);
+        }
+
+        values.push(powerupId);
+
+        // Ejecutar UPDATE en tabla Powerup
+        const updateQuery = `UPDATE Powerup SET ${updateFields.join(', ')} WHERE id_powerup = ?`;
+        
+        console.log('Update Query:', updateQuery);
+        console.log('Update Values:', values);
+        
+        const [updateResult] = await connection.execute(updateQuery, values);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se pudo actualizar el powerup',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // Obtener datos actualizados desde la vista (si existe en estadísticas)
+        const statsQuery = 'SELECT * FROM vista_powerups_populares WHERE nombre = ?';
+        const finalName = nombre || existingPowerup[0].nombre;
+        const [statsData] = await connection.execute(statsQuery, [finalName]);
+
+        let powerupData;
+        if (statsData.length > 0) {
+            // El powerup está en las estadísticas
+            const updated = statsData[0];
+            powerupData = {
+                nombre: updated.nombre,
+                vecesUsado: updated.veces_usado,
+                popularidad: updated.veces_usado > 10 ? 'Alta' : 
+                            updated.veces_usado > 5 ? 'Media' : 'Baja'
+            };
+        } else {
+            // El powerup existe pero no ha sido usado
+            const powerupQuery = 'SELECT * FROM Powerup WHERE id_powerup = ?';
+            const [powerupInfo] = await connection.execute(powerupQuery, [powerupId]);
+            const powerup = powerupInfo[0];
+            
+            powerupData = {
+                id_powerup: powerup.id_powerup,
+                nombre: powerup.nombre,
+                descripcion: powerup.descripcion,
+                vecesUsado: 0,
+                popularidad: 'Sin usar'
+            };
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Powerup actualizado exitosamente',
+            data: powerupData
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar powerup:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Ya existe un powerup con ese nombre',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La tabla Powerup no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Endpoint para registrar uso de powerup
+
+app.post("/api/powerups/use", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_jugador, id_powerup, id_partida, id_ronda } = req.body;
+
+        // Validaciones básicas
+        if (!id_jugador || !id_powerup || !id_partida || !id_ronda) {
+            return res.status(400).json({
+                success: false,
+                message: 'Todos los campos son requeridos (id_jugador, id_powerup, id_partida, id_ronda)',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador FROM Jugador WHERE id_jugador = ?';
+        const [existingPlayer] = await connection.execute(checkPlayerQuery, [id_jugador]);
+
+        if (existingPlayer.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // Verificar que el powerup existe
+        const checkPowerupQuery = 'SELECT id_powerup, nombre FROM Powerup WHERE id_powerup = ?';
+        const [existingPowerup] = await connection.execute(checkPowerupQuery, [id_powerup]);
+
+        if (existingPowerup.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Powerup no encontrado',
+                error: 'POWERUP_NOT_FOUND'
+            });
+        }
+
+        // Verificar que la partida existe
+        const checkGameQuery = 'SELECT id_partida FROM Partida WHERE id_partida = ?';
+        const [existingGame] = await connection.execute(checkGameQuery, [id_partida]);
+
+        if (existingGame.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partida no encontrada',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        // Registrar uso del powerup en tabla Powerup_usado
+        const insertQuery = `
+            INSERT INTO Powerup_usado (id_jugador, id_powerup, id_partida, id_ronda, fecha_uso) 
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `;
+        
+        const [result] = await connection.execute(insertQuery, [
+            id_jugador, 
+            id_powerup, 
+            id_partida, 
+            id_ronda
+        ]);
+
+        // Obtener estadísticas actualizadas del powerup
+        const statsQuery = 'SELECT * FROM vista_powerups_populares WHERE nombre = ?';
+        const [statsData] = await connection.execute(statsQuery, [existingPowerup[0].nombre]);
+
+        const powerupStats = statsData[0];
+        const usageData = {
+            id_uso: result.insertId,
+            powerup: powerupStats.nombre,
+            vecesUsado: powerupStats.veces_usado,
+            popularidad: powerupStats.veces_usado > 10 ? 'Alta' : 
+                        powerupStats.veces_usado > 5 ? 'Media' : 'Baja',
+            fechaUso: new Date()
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Uso de powerup registrado exitosamente',
+            data: usageData
+        });
+
+    } catch (error) {
+        console.error('Error al registrar uso de powerup:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'Una o más referencias no existen (jugador, powerup, partida, ronda)',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 })
