@@ -1373,6 +1373,441 @@ app.post("/api/powerups/use", async (req, res) => {
     }
 });
 
+// ENDPOINTS PARA VISTA_ESTADISTICAS_RONDA
+
+// Obtener estadísticas de la ronda
+
+app.get("/api/rounds/stats", async (req, res) => {
+    let connection = null;
+
+    try {
+        connection = await connectToDB();
+
+        const id_jugador = req.query.id_jugador ? parseInt(req.query.id_jugador) : null;
+        const email_jugador = req.query.email_jugador;
+        const min_rondas = req.query.min_rondas ? parseInt(req.query.min_rondas) : null;
+        
+        let query = 'SELECT * FROM vista_estadisticas_ronda';
+        let params = [];
+        let whereConditions = [];
+
+        // Filtro por ID de jugador
+        if (id_jugador && !isNaN(id_jugador)) {
+            whereConditions.push('id_jugador = ?');
+            params.push(id_jugador);
+        }
+
+        // Filtro por email de jugador
+        if (email_jugador) {
+            whereConditions.push('email = ?');
+            params.push(email_jugador);
+        }
+
+        // Filtro por mínimo de rondas jugadas
+        if (min_rondas && !isNaN(min_rondas)) {
+            whereConditions.push('rondas_jugadas >= ?');
+            params.push(min_rondas);
+        }
+
+        // Agregar WHERE si hay condiciones
+        if (whereConditions.length > 0) {
+            query += ' WHERE ' + whereConditions.join(' AND ');
+        }
+
+        // Ordenar por mejor rendimiento (más piezas capturadas y menos perdidas)
+        query += ' ORDER BY piezas_capturadas DESC, piezas_perdidas ASC, rondas_jugadas DESC';
+
+        console.log('Query:', query);
+        console.log('Params:', params);
+        
+        const [rows] = await connection.execute(query, params);
+
+        const roundStats = rows.map(row => ({
+            jugadorId: row.id_jugador,
+            email: row.email,
+            rondasJugadas: row.rondas_jugadas,
+            piezasCapturadas: row.piezas_capturadas,
+            piezasPerdidas: row.piezas_perdidas,
+            powerupsUsados: row.powerups_usados,
+            turnosTomados: row.turnos_tomados,
+            // Agregar métricas calculadas
+            eficiencia: row.piezas_perdidas > 0 ? 
+                       (row.piezas_capturadas / row.piezas_perdidas).toFixed(2) : 
+                       row.piezas_capturadas > 0 ? 'Perfecta' : '0',
+            promedioTurnosPorRonda: row.rondas_jugadas > 0 ? 
+                                   (row.turnos_tomados / row.rondas_jugadas).toFixed(1) : '0',
+            promedioPowerupsPorRonda: row.rondas_jugadas > 0 ? 
+                                     (row.powerups_usados / row.rondas_jugadas).toFixed(1) : '0'
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: roundStats,
+            total: roundStats.length,
+            estadisticas: {
+                totalRondasJugadas: roundStats.reduce((sum, p) => sum + p.rondasJugadas, 0),
+                totalPiezasCapturadas: roundStats.reduce((sum, p) => sum + p.piezasCapturadas, 0),
+                totalPiezasPerdidas: roundStats.reduce((sum, p) => sum + p.piezasPerdidas, 0),
+                jugadorMasActivo: roundStats.length > 0 ? roundStats[0].email : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener estadísticas de rondas:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La vista vista_estadisticas_ronda no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                success: false,
+                message: 'No se pudo conectar a la base de datos',
+                error: 'DATABASE_CONNECTION_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Crear una nueva ronda y registras estadísticas
+
+app.post("/api/rounds", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_partida, ganador_id, numero_ronda, ventaja_aplicada } = req.body;
+
+        // Validaciones básicas
+        if (!id_partida || !numero_ronda) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de partida y número de ronda son requeridos',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        if (numero_ronda < 1 || numero_ronda > 255) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número de ronda debe estar entre 1 y 255',
+                error: 'INVALID_ROUND_NUMBER'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que la partida existe
+        const checkGameQuery = 'SELECT id_jugador1, id_jugador2 FROM Partida WHERE id_partida = ?';
+        const [existingGame] = await connection.execute(checkGameQuery, [id_partida]);
+
+        if (existingGame.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partida no encontrada',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        const game = existingGame[0];
+
+        // Validar ganador si se proporciona
+        if (ganador_id && ganador_id !== game.id_jugador1 && ganador_id !== game.id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ganador debe ser uno de los jugadores de la partida',
+                error: 'INVALID_WINNER'
+            });
+        }
+
+        // Verificar que no existe ya una ronda con ese número en la partida
+        const checkRoundQuery = 'SELECT id_ronda FROM Ronda WHERE id_partida = ? AND numero_ronda = ?';
+        const [existingRound] = await connection.execute(checkRoundQuery, [id_partida, numero_ronda]);
+
+        if (existingRound.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe una ronda con ese número en esta partida',
+                error: 'ROUND_ALREADY_EXISTS'
+            });
+        }
+
+        // Insertar nueva ronda en tabla Ronda
+        const insertRoundQuery = `
+            INSERT INTO Ronda (id_partida, ganador_id, ventaja_aplicada, numero_ronda) 
+            VALUES (?, ?, ?, ?)
+        `;
+        
+        const [result] = await connection.execute(insertRoundQuery, [
+            id_partida, 
+            ganador_id || null, 
+            ventaja_aplicada || false, 
+            numero_ronda
+        ]);
+
+        // Crear estadísticas iniciales para ambos jugadores
+        const insertStatsQuery = `
+            INSERT INTO Estadistica_ronda (id_ronda, id_jugador, piezas_capturadas, piezas_perdidas, powerups_usados, turnos_tomados) 
+            VALUES (?, ?, 0, 0, 0, 0), (?, ?, 0, 0, 0, 0)
+        `;
+        
+        await connection.execute(insertStatsQuery, [
+            result.insertId, game.id_jugador1,
+            result.insertId, game.id_jugador2
+        ]);
+
+        // Obtener datos de la ronda recién creada
+        const newRoundQuery = `
+            SELECT r.*, p.fecha_inicio as fecha_partida, 
+                   j1.email as jugador1_email, j2.email as jugador2_email,
+                   jg.email as ganador_email
+            FROM Ronda r
+            JOIN Partida p ON r.id_partida = p.id_partida
+            JOIN Jugador j1 ON p.id_jugador1 = j1.id_jugador
+            JOIN Jugador j2 ON p.id_jugador2 = j2.id_jugador
+            LEFT JOIN Jugador jg ON r.ganador_id = jg.id_jugador
+            WHERE r.id_ronda = ?
+        `;
+        const [newRoundData] = await connection.execute(newRoundQuery, [result.insertId]);
+
+        const newRound = newRoundData[0];
+        const roundData = {
+            rondaId: newRound.id_ronda,
+            partidaId: newRound.id_partida,
+            numeroRonda: newRound.numero_ronda,
+            ganador: newRound.ganador_email,
+            ventajaAplicada: newRound.ventaja_aplicada,
+            jugador1: newRound.jugador1_email,
+            jugador2: newRound.jugador2_email,
+            fechaPartida: newRound.fecha_partida
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Ronda creada exitosamente',
+            data: roundData
+        });
+
+    } catch (error) {
+        console.error('Error al crear ronda:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'La partida o ganador especificado no existe',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Ya existe una ronda con esos datos',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Update estadísticas de ronda
+
+app.patch("/api/rounds/stats/:id_jugador/:id_ronda", async (req, res) => {
+    let connection = null;
+
+    try {
+        const jugadorId = parseInt(req.params.id_jugador);
+        const rondaId = parseInt(req.params.id_ronda);
+        
+        if (isNaN(jugadorId) || jugadorId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        if (isNaN(rondaId) || rondaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID de la ronda debe ser un número válido',
+                error: 'INVALID_ROUND_ID'
+            });
+        }
+
+        const { piezas_capturadas, piezas_perdidas, powerups_usados, turnos_tomados } = req.body;
+
+        // Validar que al menos un campo esté presente
+        if (piezas_capturadas === undefined && piezas_perdidas === undefined && 
+            powerups_usados === undefined && turnos_tomados === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se proporcionaron campos para actualizar',
+                error: 'NO_FIELDS_TO_UPDATE'
+            });
+        }
+
+        // Validar valores no negativos
+        const fields = { piezas_capturadas, piezas_perdidas, powerups_usados, turnos_tomados };
+        for (const [field, value] of Object.entries(fields)) {
+            if (value !== undefined && (value < 0 || value > 255)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `${field} debe estar entre 0 y 255`,
+                    error: 'INVALID_FIELD_VALUE'
+                });
+            }
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que la estadística de ronda existe
+        const checkStatsQuery = 'SELECT id_estadisticaronda FROM Estadistica_ronda WHERE id_jugador = ? AND id_ronda = ?';
+        const [existingStats] = await connection.execute(checkStatsQuery, [jugadorId, rondaId]);
+
+        if (existingStats.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Estadística de ronda no encontrada para este jugador',
+                error: 'ROUND_STATS_NOT_FOUND'
+            });
+        }
+
+        // Construir query UPDATE dinámicamente
+        let updateFields = [];
+        let values = [];
+
+        if (piezas_capturadas !== undefined) {
+            updateFields.push('piezas_capturadas = ?');
+            values.push(piezas_capturadas);
+        }
+
+        if (piezas_perdidas !== undefined) {
+            updateFields.push('piezas_perdidas = ?');
+            values.push(piezas_perdidas);
+        }
+
+        if (powerups_usados !== undefined) {
+            updateFields.push('powerups_usados = ?');
+            values.push(powerups_usados);
+        }
+
+        if (turnos_tomados !== undefined) {
+            updateFields.push('turnos_tomados = ?');
+            values.push(turnos_tomados);
+        }
+
+        values.push(jugadorId, rondaId);
+
+        // Ejecutar UPDATE en tabla Estadistica_ronda
+        const updateQuery = `UPDATE Estadistica_ronda SET ${updateFields.join(', ')} WHERE id_jugador = ? AND id_ronda = ?`;
+        
+        console.log('Update Query:', updateQuery);
+        console.log('Update Values:', values);
+        
+        const [updateResult] = await connection.execute(updateQuery, values);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se pudo actualizar las estadísticas de la ronda',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // Obtener estadísticas actualizadas desde la vista
+        const statsQuery = 'SELECT * FROM vista_estadisticas_ronda WHERE id_jugador = ?';
+        const [statsData] = await connection.execute(statsQuery, [jugadorId]);
+
+        const updatedStats = statsData[0];
+        const roundStatsData = {
+            jugadorId: updatedStats.id_jugador,
+            email: updatedStats.email,
+            rondasJugadas: updatedStats.rondas_jugadas,
+            piezasCapturadas: updatedStats.piezas_capturadas,
+            piezasPerdidas: updatedStats.piezas_perdidas,
+            powerupsUsados: updatedStats.powerups_usados,
+            turnosTomados: updatedStats.turnos_tomados,
+            eficiencia: updatedStats.piezas_perdidas > 0 ? 
+                       (updatedStats.piezas_capturadas / updatedStats.piezas_perdidas).toFixed(2) : 
+                       updatedStats.piezas_capturadas > 0 ? 'Perfecta' : '0',
+            promedioTurnosPorRonda: updatedStats.rondas_jugadas > 0 ? 
+                                   (updatedStats.turnos_tomados / updatedStats.rondas_jugadas).toFixed(1) : '0'
+        };
+
+        res.status(200).json({
+            success: true,
+            message: 'Estadísticas de ronda actualizadas exitosamente',
+            data: roundStatsData
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar estadísticas de ronda:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'El jugador o ronda especificado no existe',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La tabla Estadistica_ronda no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// ENDPOINTS PARA VISTA_
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 })
