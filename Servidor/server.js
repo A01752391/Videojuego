@@ -1806,6 +1806,8 @@ app.patch("/api/rounds/stats/:id_jugador/:id_ronda", async (req, res) => {
     }
 });
 
+// ENDPOINTS PARA VISTA_
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 })
