@@ -317,6 +317,216 @@ app.post("/api/playerstats/login", async (req, res) => {
     }
 });
 
+app.patch("/api/playerstats/:id", async (req, res) => {
+
+        let connection = null;
+
+    try {
+        // 1. Extraer y validar el ID del parámetro
+        const jugadorId = parseInt(req.params.id);
+        
+        if (isNaN(jugadorId) || jugadorId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        // 2. Extraer campos del body
+        const { email, password, nombre_usuario } = req.body;
+
+        // 3. Validar que al menos un campo esté presente
+        if (!email && !password && !nombre_usuario) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se proporcionaron campos para actualizar',
+                error: 'NO_FIELDS_TO_UPDATE'
+            });
+        }
+
+        // 4. Validaciones específicas de cada campo
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Formato de email inválido',
+                    error: 'INVALID_EMAIL_FORMAT'
+                });
+            }
+        }
+
+        if (password && password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe tener al menos 6 caracteres',
+                error: 'PASSWORD_TOO_SHORT'
+            });
+        }
+
+        if (nombre_usuario && (nombre_usuario.length < 3 || nombre_usuario.length > 50)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El nombre de usuario debe tener entre 3 y 50 caracteres',
+                error: 'INVALID_USERNAME_LENGTH'
+            });
+        }
+
+        // 5. Conectar a la base de datos
+        connection = await connectToDB();
+
+        // 6. Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador FROM jugador WHERE id_jugador = ?';
+        const [existingPlayer] = await connection.execute(checkPlayerQuery, [jugadorId]);
+
+        if (existingPlayer.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // 7. Verificar duplicados si se está actualizando email
+        if (email) {
+            const checkEmailQuery = 'SELECT id_jugador FROM jugador WHERE email = ? AND id_jugador != ?';
+            const [existingEmail] = await connection.execute(checkEmailQuery, [email, jugadorId]);
+
+            if (existingEmail.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Ya existe otro jugador con ese email',
+                    error: 'EMAIL_ALREADY_EXISTS'
+                });
+            }
+        }
+
+        // 8. Verificar duplicados si se está actualizando nombre_usuario
+        if (nombre_usuario) {
+            const checkUsernameQuery = 'SELECT id_jugador FROM jugador WHERE nombre_usuario = ? AND id_jugador != ?';
+            const [existingUsername] = await connection.execute(checkUsernameQuery, [nombre_usuario, jugadorId]);
+
+            if (existingUsername.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Ya existe otro jugador con ese nombre de usuario',
+                    error: 'USERNAME_ALREADY_EXISTS'
+                });
+            }
+        }
+
+        // 9. Construir query UPDATE dinámicamente
+        let updateFields = [];
+        let values = [];
+
+        if (email) {
+            updateFields.push('email = ?');
+            values.push(email);
+        }
+
+        if (password) {
+            updateFields.push('password_player = ?'); // Usando el mismo nombre que en el POST
+            values.push(password);
+        }
+
+        if (nombre_usuario) {
+            updateFields.push('nombre_usuario = ?');
+            values.push(nombre_usuario);
+        }
+
+        // Agregar el ID al final para el WHERE
+        values.push(jugadorId);
+
+        // 10. Ejecutar UPDATE en la tabla jugador (NO en la vista)
+        const updateQuery = `UPDATE jugador SET ${updateFields.join(', ')} WHERE id_jugador = ?`;
+        
+        console.log('Update Query:', updateQuery);
+        console.log('Update Values:', values);
+        
+        const [updateResult] = await connection.execute(updateQuery, values);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se pudo actualizar el jugador',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // 11. Obtener datos actualizados desde la vista
+        const statsQuery = 'SELECT * FROM vista_estadisticas_jugador WHERE id_jugador = ?';
+        const [statsData] = await connection.execute(statsQuery, [jugadorId]);
+
+        const updatedPlayer = statsData[0];
+        const playerStats = {
+            jugadorId: updatedPlayer.id_jugador,
+            email: updatedPlayer.email,
+            victorias: updatedPlayer.victorias,
+            partidasJugadas: updatedPlayer.partidas_jugadas,
+            puntajeTotal: updatedPlayer.puntaje_total || 0,
+            turnosTotales: updatedPlayer.turnos_totales || 0,
+            piezasCapturadas: updatedPlayer.piezas_capturadas_total || 0,
+            muertes: updatedPlayer.muertes_total || 0,
+            powerupsUsados: updatedPlayer.powerups_usados_total || 0
+        };
+
+        // 12. Respuesta exitosa
+        res.status(200).json({
+            success: true,
+            message: 'Jugador actualizado exitosamente',
+            data: playerStats
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar jugador:', error);
+
+        // Manejo de errores específicos
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Ya existe un jugador con esos datos',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La tabla jugador no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else if (error.code === 'ER_BAD_FIELD_ERROR') {
+            res.status(400).json({
+                success: false,
+                message: 'Campos de base de datos inválidos',
+                error: 'INVALID_FIELDS'
+            });
+        } else if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                success: false,
+                message: 'No se pudo conectar a la base de datos',
+                error: 'DATABASE_CONNECTION_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        // Cerrar conexión
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
 
 
 
