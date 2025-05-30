@@ -4,13 +4,22 @@
 -- Santino Matias Im A01029622
 
 --
--- Script for creating the tables por the database
+-- Script for creating the tables for the database
 --
+
+-- For CHARSET, we used utf8mb4 since it supports ALL unicode characters
+
+-- For the engine we use InnoDB since it was used in tables with strong relationships that needed referential integrity.
+-- We do not use MyISAM since it does not support foreign keys.
+
+-- For the PRIMARY KEYS we use ids with auto increment and not null to guarantee uniqueness.
+-- For manual indexes (KEY ...), they were added in fields that are expected to be widely used in searches.
+
+-- The model complies with 3FN since there are no repeated fields, each table has a primary key, and the data depends only on it.
 
 DROP SCHEMA IF EXISTS pawned;
 CREATE SCHEMA pawned;
 USE pawned;
-
 
 -- 'Jugador' table
 CREATE TABLE Jugador (
@@ -20,7 +29,7 @@ CREATE TABLE Jugador (
   victorias SMALLINT UNSIGNED DEFAULT 0,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_jugador),
-  KEY idx_email (email)
+  UNIQUE KEY uk_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 'Partida' table
@@ -33,7 +42,7 @@ CREATE TABLE Partida (
   ganador_id SMALLINT UNSIGNED DEFAULT NULL,
   duracion TIME DEFAULT NULL,
   PRIMARY KEY (id_partida),
-  KEY idx_jugadores (id_jugador1, id_jugador2),
+  KEY idx_fecha_inicio (fecha_inicio),
   FOREIGN KEY (id_jugador1) REFERENCES Jugador(id_jugador),
   FOREIGN KEY (id_jugador2) REFERENCES Jugador(id_jugador),
   FOREIGN KEY (ganador_id) REFERENCES Jugador(id_jugador)
@@ -49,7 +58,8 @@ CREATE TABLE Pieza (
   protegida BOOLEAN DEFAULT FALSE,
   posicion_inicial CHAR(2),
   PRIMARY KEY (id_pieza),
-  KEY idx_partida_jugador (id_partida, id_jugador),
+  KEY idx_partida (id_partida),
+  KEY idx_jugador (id_jugador),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -64,7 +74,8 @@ CREATE TABLE Turno (
   posicion_destino CHAR(2),
   fue_captura DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_movimiento),
-  KEY idx_partida_pieza (id_partida, id_pieza),
+  KEY idx_partida (id_partida),
+  KEY idx_pieza (id_pieza),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
   FOREIGN KEY (id_pieza) REFERENCES Pieza(id_pieza)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -87,8 +98,11 @@ CREATE TABLE Powerup (
   id_powerup TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   descripcion TEXT,
-  PRIMARY KEY (id_powerup)
+  PRIMARY KEY (id_powerup),
+  KEY idx_nombre (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE Powerup ADD CONSTRAINT unique_nombre UNIQUE (nombre);
 
 -- 'Powerup_usado' table
 CREATE TABLE Powerup_usado (
@@ -99,7 +113,8 @@ CREATE TABLE Powerup_usado (
   id_ronda MEDIUMINT UNSIGNED NOT NULL,
   fecha_uso DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_uso),
-  KEY idx_usos (id_jugador, id_powerup, id_partida),
+  KEY idx_jugador (id_jugador),
+  KEY idx_fecha (fecha_uso),
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador),
   FOREIGN KEY (id_powerup) REFERENCES Powerup(id_powerup),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
@@ -128,7 +143,8 @@ CREATE TABLE Estadistica_partida (
   powerups_usados TINYINT UNSIGNED DEFAULT 0,
   piezas_movidas SMALLINT UNSIGNED DEFAULT 0,
   PRIMARY KEY (id_estadisticapartida),
-  KEY idx_partida_jugador (id_partida, id_jugador),
+  KEY idx_partida (id_partida),
+  KEY idx_jugador (id_jugador),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -143,21 +159,26 @@ CREATE TABLE Estadistica_ronda (
   powerups_usados TINYINT UNSIGNED DEFAULT 0,
   turnos_tomados SMALLINT UNSIGNED DEFAULT 0,
   PRIMARY KEY (id_estadisticaronda),
-  KEY idx_ronda_jugador (id_ronda, id_jugador),
+  KEY idx_ronda (id_ronda),
+  KEY idx_jugador (id_jugador),
   FOREIGN KEY (id_ronda) REFERENCES Ronda(id_ronda),
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 
 --
 -- Script for views
 --
 
--- View: General statistics
+
+--
+-- View: General statistics for players
+--
 CREATE OR REPLACE VIEW vista_estadisticas_jugador AS
 SELECT 
   j.id_jugador,
   j.email,
-  j.password_jugador,
   j.victorias,
   COUNT(DISTINCT jp.id_partida) AS partidas_jugadas,
   SUM(jp.puntaje) AS puntaje_total,
@@ -166,11 +187,16 @@ SELECT
   SUM(ep.muertes) AS muertes_total,
   SUM(ep.powerups_usados) AS powerups_usados_total
 FROM Jugador j
-LEFT JOIN Jugador_Partida jp ON j.id_jugador = jp.id_jugador
-LEFT JOIN Estadistica_partida ep ON ep.id_jugador = j.id_jugador AND ep.id_partida = jp.id_partida
+LEFT JOIN Jugador_Partida jp USING (id_jugador)
+LEFT JOIN Estadistica_partida ep USING (id_jugador, id_partida)
 GROUP BY j.id_jugador;
+-- We used LEFT JOIN for ensuring that all players appear in the results.
+-- Even those who have not participated in any game (jp.* = NULL) or have no recorded statistics (ep.* = NULL)
 
--- View: Game statistics
+
+--
+-- View: Game statistics for game
+--
 CREATE OR REPLACE VIEW vista_resumen_partida AS
 SELECT 
   p.id_partida,
@@ -183,25 +209,33 @@ SELECT
   SUM(ep.piezas_capturadas) AS piezas_capturadas_total,
   SUM(ep.powerups_usados) AS powerups_usados_total
 FROM Partida p
-JOIN Jugador j1 ON p.id_jugador1 = j1.id_jugador
-JOIN Jugador j2 ON p.id_jugador2 = j2.id_jugador
+INNER JOIN Jugador j1 ON p.id_jugador1 = j1.id_jugador
+INNER JOIN Jugador j2 ON p.id_jugador2 = j2.id_jugador
 LEFT JOIN Jugador jg ON p.ganador_id = jg.id_jugador
-LEFT JOIN Estadistica_partida ep ON p.id_partida = ep.id_partida
+LEFT JOIN Estadistica_partida ep USING (id_partida)
 GROUP BY 
   p.id_partida, p.fecha_inicio, p.fecha_fin, p.duracion,
   j1.email, j2.email, jg.email;
+-- We used INNER JOIN because we wanted to avoid a game without players since it makes no logical sense
+-- We used LEFT JOIN because the games that are left in progress have no winner (winner_id = NULL)
 
+--
 -- View: Most used powerups
+--
 CREATE OR REPLACE VIEW vista_powerups_populares AS
 SELECT 
   p.nombre,
   COUNT(*) AS veces_usado
 FROM Powerup_usado pu
-JOIN Powerup p ON pu.id_powerup = p.id_powerup
+INNER JOIN Powerup p USING (id_powerup)
 GROUP BY p.nombre
 ORDER BY veces_usado DESC;
+-- We used INNER JOIN because we are only interested in the powerups that have actually been used
 
+
+--
 -- View: Statistics per round
+--
 CREATE OR REPLACE VIEW vista_estadisticas_ronda AS
 SELECT 
   er.id_jugador,
@@ -212,10 +246,15 @@ SELECT
   SUM(er.powerups_usados) AS powerups_usados,
   SUM(er.turnos_tomados) AS turnos_tomados
 FROM Estadistica_ronda er
-JOIN Jugador j ON er.id_jugador = j.id_jugador
+INNER JOIN Jugador j USING (id_jugador)
 GROUP BY er.id_jugador;
+-- We used INNER JOIN because all round statistics must be associated with a valid player.
+-- If there is no correspondence, it indicates a data error.
 
+
+--
 -- View: Game statistics
+--
 CREATE OR REPLACE VIEW vista_partidas_completa AS
 SELECT 
   p.*,
@@ -226,8 +265,12 @@ FROM Partida p
 LEFT JOIN Jugador j1 ON p.id_jugador1 = j1.id_jugador
 LEFT JOIN Jugador j2 ON p.id_jugador2 = j2.id_jugador
 LEFT JOIN Jugador jg ON p.ganador_id = jg.id_jugador;
+-- We used LEFT JOIN to keep ALL games even if there are referential inconsistencies (a deleted user, etc.)
 
+
+--
 -- View: Turn statistics 
+--
 CREATE OR REPLACE VIEW vista_turnos_completa AS
 SELECT 
   t.*,
@@ -236,9 +279,15 @@ SELECT
   pz.capturada,
   pz.protegida
 FROM Turno t
-LEFT JOIN Pieza pz ON t.id_pieza = pz.id_pieza;
+LEFT JOIN Pieza pz USING (id_pieza);
+-- We used LEFT JOIN so all rows in the left table (Turn) are included in the result.
+-- Only the matching rows of the right table (Piece) are included.
+-- When there is no match, the Piece columns will have NULL values.
 
+
+--
 -- View: Pieces information
+--
 CREATE OR REPLACE VIEW vista_piezas_completa AS
 SELECT 
   p.*,
@@ -246,5 +295,6 @@ SELECT
   pa.fecha_inicio,
   pa.fecha_fin
 FROM Pieza p
-LEFT JOIN Jugador j ON p.id_jugador = j.id_jugador
-LEFT JOIN Partida pa ON p.id_partida = pa.id_partida;
+LEFT JOIN Jugador j USING (id_jugador)
+LEFT JOIN Partida pa USING (id_partida);
+-- We used LEFT JOIN to include all the pieces even if they have no player or associated game (improbable case but still) 
