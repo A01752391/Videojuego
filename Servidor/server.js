@@ -2203,7 +2203,516 @@ app.patch("/api/games/complete/:id", async (req, res) => {
     }
 });
 
+// ENDPOINTS PARA VISTA_TURNOS_COMPLETA
 
+// Obtener turnos completos
+
+app.get("/api/turns/complete", async (req, res) => {
+    let connection = null;
+
+    try {
+        connection = await connectToDB();
+
+        const id_turno = req.query.id_turno ? parseInt(req.query.id_turno) : null;
+        const id_ronda = req.query.id_ronda ? parseInt(req.query.id_ronda) : null;
+        const id_jugador = req.query.id_jugador ? parseInt(req.query.id_jugador) : null;
+        const tipo_pieza = req.query.tipo_pieza;
+        const posicion_desde = req.query.posicion_desde;
+        const posicion_hasta = req.query.posicion_hasta;
+        const fue_captura = req.query.fue_captura; // 'true', 'false', 'todas'
+        
+        let query = 'SELECT * FROM vista_turnos_completa';
+        let params = [];
+        let whereConditions = [];
+
+        // Filtro por ID de turno
+        if (id_turno && !isNaN(id_turno)) {
+            whereConditions.push('id_turno = ?');
+            params.push(id_turno);
+        }
+
+        // Filtro por ID de ronda
+        if (id_ronda && !isNaN(id_ronda)) {
+            whereConditions.push('id_ronda = ?');
+            params.push(id_ronda);
+        }
+
+        // Filtro por ID de jugador
+        if (id_jugador && !isNaN(id_jugador)) {
+            whereConditions.push('id_jugador = ?');
+            params.push(id_jugador);
+        }
+
+        // Filtro por tipo de pieza
+        if (tipo_pieza) {
+            whereConditions.push('tipo_pieza = ?');
+            params.push(tipo_pieza);
+        }
+
+        // Filtro por posición desde
+        if (posicion_desde) {
+            whereConditions.push('posicion_desde = ?');
+            params.push(posicion_desde);
+        }
+
+        // Filtro por posición hasta
+        if (posicion_hasta) {
+            whereConditions.push('posicion_hasta = ?');
+            params.push(posicion_hasta);
+        }
+
+        // Filtro por capturas
+        if (fue_captura) {
+            if (fue_captura === 'true') {
+                whereConditions.push('fue_captura = TRUE');
+            } else if (fue_captura === 'false') {
+                whereConditions.push('fue_captura = FALSE');
+            }
+            // Si es 'todas', no agregamos filtro
+        }
+
+        // Agregar WHERE si hay condiciones
+        if (whereConditions.length > 0) {
+            query += ' WHERE ' + whereConditions.join(' AND ');
+        }
+
+        // Ordenar por ronda y número de turno
+        query += ' ORDER BY id_ronda DESC, numero_turno ASC';
+
+        console.log('Query:', query);
+        console.log('Params:', params);
+        
+        const [rows] = await connection.execute(query, params);
+
+        const completeTurns = rows.map(row => ({
+            turnoId: row.id_turno,
+            rondaId: row.id_ronda,
+            jugadorId: row.id_jugador,
+            piezaId: row.id_pieza,
+            numeroTurno: row.numero_turno,
+            posicionDesde: row.posicion_desde,
+            posicionHasta: row.posicion_hasta,
+            fueCaptura: row.fue_captura,
+            tiempoDuracion: row.tiempo_duracion,
+            // Información de la pieza
+            tipoPieza: row.tipo_pieza,
+            posicionInicialPieza: row.posicion_inicial,
+            piezaCapturada: row.capturada,
+            piezaProtegida: row.protegida,
+            // Información adicional calculada
+            movimiento: `${row.posicion_desde} → ${row.posicion_hasta}`,
+            tipoMovimiento: row.fue_captura ? 'Captura' : 'Movimiento',
+            estadoPieza: row.capturada ? 'Capturada' : 
+                        row.protegida ? 'Protegida' : 'Normal'
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: completeTurns,
+            total: completeTurns.length,
+            estadisticas: {
+                totalCapturas: completeTurns.filter(t => t.fueCaptura).length,
+                totalMovimientos: completeTurns.filter(t => !t.fueCaptura).length,
+                piezasMasUsadas: this.calcularPiezasMasUsadas(completeTurns),
+                tiempoPromedioTurno: this.calcularTiempoPromedio(completeTurns)
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener turnos completos:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La vista vista_turnos_completa no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                success: false,
+                message: 'No se pudo conectar a la base de datos',
+                error: 'DATABASE_CONNECTION_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Crear nuevo turno completo
+
+app.post("/api/turns/complete", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { 
+            id_ronda, 
+            id_jugador, 
+            id_pieza, 
+            numero_turno, 
+            posicion_desde, 
+            posicion_hasta, 
+            fue_captura, 
+            tiempo_duracion 
+        } = req.body;
+
+        // Validaciones básicas
+        if (!id_ronda || !id_jugador || !id_pieza || !numero_turno || !posicion_desde || !posicion_hasta) {
+            return res.status(400).json({
+                success: false,
+                message: 'Todos los campos básicos son requeridos (id_ronda, id_jugador, id_pieza, numero_turno, posicion_desde, posicion_hasta)',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        if (numero_turno < 1 || numero_turno > 999) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número de turno debe estar entre 1 y 999',
+                error: 'INVALID_TURN_NUMBER'
+            });
+        }
+
+        // Validar formato de posiciones (ej: A1, B2, etc.)
+        const positionRegex = /^[A-H][1-8]$/i;
+        if (!positionRegex.test(posicion_desde) || !positionRegex.test(posicion_hasta)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Las posiciones deben tener formato válido (ej: A1, B2)',
+                error: 'INVALID_POSITION_FORMAT'
+            });
+        }
+
+        if (posicion_desde === posicion_hasta) {
+            return res.status(400).json({
+                success: false,
+                message: 'La posición de origen y destino deben ser diferentes',
+                error: 'SAME_POSITIONS'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que la ronda existe
+        const checkRoundQuery = 'SELECT id_ronda FROM Ronda WHERE id_ronda = ?';
+        const [existingRound] = await connection.execute(checkRoundQuery, [id_ronda]);
+
+        if (existingRound.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ronda no encontrada',
+                error: 'ROUND_NOT_FOUND'
+            });
+        }
+
+        // Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador FROM Jugador WHERE id_jugador = ?';
+        const [existingPlayer] = await connection.execute(checkPlayerQuery, [id_jugador]);
+
+        if (existingPlayer.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // Verificar que la pieza existe
+        const checkPieceQuery = 'SELECT id_pieza, tipo FROM Pieza WHERE id_pieza = ?';
+        const [existingPiece] = await connection.execute(checkPieceQuery, [id_pieza]);
+
+        if (existingPiece.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Pieza no encontrada',
+                error: 'PIECE_NOT_FOUND'
+            });
+        }
+
+        // Verificar que no existe ya un turno con ese número en la ronda
+        const checkTurnQuery = 'SELECT id_turno FROM Turno WHERE id_ronda = ? AND numero_turno = ?';
+        const [existingTurn] = await connection.execute(checkTurnQuery, [id_ronda, numero_turno]);
+
+        if (existingTurn.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe un turno con ese número en esta ronda',
+                error: 'TURN_ALREADY_EXISTS'
+            });
+        }
+
+        // Insertar nuevo turno en tabla Turno
+        const insertTurnQuery = `
+            INSERT INTO Turno (id_ronda, id_jugador, id_pieza, numero_turno, posicion_desde, posicion_hasta, fue_captura, tiempo_duracion) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const [result] = await connection.execute(insertTurnQuery, [
+            id_ronda, 
+            id_jugador, 
+            id_pieza, 
+            numero_turno, 
+            posicion_desde, 
+            posicion_hasta, 
+            fue_captura || false, 
+            tiempo_duracion || null
+        ]);
+
+        // Obtener el turno completo recién creado desde la vista
+        const newTurnQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
+        const [newTurnData] = await connection.execute(newTurnQuery, [result.insertId]);
+
+        const newTurn = newTurnData[0];
+        const completeTurnData = {
+            turnoId: newTurn.id_turno,
+            rondaId: newTurn.id_ronda,
+            jugadorId: newTurn.id_jugador,
+            piezaId: newTurn.id_pieza,
+            numeroTurno: newTurn.numero_turno,
+            posicionDesde: newTurn.posicion_desde,
+            posicionHasta: newTurn.posicion_hasta,
+            fueCaptura: newTurn.fue_captura,
+            tiempoDuracion: newTurn.tiempo_duracion,
+            tipoPieza: newTurn.tipo_pieza,
+            posicionInicialPieza: newTurn.posicion_inicial,
+            piezaCapturada: newTurn.capturada,
+            piezaProtegida: newTurn.protegida,
+            movimiento: `${newTurn.posicion_desde} → ${newTurn.posicion_hasta}`,
+            tipoMovimiento: newTurn.fue_captura ? 'Captura' : 'Movimiento'
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Turno completo creado exitosamente',
+            data: completeTurnData
+        });
+
+    } catch (error) {
+        console.error('Error al crear turno completo:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'Una o más referencias no existen (ronda, jugador, pieza)',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Ya existe un turno con esos datos',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Update turno completo
+
+app.patch("/api/turns/complete/:id", async (req, res) => {
+    let connection = null;
+
+    try {
+        const turnoId = parseInt(req.params.id);
+        
+        if (isNaN(turnoId) || turnoId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del turno debe ser un número válido',
+                error: 'INVALID_TURN_ID'
+            });
+        }
+
+        const { 
+            posicion_desde, 
+            posicion_hasta, 
+            fue_captura, 
+            tiempo_duracion 
+        } = req.body;
+
+        // Validar que al menos un campo esté presente
+        if (!posicion_desde && !posicion_hasta && fue_captura === undefined && !tiempo_duracion) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se proporcionaron campos para actualizar',
+                error: 'NO_FIELDS_TO_UPDATE'
+            });
+        }
+
+        // Validar formato de posiciones si se proporcionan
+        const positionRegex = /^[A-H][1-8]$/i;
+        if (posicion_desde && !positionRegex.test(posicion_desde)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La posición desde debe tener formato válido (ej: A1, B2)',
+                error: 'INVALID_POSITION_FROM_FORMAT'
+            });
+        }
+
+        if (posicion_hasta && !positionRegex.test(posicion_hasta)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La posición hasta debe tener formato válido (ej: A1, B2)',
+                error: 'INVALID_POSITION_TO_FORMAT'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el turno existe
+        const checkTurnQuery = 'SELECT id_turno, posicion_desde, posicion_hasta FROM Turno WHERE id_turno = ?';
+        const [existingTurn] = await connection.execute(checkTurnQuery, [turnoId]);
+
+        if (existingTurn.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Turno no encontrado',
+                error: 'TURN_NOT_FOUND'
+            });
+        }
+
+        const currentTurn = existingTurn[0];
+
+        // Validar que las posiciones sean diferentes si se actualizan ambas
+        const finalPosDesde = posicion_desde || currentTurn.posicion_desde;
+        const finalPosHasta = posicion_hasta || currentTurn.posicion_hasta;
+
+        if (finalPosDesde === finalPosHasta) {
+            return res.status(400).json({
+                success: false,
+                message: 'La posición de origen y destino deben ser diferentes',
+                error: 'SAME_POSITIONS'
+            });
+        }
+
+        // Construir query UPDATE dinámicamente
+        let updateFields = [];
+        let values = [];
+
+        if (posicion_desde) {
+            updateFields.push('posicion_desde = ?');
+            values.push(posicion_desde);
+        }
+
+        if (posicion_hasta) {
+            updateFields.push('posicion_hasta = ?');
+            values.push(posicion_hasta);
+        }
+
+        if (fue_captura !== undefined) {
+            updateFields.push('fue_captura = ?');
+            values.push(fue_captura);
+        }
+
+        if (tiempo_duracion) {
+            updateFields.push('tiempo_duracion = ?');
+            values.push(tiempo_duracion);
+        }
+
+        values.push(turnoId);
+
+        // Ejecutar UPDATE en tabla Turno
+        const updateQuery = `UPDATE Turno SET ${updateFields.join(', ')} WHERE id_turno = ?`;
+        
+        console.log('Update Query:', updateQuery);
+        console.log('Update Values:', values);
+        
+        const [updateResult] = await connection.execute(updateQuery, values);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se pudo actualizar el turno',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // Obtener datos actualizados desde la vista
+        const statsQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
+        const [statsData] = await connection.execute(statsQuery, [turnoId]);
+
+        const updatedTurn = statsData[0];
+        const completeTurnData = {
+            turnoId: updatedTurn.id_turno,
+            rondaId: updatedTurn.id_ronda,
+            jugadorId: updatedTurn.id_jugador,
+            piezaId: updatedTurn.id_pieza,
+            numeroTurno: updatedTurn.numero_turno,
+            posicionDesde: updatedTurn.posicion_desde,
+            posicionHasta: updatedTurn.posicion_hasta,
+            fueCaptura: updatedTurn.fue_captura,
+            tiempoDuracion: updatedTurn.tiempo_duracion,
+            tipoPieza: updatedTurn.tipo_pieza,
+            posicionInicialPieza: updatedTurn.posicion_inicial,
+            piezaCapturada: updatedTurn.capturada,
+            piezaProtegida: updatedTurn.protegida,
+            movimiento: `${updatedTurn.posicion_desde} → ${updatedTurn.posicion_hasta}`,
+            tipoMovimiento: updatedTurn.fue_captura ? 'Captura' : 'Movimiento'
+        };
+
+        res.status(200).json({
+            success: true,
+            message: 'Turno completo actualizado exitosamente',
+            data: completeTurnData
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar turno completo:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La tabla Turno no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
