@@ -1806,7 +1806,404 @@ app.patch("/api/rounds/stats/:id_jugador/:id_ronda", async (req, res) => {
     }
 });
 
-// ENDPOINTS PARA VISTA_
+// ENDPOINTS PARA VISTA_PARTIDAS_COMPLETA
+
+// Obtener partidas completas 
+
+app.get("/api/games/complete", async (req, res) => {
+    let connection = null;
+
+    try {
+        connection = await connectToDB();
+
+        const id_partida = req.query.id_partida ? parseInt(req.query.id_partida) : null;
+        const jugador_email = req.query.jugador_email;
+        const estado_partida = req.query.estado_partida; // 'finalizada', 'en_progreso', 'todas'
+        const fecha_desde = req.query.fecha_desde;
+        const fecha_hasta = req.query.fecha_hasta;
+        
+        let query = 'SELECT * FROM vista_partidas_completa';
+        let params = [];
+        let whereConditions = [];
+
+        // Filtro por ID de partida
+        if (id_partida && !isNaN(id_partida)) {
+            whereConditions.push('id_partida = ?');
+            params.push(id_partida);
+        }
+
+        // Filtro por email de jugador (en cualquier posición)
+        if (jugador_email) {
+            whereConditions.push('(jugador1_email = ? OR jugador2_email = ?)');
+            params.push(jugador_email, jugador_email);
+        }
+
+        // Filtro por estado de partida
+        if (estado_partida) {
+            if (estado_partida === 'finalizada') {
+                whereConditions.push('ganador_id IS NOT NULL');
+            } else if (estado_partida === 'en_progreso') {
+                whereConditions.push('ganador_id IS NULL');
+            }
+            // Si es 'todas', no agregamos filtro
+        }
+
+        // Filtro por fecha desde
+        if (fecha_desde) {
+            whereConditions.push('DATE(fecha_inicio) >= ?');
+            params.push(fecha_desde);
+        }
+
+        // Filtro por fecha hasta
+        if (fecha_hasta) {
+            whereConditions.push('DATE(fecha_inicio) <= ?');
+            params.push(fecha_hasta);
+        }
+
+        // Agregar WHERE si hay condiciones
+        if (whereConditions.length > 0) {
+            query += ' WHERE ' + whereConditions.join(' AND ');
+        }
+
+        // Ordenar por fecha más reciente
+        query += ' ORDER BY fecha_inicio DESC';
+
+        console.log('Query:', query);
+        console.log('Params:', params);
+        
+        const [rows] = await connection.execute(query, params);
+
+        const completeGames = rows.map(row => ({
+            partidaId: row.id_partida,
+            fechaInicio: row.fecha_inicio,
+            fechaFin: row.fecha_fin,
+            duracion: row.duracion,
+            jugador1Id: row.id_jugador1,
+            jugador2Id: row.id_jugador2,
+            ganadorId: row.ganador_id,
+            jugador1Email: row.jugador1_email,
+            jugador2Email: row.jugador2_email,
+            ganadorEmail: row.ganador_email,
+            // Información adicional calculada
+            estado: row.ganador_id ? 'Finalizada' : 'En progreso',
+            duracionFormateada: row.duracion || 'No disponible'
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: completeGames,
+            total: completeGames.length,
+            estadisticas: {
+                partidasFinalizadas: completeGames.filter(g => g.estado === 'Finalizada').length,
+                partidasEnProgreso: completeGames.filter(g => g.estado === 'En progreso').length,
+                fechaMasReciente: completeGames.length > 0 ? completeGames[0].fechaInicio : null,
+                fechaMasAntigua: completeGames.length > 0 ? completeGames[completeGames.length - 1].fechaInicio : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener partidas completas:', error);
+
+        if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La vista vista_partidas_completa no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                success: false,
+                message: 'No se pudo conectar a la base de datos',
+                error: 'DATABASE_CONNECTION_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Crear partida completa
+
+app.post("/api/games/complete", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_jugador1, id_jugador2, duracion_estimada } = req.body;
+
+        // Validaciones básicas
+        if (!id_jugador1 || !id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los IDs de ambos jugadores son requeridos',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        if (id_jugador1 === id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'Los jugadores deben ser diferentes',
+                error: 'SAME_PLAYERS'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que ambos jugadores existen
+        const checkPlayersQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador IN (?, ?)';
+        const [existingPlayers] = await connection.execute(checkPlayersQuery, [id_jugador1, id_jugador2]);
+
+        if (existingPlayers.length !== 2) {
+            return res.status(404).json({
+                success: false,
+                message: 'Uno o ambos jugadores no existen',
+                error: 'PLAYERS_NOT_FOUND'
+            });
+        }
+
+        // Insertar nueva partida en tabla Partida
+        const insertPartidaQuery = `
+            INSERT INTO Partida (id_jugador1, id_jugador2, fecha_inicio, duracion) 
+            VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+        `;
+        
+        const [partidaResult] = await connection.execute(insertPartidaQuery, [
+            id_jugador1, 
+            id_jugador2, 
+            duracion_estimada || null
+        ]);
+
+        const partidaId = partidaResult.insertId;
+
+        // Obtener la partida completa recién creada desde la vista
+        const newGameQuery = 'SELECT * FROM vista_partidas_completa WHERE id_partida = ?';
+        const [newGameData] = await connection.execute(newGameQuery, [partidaId]);
+
+        const newGame = newGameData[0];
+        const completeGameData = {
+            partidaId: newGame.id_partida,
+            fechaInicio: newGame.fecha_inicio,
+            fechaFin: newGame.fecha_fin,
+            duracion: newGame.duracion,
+            jugador1Id: newGame.id_jugador1,
+            jugador2Id: newGame.id_jugador2,
+            ganadorId: newGame.ganador_id,
+            jugador1Email: newGame.jugador1_email,
+            jugador2Email: newGame.jugador2_email,
+            ganadorEmail: newGame.ganador_email,
+            estado: 'En progreso'
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Partida completa creada exitosamente',
+            data: completeGameData
+        });
+
+    } catch (error) {
+        console.error('Error al crear partida completa:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'Uno o más jugadores no existen',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else if (error.code === 'ER_DUP_ENTRY') {
+            res.status(409).json({
+                success: false,
+                message: 'Error de duplicado en la partida',
+                error: 'DUPLICATE_ENTRY'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Update partida completa
+
+app.patch("/api/games/complete/:id", async (req, res) => {
+    let connection = null;
+
+    try {
+        const partidaId = parseInt(req.params.id);
+        
+        if (isNaN(partidaId) || partidaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID de la partida debe ser un número válido',
+                error: 'INVALID_GAME_ID'
+            });
+        }
+
+        const { ganador_id, duracion_final, fecha_fin } = req.body;
+
+        // Validar que al menos un campo esté presente
+        if (ganador_id === undefined && !duracion_final && fecha_fin === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se proporcionaron campos para actualizar',
+                error: 'NO_FIELDS_TO_UPDATE'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que la partida existe y obtener datos actuales
+        const checkGameQuery = 'SELECT id_jugador1, id_jugador2, ganador_id FROM Partida WHERE id_partida = ?';
+        const [existingGame] = await connection.execute(checkGameQuery, [partidaId]);
+
+        if (existingGame.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partida no encontrada',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        const game = existingGame[0];
+
+        // Validar ganador si se proporciona
+        if (ganador_id && ganador_id !== game.id_jugador1 && ganador_id !== game.id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ganador debe ser uno de los jugadores de la partida',
+                error: 'INVALID_WINNER'
+            });
+        }
+
+        // Construir query UPDATE dinámicamente
+        let updateFields = [];
+        let values = [];
+
+        if (ganador_id !== undefined) {
+            updateFields.push('ganador_id = ?');
+            values.push(ganador_id);
+            
+            // Si se establece un ganador y no se especifica fecha_fin, usar timestamp actual
+            if (fecha_fin === undefined) {
+                updateFields.push('fecha_fin = CURRENT_TIMESTAMP');
+            }
+        }
+
+        if (duracion_final) {
+            updateFields.push('duracion = ?');
+            values.push(duracion_final);
+        }
+
+        if (fecha_fin !== undefined) {
+            updateFields.push('fecha_fin = ?');
+            values.push(fecha_fin ? new Date(fecha_fin) : null);
+        }
+
+        values.push(partidaId);
+
+        // Ejecutar UPDATE en tabla Partida
+        const updatePartidaQuery = `UPDATE Partida SET ${updateFields.join(', ')} WHERE id_partida = ?`;
+        
+        console.log('Update Partida Query:', updatePartidaQuery);
+        console.log('Update Partida Values:', values);
+        
+        const [updateResult] = await connection.execute(updatePartidaQuery, values);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se pudo actualizar la partida',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // Obtener datos actualizados desde la vista
+        const statsQuery = 'SELECT * FROM vista_partidas_completa WHERE id_partida = ?';
+        const [statsData] = await connection.execute(statsQuery, [partidaId]);
+
+        const updatedGame = statsData[0];
+        const completeGameData = {
+            partidaId: updatedGame.id_partida,
+            fechaInicio: updatedGame.fecha_inicio,
+            fechaFin: updatedGame.fecha_fin,
+            duracion: updatedGame.duracion,
+            jugador1Id: updatedGame.id_jugador1,
+            jugador2Id: updatedGame.id_jugador2,
+            ganadorId: updatedGame.ganador_id,
+            jugador1Email: updatedGame.jugador1_email,
+            jugador2Email: updatedGame.jugador2_email,
+            ganadorEmail: updatedGame.ganador_email,
+            estado: updatedGame.ganador_id ? 'Finalizada' : 'En progreso'
+        };
+
+        res.status(200).json({
+            success: true,
+            message: 'Partida completa actualizada exitosamente',
+            data: completeGameData
+        });
+
+    } catch (error) {
+        console.error('Error al actualizar partida completa:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'El ganador especificado no existe',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else if (error.code === 'ER_NO_SUCH_TABLE') {
+            res.status(404).json({
+                success: false,
+                message: 'La tabla Partida no existe',
+                error: 'TABLE_NOT_FOUND'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
