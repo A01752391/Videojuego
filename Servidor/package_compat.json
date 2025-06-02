@@ -1,0 +1,16 @@
+{
+  "name": "pawned-compat",
+  "version": "1.0.0",
+  "description": "Compatible version for older Node.js",
+  "license": "MIT",
+  "author": "",
+  "main": "server_compat.js",
+  "scripts": {
+    "start": "node server_compat.js",
+    "dev": "nodemon server_compat.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.14.1"
+  }
+}

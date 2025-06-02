@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Leaderboard API</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button { 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #2980b9; }
+        pre { 
+            background: #f8f8f8; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow: auto;
+            border-left: 4px solid #3498db;
+        }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
+        .loading { color: #f39c12; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        th { background: #f2f2f2; }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Leaderboard API</h1>
+    
+    <div class="section">
+        <h3>Controles de Prueba</h3>
+        <div class="test-controls">
+            <button onclick="testPlayerStats()">Probar /api/playerstats</button>
+            <button onclick="testGames()">Probar /api/games</button>
+            <button onclick="testPowerups()">Probar /api/powerups</button>
+            <button onclick="testAll()">Probar Todo</button>
+            <button onclick="clearResults()">Limpiar</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>🏆 Vista Previa del Leaderboard</h3>
+        <button onclick="openLeaderboard()">Abrir Leaderboard Real</button>
+        <div id="leaderboardPreview"></div>
+    </div>
+
+    <div class="section">
+        <h3>📊 Resultados de la API</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'loading' ? 'loading' : '';
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('leaderboardPreview').innerHTML = '';
+        }
+
+        async function makeRequest(endpoint, description) {
+            log(`${description}...`, 'loading');
+            
+            try {
+                const response = await fetch(API_BASE + endpoint);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ ${description} - Éxito`, 'success');
+                    log(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                    return data;
+                } else {
+                    log(`❌ ${description} - Error ${response.status}`, 'error');
+                    log(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                    return null;
+                }
+            } catch (error) {
+                log(`💥 ${description} - Error de conexión: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testPlayerStats() {
+            const data = await makeRequest('/api/playerstats', 'Probando estadísticas de jugadores');
+            if (data && data.success) {
+                generateLeaderboardPreview(data.data);
+            }
+        }
+
+        async function testGames() {
+            await makeRequest('/api/games', 'Probando datos de partidas');
+        }
+
+        async function testPowerups() {
+            await makeRequest('/api/powerups', 'Probando datos de powerups');
+        }
+
+        async function testAll() {
+            clearResults();
+            log('🚀 Iniciando pruebas completas...', 'loading');
+            
+            await testPlayerStats();
+            await testGames();
+            await testPowerups();
+            
+            log('✨ Pruebas completadas', 'success');
+        }
+
+        function generateLeaderboardPreview(players) {
+            const preview = document.getElementById('leaderboardPreview');
+            
+            if (!players || players.length === 0) {
+                preview.innerHTML = '<p>No hay datos de jugadores disponibles.</p>';
+                return;
+            }
+
+            // Ordenar por puntaje total
+            const sortedPlayers = [...players].sort((a, b) => (b.puntajeTotal || 0) - (a.puntajeTotal || 0));
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rango</th>
+                            <th>Jugador</th>
+                            <th>Puntaje</th>
+                            <th>Victorias</th>
+                            <th>Partidas</th>
+                            <th>Win Rate</th>
+                            <th>Capturas</th>
+                            <th>PowerUps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sortedPlayers.slice(0, 10).forEach((player, index) => {
+                const rank = index + 1;
+                const winRate = player.partidasJugadas > 0 ? 
+                    Math.round((player.victorias / player.partidasJugadas) * 100) : 0;
+                
+                html += `
+                    <tr>
+                        <td>${rank}</td>
+                        <td><strong>${player.email}</strong></td>
+                        <td>${(player.puntajeTotal || 0).toLocaleString()}</td>
+                        <td>${player.victorias || 0}</td>
+                        <td>${player.partidasJugadas || 0}</td>
+                        <td>${winRate}%</td>
+                        <td>${player.piezasCapturadas || 0}</td>
+                        <td>${player.powerupsUsados || 0}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            preview.innerHTML = html;
+        }
+
+        function openLeaderboard() {
+            window.open('/assets/html/leaderboard.html', '_blank');
+        }
+
+        // Auto-test al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🎯 Página de pruebas cargada. Haz clic en los botones para probar la API.', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAWNED - Leaderboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/leaderboard.css">
+</head>
+<body>
+    <div class="leaderboard-container">        <header class="header">
+            <h1>🏆 LEADERBOARD</h1>
+            <p>Estadísticas de los mejores jugadores de PAWNED</p>
+        </header>
+
+        <!-- Controles y filtros -->
+        <div class="controls-section">
+            <div class="refresh-controls">
+                <button id="refreshBtn" class="btn-primary">
+                    <span id="refreshIcon">🔄</span> Actualizar
+                </button>
+                <span id="lastUpdated" class="last-updated"></span>
+            </div>
+            
+            <div class="sort-controls">
+                <label for="sortBy">Ordenar por:</label>
+                <select id="sortBy" class="sort-select">
+                    <option value="puntajeTotal">Puntaje Total</option>
+                    <option value="victorias">Victorias</option>
+                    <option value="partidasJugadas">Partidas Jugadas</option>
+                    <option value="piezasCapturadas">Piezas Capturadas</option>
+                    <option value="powerupsUsados">PowerUps Usados</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Estado de carga -->
+        <div id="loadingState" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Cargando estadísticas...</p>
+        </div>
+
+        <!-- Estado de error -->
+        <div id="errorState" class="error-state" style="display: none;">
+            <div class="error-icon">⚠️</div>
+            <h3>Error al cargar estadísticas</h3>
+            <p id="errorMessage">No se pudieron cargar las estadísticas. Intenta nuevamente.</p>
+            <button id="retryBtn" class="btn-secondary">Reintentar</button>
+        </div>
+
+        <!-- Estadísticas generales -->
+        <div id="statsOverview" class="stats-overview" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="totalPlayers">0</div>
+                <div class="stat-label">Jugadores Registrados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalGames">0</div>
+                <div class="stat-label">Partidas Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalPowerups">0</div>
+                <div class="stat-label">PowerUps Usados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalCaptures">0</div>
+                <div class="stat-label">Capturas Totales</div>
+            </div>
+        </div>
+
+        <!-- Tabla de leaderboard -->
+        <div id="leaderboardTable" class="leaderboard-table" style="display: none;">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="rank-col">Rango</th>
+                            <th class="player-col">Jugador</th>
+                            <th class="stat-col sortable" data-sort="puntajeTotal">
+                                Puntaje Total <span class="sort-arrow">↕️</span>
+                            </th>
+                            <th class="stat-col sortable" data-sort="victorias">
+                                Victorias <span class="sort-arrow">↕️</span>
+                            </th>
+                            <th class="stat-col sortable" data-sort="partidasJugadas">
+                                Partidas <span class="sort-arrow">↕️</span>
+                            </th>
+                            <th class="stat-col">Win Rate</th>
+                            <th class="stat-col sortable" data-sort="piezasCapturadas">
+                                Capturas <span class="sort-arrow">↕️</span>
+                            </th>
+                            <th class="stat-col sortable" data-sort="powerupsUsados">
+                                PowerUps <span class="sort-arrow">↕️</span>
+                            </th>
+                            <th class="stat-col">Promedio/Partida</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Los datos se cargarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <div class="empty-icon">📊</div>
+            <h3>No hay estadísticas disponibles</h3>
+            <p>Aún no hay jugadores registrados o partidas jugadas.</p>
+        </div>        <!-- Botón de regreso -->
+        <div class="navigation-controls">
+            <a href="index.html" class="back-to-main">
+                ← Volver al Menú Principal
+            </a>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/leaderboard.js"></script>
+</body>
+</html>

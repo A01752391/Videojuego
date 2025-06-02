@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Simple - Leaderboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .loading { background: #fff3cd; color: #856404; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        .rank-1 { color: #f1c40f; font-weight: bold; }
+        .rank-2 { color: #95a5a6; font-weight: bold; }
+        .rank-3 { color: #cd7f32; font-weight: bold; }
+        .win-rate-excellent { color: #27ae60; font-weight: bold; }
+        .win-rate-good { color: #2ecc71; }
+        .win-rate-average { color: #f39c12; }
+        .win-rate-poor { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Prueba Simple del Leaderboard</h1>
+        
+        <div class="controls">
+            <button onclick="testConnection()">Probar Conexión</button>
+            <button onclick="loadLeaderboard()">Cargar Leaderboard</button>
+            <button onclick="openFullLeaderboard()">Abrir Leaderboard Completo</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="content"></div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'loading') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        function showContent(html) {
+            document.getElementById('content').innerHTML = html;
+        }
+
+        async function testConnection() {
+            showStatus('Probando conexión con el servidor...', 'loading');
+            showContent('');
+
+            try {
+                // Primero probar si el servidor responde
+                const response = await fetch('/api/playerstats?limit=1');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus('✅ Conexión exitosa!', 'success');
+                    showContent(`
+                        <h3>Respuesta del servidor:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                } else {
+                    showStatus(`❌ Error ${response.status}: ${response.statusText}`, 'error');
+                    const errorData = await response.text();
+                    showContent(`<h3>Error del servidor:</h3><pre>${errorData}</pre>`);
+                }
+            } catch (error) {
+                showStatus(`💥 Error de conexión: ${error.message}`, 'error');
+                showContent(`
+                    <h3>Posibles soluciones:</h3>
+                    <ul>
+                        <li>Verificar que el servidor esté ejecutándose</li>
+                        <li>Verificar que la base de datos esté conectada</li>
+                        <li>Revisar las credenciales de la base de datos</li>
+                    </ul>
+                `);
+            }
+        }
+
+        async function loadLeaderboard() {
+            showStatus('Cargando datos del leaderboard...', 'loading');
+            showContent('');
+
+            try {
+                const response = await fetch('/api/playerstats');
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.message || 'Error desconocido');
+                }
+
+                const players = result.data || [];
+
+                if (players.length === 0) {
+                    showStatus('📊 No hay datos de jugadores', 'success');
+                    showContent(`
+                        <h3>Base de datos vacía</h3>
+                        <p>No se encontraron jugadores en la base de datos.</p>
+                        <p>Para agregar datos de prueba, ejecuta el script: <code>Test_Data_PAWNED.sql</code></p>
+                    `);
+                    return;
+                }
+
+                showStatus(`✅ Cargados ${players.length} jugadores`, 'success');
+                renderSimpleLeaderboard(players);
+
+            } catch (error) {
+                showStatus(`❌ Error: ${error.message}`, 'error');
+                showContent(`<h3>Error detallado:</h3><pre>${error.stack || error.message}</pre>`);
+            }
+        }
+
+        function renderSimpleLeaderboard(players) {
+            // Ordenar por puntaje total
+            const sortedPlayers = [...players].sort((a, b) => (b.puntajeTotal || 0) - (a.puntajeTotal || 0));
+
+            let html = `
+                <h3>🏆 Top ${Math.min(10, sortedPlayers.length)} Jugadores</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rango</th>
+                            <th>Jugador</th>
+                            <th>Puntaje Total</th>
+                            <th>Victorias</th>
+                            <th>Partidas</th>
+                            <th>Win Rate</th>
+                            <th>Capturas</th>
+                            <th>PowerUps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            sortedPlayers.slice(0, 10).forEach((player, index) => {
+                const rank = index + 1;
+                const winRate = player.partidasJugadas > 0 ? 
+                    Math.round((player.victorias / player.partidasJugadas) * 100) : 0;
+                
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const winRateClass = getWinRateClass(winRate);
+
+                html += `
+                    <tr>
+                        <td><span class="${rankClass}">${rank}</span></td>
+                        <td><strong>${escapeHtml(player.email)}</strong></td>
+                        <td>${formatNumber(player.puntajeTotal || 0)}</td>
+                        <td>${player.victorias || 0}</td>
+                        <td>${player.partidasJugadas || 0}</td>
+                        <td><span class="${winRateClass}">${winRate}%</span></td>
+                        <td>${player.piezasCapturadas || 0}</td>
+                        <td>${player.powerupsUsados || 0}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+
+            // Agregar estadísticas generales
+            const totalPlayers = players.length;
+            const totalGames = players.reduce((sum, p) => sum + (p.partidasJugadas || 0), 0);
+            const totalPowerups = players.reduce((sum, p) => sum + (p.powerupsUsados || 0), 0);
+            const totalCaptures = players.reduce((sum, p) => sum + (p.piezasCapturadas || 0), 0);
+
+            html += `
+                <h3>📈 Estadísticas Generales</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #3498db;">${totalPlayers}</div>
+                        <div>Jugadores</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #27ae60;">${totalGames}</div>
+                        <div>Partidas</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #e74c3c;">${totalCaptures}</div>
+                        <div>Capturas</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #f39c12;">${totalPowerups}</div>
+                        <div>PowerUps</div>
+                    </div>
+                </div>
+            `;
+
+            showContent(html);
+        }
+
+        function getWinRateClass(winRate) {
+            if (winRate >= 75) return 'win-rate-excellent';
+            if (winRate >= 60) return 'win-rate-good';
+            if (winRate >= 40) return 'win-rate-average';
+            return 'win-rate-poor';
+        }
+
+        function formatNumber(num) {
+            return num ? num.toLocaleString() : '0';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openFullLeaderboard() {
+            window.open('/assets/html/leaderboard.html', '_blank');
+        }
+
+        // Auto-test al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            showStatus('👋 Página cargada. Haz clic en "Probar Conexión" para empezar.', 'success');
+        });
+    </script>
+</body>
+</html>
