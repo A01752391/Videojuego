@@ -317,40 +317,47 @@ app.post("/api/playerstats/login", async (req, res) => {
     }
 });
 
-// Update usuarios
-
-app.patch("/api/playerstats/:id", async (req, res) => {
-
-        let connection = null;
+// Update usuarios por email
+app.patch("/api/playerstats/:email", async (req, res) => {
+    let connection = null;
 
     try {
-        // 1. Extraer y validar el ID del parámetro
-        const jugadorId = parseInt(req.params.id);
+        // 1. Extraer y validar el email del parámetro
+        const oldEmail = req.params.email;
         
-        if (isNaN(jugadorId) || jugadorId <= 0) {
+        if (!oldEmail) {
             return res.status(400).json({
                 success: false,
-                message: 'El ID del jugador debe ser un número válido',
-                error: 'INVALID_PLAYER_ID'
+                message: 'Se requiere el email actual del usuario',
+                error: 'EMAIL_REQUIRED'
             });
         }
 
         // 2. Extraer campos del body
-        const { email, password, nombre_usuario } = req.body;
+        const { oldPassword, newEmail, newPassword } = req.body;
 
-        // 3. Validar que al menos un campo esté presente
-        if (!email && !password && !nombre_usuario) {
+        // 3. Validar que al menos un campo esté presente para actualizar
+        if (!newEmail && !newPassword) {
             return res.status(400).json({
                 success: false,
-                message: 'No se proporcionaron campos para actualizar',
+                message: 'No se proporcionaron campos para actualizar (newEmail o newPassword)',
                 error: 'NO_FIELDS_TO_UPDATE'
             });
         }
 
-        // 4. Validaciones específicas de cada campo
-        if (email) {
+        // 4. Validar que se proporcione la contraseña antigua
+        if (!oldPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere la contraseña actual para realizar cambios',
+                error: 'OLD_PASSWORD_REQUIRED'
+            });
+        }
+
+        // 5. Validaciones específicas de cada campo
+        if (newEmail) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (!emailRegex.test(newEmail)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Formato de email inválido',
@@ -359,41 +366,44 @@ app.patch("/api/playerstats/:id", async (req, res) => {
             }
         }
 
-        if (password && password.length < 6) {
+        if (newPassword && newPassword.length < 6) {
             return res.status(400).json({
                 success: false,
-                message: 'La contraseña debe tener al menos 6 caracteres',
+                message: 'La nueva contraseña debe tener al menos 6 caracteres',
                 error: 'PASSWORD_TOO_SHORT'
             });
         }
 
-        if (nombre_usuario && (nombre_usuario.length < 3 || nombre_usuario.length > 50)) {
-            return res.status(400).json({
-                success: false,
-                message: 'El nombre de usuario debe tener entre 3 y 50 caracteres',
-                error: 'INVALID_USERNAME_LENGTH'
-            });
-        }
-
-        // 5. Conectar a la base de datos
+        // 6. Conectar a la base de datos
         connection = await connectToDB();
 
-        // 6. Verificar que el jugador existe
-        const checkPlayerQuery = 'SELECT id_jugador FROM jugador WHERE id_jugador = ?';
-        const [existingPlayer] = await connection.execute(checkPlayerQuery, [jugadorId]);
+        // 7. Verificar que el usuario existe y la contraseña coincide
+        const checkPlayerQuery = 'SELECT id_jugador, password_player FROM jugador WHERE email = ?';
+        const [existingPlayer] = await connection.execute(checkPlayerQuery, [oldEmail]);
 
         if (existingPlayer.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Jugador no encontrado',
-                error: 'PLAYER_NOT_FOUND'
+                message: 'Usuario no encontrado',
+                error: 'USER_NOT_FOUND'
             });
         }
 
-        // 7. Verificar duplicados si se está actualizando email
-        if (email) {
+        // Verificar contraseña (asumiendo que está almacenada en texto plano)
+        if (existingPlayer[0].password_player !== oldPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Contraseña actual incorrecta',
+                error: 'INVALID_PASSWORD'
+            });
+        }
+
+        const jugadorId = existingPlayer[0].id_jugador;
+
+        // 8. Verificar duplicados si se está actualizando email
+        if (newEmail) {
             const checkEmailQuery = 'SELECT id_jugador FROM jugador WHERE email = ? AND id_jugador != ?';
-            const [existingEmail] = await connection.execute(checkEmailQuery, [email, jugadorId]);
+            const [existingEmail] = await connection.execute(checkEmailQuery, [newEmail, jugadorId]);
 
             if (existingEmail.length > 0) {
                 return res.status(409).json({
@@ -404,43 +414,24 @@ app.patch("/api/playerstats/:id", async (req, res) => {
             }
         }
 
-        // 8. Verificar duplicados si se está actualizando nombre_usuario
-        if (nombre_usuario) {
-            const checkUsernameQuery = 'SELECT id_jugador FROM jugador WHERE nombre_usuario = ? AND id_jugador != ?';
-            const [existingUsername] = await connection.execute(checkUsernameQuery, [nombre_usuario, jugadorId]);
-
-            if (existingUsername.length > 0) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'Ya existe otro jugador con ese nombre de usuario',
-                    error: 'USERNAME_ALREADY_EXISTS'
-                });
-            }
-        }
-
         // 9. Construir query UPDATE dinámicamente
         let updateFields = [];
         let values = [];
 
-        if (email) {
+        if (newEmail) {
             updateFields.push('email = ?');
-            values.push(email);
+            values.push(newEmail);
         }
 
-        if (password) {
-            updateFields.push('password_player = ?'); // Usando el mismo nombre que en el POST
-            values.push(password);
-        }
-
-        if (nombre_usuario) {
-            updateFields.push('nombre_usuario = ?');
-            values.push(nombre_usuario);
+        if (newPassword) {
+            updateFields.push('password_player = ?');
+            values.push(newPassword);
         }
 
         // Agregar el ID al final para el WHERE
         values.push(jugadorId);
 
-        // 10. Ejecutar UPDATE en la tabla jugador (NO en la vista)
+        // 10. Ejecutar UPDATE en la tabla jugador
         const updateQuery = `UPDATE jugador SET ${updateFields.join(', ')} WHERE id_jugador = ?`;
         
         console.log('Update Query:', updateQuery);
