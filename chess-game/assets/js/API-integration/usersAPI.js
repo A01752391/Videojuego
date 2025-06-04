@@ -22,7 +22,7 @@ async function NewUser(){
         return;
     }
     try {
-        const response = await fetch(`${server}/api/playerstats/`, {
+        const response = await fetch(`${server}/api/playerstats`, {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData)
