@@ -53,16 +53,15 @@ app.get("/api/playerstats", async (req, res) => {
     try {
         connection = await connectToDB();
 
-        const id_jugador = req.query.id_jugador ? parseInt(req.query.id_jugador) : null;
+        const email = req.query.email_jugador;
         
         let query = 'SELECT * FROM vista_estadisticas_jugador';
         let params = [];
 
-        if (id_jugador && !isNaN(id_jugador)) {
-            query += ' WHERE id_jugador = ?';
-            params.push(id_jugador);
+        if (email) {
+            query += ' WHERE email = ?';  
+            params.push(email);
         }
-
         // Orden de aparicion de usuarios
         query += ' ORDER BY puntaje_total DESC, victorias DESC, partidas_jugadas DESC';
 
@@ -71,8 +70,8 @@ app.get("/api/playerstats", async (req, res) => {
         const [rows] = await connection.execute(query, params);
 
         const stats = rows.map(row => ({
-            jugadorId: row.id_jugador,
             email: row.email,
+            jugadorId: row.id_jugador,
             victorias: row.victorias,
             partidasJugadas: row.partidas_jugadas,
             puntajeTotal: row.puntaje_total,
