@@ -1,5 +1,15 @@
 const server = 'http://localhost:3000';
 
+//To show results
+async function showResult(message, isError) {
+    await Swal.fire({
+        icon: isError ? 'error' : 'success',
+        title: isError ? 'Error' : 'Éxito',
+        text: message,
+        confirmButtonColor: '#ff4081',
+    });
+}
+
 async function NewUser(){
     const userData = {
         email: document.getElementById('newEmail').value,
@@ -8,6 +18,7 @@ async function NewUser(){
 
     if (!userData.email || !userData.password) {
         console.log('Todos los campos son requeridos');
+        showResult('Todos los campos son requeridos', true);
         return;
     }
     try {
@@ -19,13 +30,16 @@ async function NewUser(){
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear usuario');
+            showResult(errorData.message, true);
+            throw new Error(errorData.message || 'Error añadiendo usuario');
         }
 
         const result = await response.json();
+        showResult(result.message, false)
         console.log(result.message || 'Usuario creado exitosamente');
 
     } catch (error) {
+        showResult(error.message, true);
         console.error('Error añadiendo usuario:', error);
     }
 }
@@ -38,6 +52,7 @@ async function UpdateUser() {
 
     if (!currentEmail || !currentPassword) {
         console.error('Email actual y contraseña actual son obligatorios');
+        showResult('Email actual y contraseña actual son obligatorios', true);
         return;
     }
 
@@ -59,10 +74,12 @@ async function UpdateUser() {
         const result = await response.json();
 
         if (!response.ok) {
+            showResult(result.message, true);
             throw new Error(result.message || 'Error al actualizar usuario');
         }
 
         console.log('Usuario actualizado exitosamente:', result);
+        showResult(result.message, false)
         
         if (newEmail) {
             document.getElementById('currentEmail').value = newEmail;
@@ -70,6 +87,7 @@ async function UpdateUser() {
 
     } catch (error) {
         console.error('Error actualizando usuario:', error.message);
+        showResult(error.message, true);
     }
 }
 
