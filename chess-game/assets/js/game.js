@@ -1,13 +1,39 @@
-import { getAvailablePowerUpTypes, createPowerUpInstance } from './powerUpManager.js';
+import { getAvailablePowerUpTypes, createPowerUpInstance, getPowerUpInfo } from './powerUpManager.js';
 import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 import { ExtraMovePowerUp } from './powerups/ExtraMovePowerUp.js';
 import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
+import { initializeGameIds, createNewRound, trackPowerupUsage } from './pruebasAPI.js';
+import { midgameBoards } from './boards/midgameBoards.js';
 
 // Sound effects
 const moveSound = new Audio('../Sonidos/moving-piece.mp3');
+
+/**
+ * Maps powerup names to their database IDs
+ * @param {string} powerupName - The name of the powerup
+ * @returns {number} The database ID of the powerup
+ */
+function getPowerUpIdByName(powerupName) {
+    // Mapping de nombres de powerups a sus IDs en la base de datos
+    const powerupIdMap = {
+        'Fence': 1,
+        'Pawn Range': 2,
+        'Crazy King': 3,
+        'Horizontal Portal': 4,
+        'Blast': 5,
+        'Shield': 6,
+        'Cage': 7,
+        'Extra Move': 8,
+        'Evolution': 9,
+        'Reducer': 10,
+        'Swap': 11
+    };
+    
+    return powerupIdMap[powerupName] || 1; // Default a 1 si no se encuentra
+}
 
 /**
  * Processes active power-ups at the start of a player's turn.
@@ -122,6 +148,39 @@ export function handleClick(r, c, gameContext) {
                             if (index > -1) {
                                 inventory.splice(index, 1);
                             }
+                            
+                            // NUEVO: Registrar uso del powerup en la base de datos
+                            if (gameContext.currentGameId && gameContext.currentRoundId && gameContext.playerIds) {
+                                const powerupData = {
+                                    id_powerup: getPowerUpIdByName(awaitingPowerUpTarget.powerUpType),
+                                    id_jugador: gameContext.playerIds[currentColor],
+                                    id_partida: gameContext.currentGameId,
+                                    id_ronda: gameContext.currentRoundId,
+                                    color: currentColor
+                                };
+                                
+                                console.log('🎯 Registrando uso de powerup:', {
+                                    powerupName: awaitingPowerUpTarget.powerUpType,
+                                    playerColor: currentColor,
+                                    powerupData,
+                                    mappedId: getPowerUpIdByName(awaitingPowerUpTarget.powerUpType)
+                                });
+                                
+                                trackPowerupUsage(powerupData)
+                                    .then(result => {
+                                        console.log('✅ Powerup registrado exitosamente:', result);
+                                    })
+                                    .catch(error => {
+                                        console.error('❌ Error registrando uso de powerup:', error);
+                                    });
+                            } else {
+                                console.warn('⚠️ No se puede registrar powerup - falta información de contexto:', {
+                                    hasGameId: !!gameContext.currentGameId,
+                                    hasRoundId: !!gameContext.currentRoundId,
+                                    hasPlayerIds: !!gameContext.playerIds,
+                                    playerIds: gameContext.playerIds
+                                });
+                            }
                         }
                     }
                     
@@ -142,6 +201,39 @@ export function handleClick(r, c, gameContext) {
                             inventory.splice(index, 1);
                         }
                         // renderPowerUpInventories is called by renderBoard in board.js
+                        
+                        // NUEVO: Registrar uso del powerup en la base de datos
+                        if (gameContext.currentGameId && gameContext.currentRoundId && gameContext.playerIds) {
+                            const powerupData = {
+                                id_powerup: getPowerUpIdByName(awaitingPowerUpTarget.powerUpType),
+                                id_jugador: gameContext.playerIds[currentColor],
+                                id_partida: gameContext.currentGameId,
+                                id_ronda: gameContext.currentRoundId,
+                                color: currentColor
+                            };
+                            
+                            console.log('🎯 Registrando uso de powerup:', {
+                                powerupName: awaitingPowerUpTarget.powerUpType,
+                                playerColor: currentColor,
+                                powerupData,
+                                mappedId: getPowerUpIdByName(awaitingPowerUpTarget.powerUpType)
+                            });
+                            
+                            trackPowerupUsage(powerupData)
+                                .then(result => {
+                                    console.log('✅ Powerup registrado exitosamente:', result);
+                                })
+                                .catch(error => {
+                                    console.error('❌ Error registrando uso de powerup:', error);
+                                });
+                        } else {
+                            console.warn('⚠️ No se puede registrar powerup - falta información de contexto:', {
+                                hasGameId: !!gameContext.currentGameId,
+                                hasRoundId: !!gameContext.currentRoundId,
+                                hasPlayerIds: !!gameContext.playerIds,
+                                playerIds: gameContext.playerIds
+                            });
+                        }
                     }
                 }
                 // canActivate or activate should set messageElement if there's an issue
@@ -187,7 +279,9 @@ export function handleClick(r, c, gameContext) {
     if (gameContext.isLegalMove(fr, fc, r, c)) { // isLegalMove considers self-check
         console.log(`Move from ${fr},${fc} to ${r},${c} IS LEGAL`);
 
-        playSound(moveSound);        // --- Actual Move Execution ---
+        playSound(moveSound);
+
+        // --- Actual Move Execution ---
         const pieceToMove = board[fr][fc];
         const capturedPiece = board[r][c]; // Store captured piece before overwriting
 
@@ -224,7 +318,11 @@ export function handleClick(r, c, gameContext) {
             }
             
             // Declarar ganador inmediatamente
-            gameContext.declareWinner(winnerColor);
+            if (gameContext.declareWinner) {
+                gameContext.declareWinner(winnerColor);
+            } else if (gameContext.handleRoundEnd) {
+                gameContext.handleRoundEnd(winnerColor, gameContext);
+            }
             gameContext.renderBoard();
             return; // Terminar la función inmediatamente
         }
@@ -305,12 +403,23 @@ export function handleClick(r, c, gameContext) {
         if (gameContext.isCheckmate(gameContext.currentColor)) {
             // El jugador que acaba de mover gana
             const winnerColor = currentColor;
-            gameContext.declareWinner(winnerColor);
-            turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;        }        // Verificar ahogado usando la nueva función
+            if (gameContext.declareWinner) {
+                gameContext.declareWinner(winnerColor);
+            } else if (gameContext.handleRoundEnd) {
+                gameContext.handleRoundEnd(winnerColor, gameContext);
+            }
+            turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
+        } 
+        // Verificar ahogado usando la nueva función
         else if (gameContext.isStalemate && gameContext.isStalemate(gameContext.currentColor)) {
-            gameContext.declareStalemate();
-            turnMessage = "¡Tablas por Ahogado! Ambos jugadores reciben 1 punto.";
-        }
+            if (gameContext.declareStalemate) {
+                gameContext.declareStalemate();
+                turnMessage = "¡Tablas por Ahogado! Ambos jugadores reciben 1 punto.";
+            } else {
+                messageElement.textContent = "¡Tablas por Ahogado!";
+                gameContext.gameOver = true;
+            }
+        } 
         // Verificar jaque simple
         else if (gameContext.isKingInCheck(gameContext.board, gameContext.currentColor)) {
             const currentColorName = gameContext.currentColor === 'w' ? 'Blancas' : 'Negras';
@@ -455,5 +564,197 @@ export function updateScore(player, gameContext) {
     } else {
         gameContext.score2++;
         document.getElementById('score2').textContent = gameContext.score2;
+    }
+}
+
+export async function initGame(whitePlayerEmail, blackPlayerEmail) {
+    const randomIndex = Math.floor(Math.random() * midgameBoards.neutral.length);
+    const initialBoard = JSON.parse(JSON.stringify(midgameBoards.neutral[randomIndex]));
+
+    const gameContext = {
+        board: initialBoard,
+        currentColor: 'w',
+        selected: null,
+        gameOver: false,
+        boardElement: document.getElementById('board'),
+        messageElement: document.getElementById('message'),
+        powerUpsWhite: [],
+        powerUpsBlack: [],
+        activePowerUps: [],
+        currentGameId: null,
+        currentRoundId: null,
+        // Inicializar contadores de puntos
+        score1: 0,
+        score2: 0,
+        // Inicializar umbrales de powerups
+        nextThresholdWhite: 5,
+        nextThresholdBlack: 5,
+        playerIds: {
+            'w': null,
+            'b': null
+        },
+        getCurrentPlayerId: function(color) {
+            return this.playerIds[color];
+        },
+        // Agregar función grantPowerUp
+        grantPowerUp: function(color, powerUpType) {
+            if (!powerUpType) return;
+            
+            const inventory = color === 'w' ? this.powerUpsWhite : this.powerUpsBlack;
+            const maxPowerUps = 5; // Límite de 5 powerups por jugador
+            
+            if (inventory.length >= maxPowerUps) {
+                if (this.messageElement) {
+                    this.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} tienen el máximo de power-ups (${maxPowerUps}).`;
+                }
+                return;
+            }
+            
+            inventory.push(powerUpType);
+            if (this.messageElement) {
+                const powerUpInfo = getPowerUpInfo(powerUpType);
+                const powerUpName = powerUpInfo ? powerUpInfo.name : powerUpType;
+                this.messageElement.textContent = 
+                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen power-up: ${powerUpName}!`;
+            }
+            this.renderBoard(); // Para actualizar la UI de powerups
+        }
+    };
+
+    try {
+        // Inicializar IDs desde la base de datos
+        await initializeGameIds(gameContext, whitePlayerEmail, blackPlayerEmail);
+        
+        console.log('✅ Game IDs initialized successfully:');
+        console.log('- Game ID:', gameContext.currentGameId);
+        console.log('- Round ID:', gameContext.currentRoundId);
+        console.log('- White Player ID:', gameContext.playerIds['w']);
+        console.log('- Black Player ID:', gameContext.playerIds['b']);
+        
+        // Resto de la inicialización del juego...
+        setupGameContext(gameContext);
+        
+        // Inicializar displays de puntuación
+        document.getElementById('score1').textContent = '0';
+        document.getElementById('score2').textContent = '0';
+        
+        if (gameContext.messageElement) {
+            gameContext.messageElement.textContent = 'Partida inicializada correctamente. Turno de las Blancas.';
+        }
+        
+        return gameContext;
+    } catch (error) {
+        console.error('Error inicializando el juego:', error);
+        if (gameContext.messageElement) {
+            gameContext.messageElement.textContent = 'Error inicializando el juego. Por favor, intenta de nuevo.';
+        }
+        throw error;
+    }
+}
+
+/**
+ * Helper function to get a random board (used by resetGame)
+ * @param {Array<Array<Array<object|null>>>} boardArray - Array of board configurations.
+ * @returns {Array<Array<object|null>>|null} A deep copy of a random board, or null if error.
+ */
+function getRandomBoard(boardArray) {
+    if (!boardArray || boardArray.length === 0) {
+        console.error("Board array is empty or undefined. Cannot select a random board.");
+        return null;
+    }
+    const randomIndex = Math.floor(Math.random() * boardArray.length);
+    try {
+        return JSON.parse(JSON.stringify(boardArray[randomIndex]));
+    } catch (e) {
+        console.error("Error deep copying board:", e);
+        return null; // Fallback or re-throw
+    }
+}
+
+/**
+ * Resets the game state for a new round or a full game restart.
+ * @param {object} gameContext - The current game context.
+ * @param {boolean} [fullReset=false] - True to reset all rounds and scores, false for next round.
+ */
+export async function resetGame(gameContext, fullReset = false) {
+    let newBoard;
+
+    if (fullReset) {
+        // For full reset, use neutral boards
+        newBoard = getRandomBoard(midgameBoards.neutral);
+    } else { 
+        // For round resets, the board selection logic would be handled by index.js
+        // based on the round number and wins, so we default to neutral here
+        newBoard = getRandomBoard(midgameBoards.neutral);
+
+        // Crear nueva ronda en la base de datos si no es reset completo
+        try {
+            if (gameContext.currentGameId) {
+                const roundNumber = gameContext.currentRound || 1;
+                const roundId = await createNewRound(gameContext.currentGameId, roundNumber);
+                gameContext.currentRoundId = roundId;
+            }
+        } catch (error) {
+            console.error('Error creando nueva ronda:', error);
+            if(gameContext.messageElement) {
+                gameContext.messageElement.textContent = 'Error al crear nueva ronda. Algunas funciones pueden no estar disponibles.';
+            }
+        }
+    }
+
+    if (!newBoard && gameContext.standardInitialBoard) { // Fallback if midgame board loading fails
+        console.error("Failed to load midgame board. Falling back to standard initial board.");
+        newBoard = gameContext.standardInitialBoard();
+    } else if (!newBoard) {
+        console.error("CRITICAL: Failed to load any board. Game cannot continue.");
+        // Display error to user
+        if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
+        return;
+    }
+    gameContext.board = newBoard;
+
+    // MODIFICACIÓN: Solo resetear puntos y power-ups en reset completo
+    if (fullReset) {
+        // Reset scores for a full game restart
+        gameContext.score1 = 0;
+        gameContext.score2 = 0;
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
+        if (score1El) score1El.textContent = '0';
+        if (score2El) score2El.textContent = '0';
+
+        // Reset power-ups for a full game restart
+        gameContext.powerUpsWhite = [];
+        gameContext.powerUpsBlack = [];
+        gameContext.nextThresholdWhite = 5;
+        gameContext.nextThresholdBlack = 5;
+    }
+    // NOTA: Los puntos y power-ups se mantienen entre rondas (solo se resetean en fullReset)
+
+    // Reset game state (esto se resetea siempre)
+    gameContext.currentColor = 'w';
+    gameContext.selected = null;
+    gameContext.gameOver = false;
+    
+    // Reset power-ups activos y vallas (estos sí se resetean cada ronda)
+    gameContext.fencedTiles = [];
+    gameContext.activePowerUps = [];
+    gameContext.awaitingPowerUpTarget = null;
+    
+    // NUEVO: Reset específico para Swap
+    gameContext.swapSelection = null;
+    
+    // Reset efectos temporales de power-ups
+    gameContext.pawnRangeActive = {};
+    gameContext.crazyKingActive = {};
+
+    // Update message if messageElement exists
+    if(gameContext.messageElement) {
+        gameContext.messageElement.textContent = "Juego reiniciado. Turno de las Blancas.";
+    }
+    
+    // Render board if render function exists
+    if (gameContext.renderBoard) {
+        gameContext.renderBoard();
     }
 }
