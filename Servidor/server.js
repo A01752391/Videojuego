@@ -54,6 +54,7 @@ app.get("/api/playerstats", async (req, res) => {
         connection = await connectToDB();
 
         const id_jugador = req.query.id_jugador ? parseInt(req.query.id_jugador) : null;
+        const jugador_email = req.query.jugador_email;
         
         let query = 'SELECT * FROM vista_estadisticas_jugador';
         let params = [];
@@ -61,13 +62,16 @@ app.get("/api/playerstats", async (req, res) => {
         if (id_jugador && !isNaN(id_jugador)) {
             query += ' WHERE id_jugador = ?';
             params.push(id_jugador);
+        } else if (jugador_email) {
+            query += ' WHERE email = ?';
+            params.push(jugador_email);
         }
 
         // Orden de aparicion de usuarios
         query += ' ORDER BY puntaje_total DESC, victorias DESC, partidas_jugadas DESC';
 
         // Ejecutar consulta
-        console.log('Query:', query); 
+        console.log('Query:', query, 'Params:', params); 
         const [rows] = await connection.execute(query, params);
 
         const stats = rows.map(row => ({
@@ -115,7 +119,6 @@ app.get("/api/playerstats", async (req, res) => {
             });
         }
     } finally {
-
         // Cerrar conexión
         if (connection) {
             try {

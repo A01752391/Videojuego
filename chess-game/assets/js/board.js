@@ -55,7 +55,6 @@ export function renderBoard(gameContext) {
         for (let c = 0; c < 8; c++) {
             const cell = document.createElement("div");
             cell.classList.add("cell");
-            // Use distinct class names for cell colors to avoid conflict with piece colors
             cell.classList.add((r + c) % 2 === 0 ? "white-cell" : "black-cell");
             cell.dataset.row = r;
             cell.dataset.col = c;
@@ -69,9 +68,11 @@ export function renderBoard(gameContext) {
                 fenceMarker.classList.add("fence-marker");
                 fenceMarker.title = `Valla (${fence.remainingDuration} turnos restantes)`;
                 cell.appendChild(fenceMarker);
-            }            if (piece) {
-                const imageClass = getPieceImageClass(piece);
-                cell.classList.add(imageClass);
+            }
+
+            if (piece) {
+                // Agregar la clase específica de la pieza (ej: piece-w-p para peón blanco)
+                cell.classList.add(`piece-${piece.color}-${piece.type}`);
                 cell.classList.add("piece");
                 cell.classList.add(piece.color === 'w' ? 'player1-piece' : 'player2-piece');
 
@@ -94,12 +95,10 @@ export function renderBoard(gameContext) {
                 gameContext.swapSelection.pieces.forEach((piece, index) => {
                     if (piece.row === r && piece.col === c) {
                         if (index === 0) {
-                            // Primera pieza seleccionada - verde
                             cell.style.background = 'linear-gradient(45deg, #4CAF50, #81C784)';
                             cell.style.border = '3px solid #2E7D32';
                             cell.style.boxShadow = '0 0 10px rgba(76, 175, 80, 0.7)';
                         } else {
-                            // Segunda pieza seleccionada - azul
                             cell.style.background = 'linear-gradient(45deg, #2196F3, #64B5F6)';
                             cell.style.border = '3px solid #1565C0';
                             cell.style.boxShadow = '0 0 10px rgba(33, 150, 243, 0.7)';

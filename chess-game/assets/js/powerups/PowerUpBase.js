@@ -1,3 +1,5 @@
+import { trackPowerupUsage } from '../pruebasAPI.js';
+
 export class PowerUpBase {
   constructor(name, description, requiresTarget = false, duration = 0, uiIcon = null) {
     if (this.constructor === PowerUpBase) {
@@ -128,5 +130,39 @@ triggerRadialIllumination(gameContext, row = null, col = null, effectType = 'def
         }
         gameContext.activePowerUps.push(activeInstanceData);
     }
+
+    // Registrar el uso del powerup en la base de datos
+    try {
+        const powerupData = {
+            id_powerup: this.getPowerupId(this.name), // Función que necesitamos implementar
+            id_jugador: gameContext.getCurrentPlayerId(playerColor), // Función que necesitamos implementar
+            id_partida: gameContext.currentGameId, // Necesitamos asegurarnos que esto exista
+            id_ronda: gameContext.currentRoundId // Necesitamos asegurarnos que esto exista
+        };
+        
+        trackPowerupUsage(powerupData).catch(error => {
+            console.error('Error registrando powerup en base de datos:', error);
+        });
+    } catch (error) {
+        console.error('Error preparando datos para registro de powerup:', error);
+    }
+  }
+
+  // Función auxiliar para obtener el ID del powerup basado en su nombre
+  getPowerupId(powerupName) {
+    const powerupIds = {
+        'Fence': 1,
+        'Pawn Range': 2,
+        'Crazy King': 3,
+        'Horizontal Portal': 4,
+        'Blast': 5,
+        'Shield': 6,
+        'Cage': 7,
+        'Extra Move': 8,
+        'Evolution': 9,
+        'Reducer': 10,
+        'Swap': 11
+    };
+    return powerupIds[powerupName] || null;
   }
 }
