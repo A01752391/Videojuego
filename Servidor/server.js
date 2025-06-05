@@ -20,6 +20,49 @@ async function connectToDB() {
     });
 }
 
+// Helper functions for statistics calculations
+function calcularPiezasMasUsadas(turns) {
+    const conteo = {};
+    turns.forEach(turn => {
+        if (turn.tipoPieza) {
+            conteo[turn.tipoPieza] = (conteo[turn.tipoPieza] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(conteo)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3)
+        .map(([pieza, usos]) => ({ pieza, usos }));
+}
+
+function calcularTiempoPromedio(turns) {
+    const turnosConTiempo = turns.filter(t => t.tiempoDuracion && t.tiempoDuracion > 0);
+    if (turnosConTiempo.length === 0) return '0s';
+    
+    const promedioSegundos = turnosConTiempo.reduce((sum, t) => sum + t.tiempoDuracion, 0) / turnosConTiempo.length;
+    return `${promedioSegundos.toFixed(1)}s`;
+}
+
+function calcularDistribucionTipos(pieces) {
+    const conteo = {};
+    pieces.forEach(piece => {
+        if (piece.tipo) {
+            conteo[piece.tipo] = (conteo[piece.tipo] || 0) + 1;
+        }
+    });
+    return conteo;
+}
+
+function calcularDistribucionColores(pieces) {
+    const conteo = {};
+    pieces.forEach(piece => {
+        if (piece.color) {
+            conteo[piece.color] = (conteo[piece.color] || 0) + 1;
+        }
+    });
+    return conteo;
+}
+
 app.use('/css', express.static(path.join(process.cwd(), '../chess-game/assets/css')));
 app.use('/js', express.static(path.join(process.cwd(), '../chess-game/assets/js')));
 app.use('/images', express.static(path.join(process.cwd(), '../Imagenes')));
@@ -267,7 +310,7 @@ app.post("/api/playerstats/login", async (req, res) => {
         const user = users[0];
 
         // Verificación de la contraseña
-        if (user.password_jugador !== password) {
+        if (user.password_player !== password) {
             return res.status(401).json({
                 success: false,
                 message: 'Credenciales inválidas',
@@ -2303,8 +2346,8 @@ app.get("/api/turns/complete", async (req, res) => {
             estadisticas: {
                 totalCapturas: completeTurns.filter(t => t.fueCaptura).length,
                 totalMovimientos: completeTurns.filter(t => !t.fueCaptura).length,
-                piezasMasUsadas: this.calcularPiezasMasUsadas(completeTurns),
-                tiempoPromedioTurno: this.calcularTiempoPromedio(completeTurns)
+                piezasMasUsadas: calcularPiezasMasUsadas(completeTurns),
+                tiempoPromedioTurno: calcularTiempoPromedio(completeTurns)
             }
         });
 
@@ -2826,8 +2869,8 @@ app.get("/api/pieces/complete", async (req, res) => {
                 piezasCapturadas: completePieces.filter(p => p.capturada).length,
                 piezasProtegidas: completePieces.filter(p => p.protegida).length,
                 piezasActivas: completePieces.filter(p => !p.capturada && !p.protegida).length,
-                distribucionPorTipo: this.calcularDistribucionTipos(completePieces),
-                distribucionPorColor: this.calcularDistribucionColores(completePieces)
+                distribucionPorTipo: calcularDistribucionTipos(completePieces),
+                distribucionPorColor: calcularDistribucionColores(completePieces)
             }
         });
 

@@ -6,7 +6,32 @@
   <link rel="stylesheet" href="../css/game-stats-modal.css">
 </head>
 <body>
-  <div id="main-layout">
+  <!-- Game Start Form -->
+  <div id="game-start-form" class="game-start-form">
+    <div class="start-form-container">
+      <img id="title-start" src="/images/pawnedletraslogo.png" alt="PAWNED Logo" class="start-logo">
+      
+      <h2>Iniciar Nueva Partida</h2>
+      
+      <div class="player-inputs">
+        <div class="input-group">
+          <label for="white-player">Email Jugador Blancas:</label>
+          <input type="email" id="white-player" name="white-player" placeholder="jugador1@email.com" required>
+        </div>
+        
+        <div class="input-group">
+          <label for="black-player">Email Jugador Negras:</label>
+          <input type="email" id="black-player" name="black-player" placeholder="jugador2@email.com" required>
+        </div>
+      </div>
+      
+      <button id="start-game-btn" class="start-button image-button">
+        <img src="/images/startgame.png" alt="Iniciar Partida" class="button-image" />
+      </button>
+    </div>
+  </div>
+
+  <div id="main-layout" style="display: none;">
     <!-- Left side - Board -->
     <div id="board-section">
       <div id="board"></div>
@@ -63,6 +88,7 @@
     </div>
   </div>  <script src="../js/round-stats-modal.js"></script>
   <script src="../js/game-stats-modal.js"></script>
+  <script src="../js/setupPowerups.js"></script>
   <script type="module" src="../js/index.js"></script>
 </body>
 </html>

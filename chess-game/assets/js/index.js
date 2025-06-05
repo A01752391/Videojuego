@@ -1,6 +1,6 @@
 import { getSymbol, coordsToAlgebraic } from './utils.js';
 import { midgameBoards } from './boards/midgameBoards.js';
-import { setupGameContext } from './game.js'; // NUEVO IMPORT
+import { setupGameContext, initGame } from './game.js';
 
 const EMPTY = null;
 
@@ -14,6 +14,9 @@ let roundStatsModal = null;
 
 // Game Statistics Modal
 let gameStatsModal = null;
+
+// Global game context variable
+let gameContext = null;
 
 // Game series data collection
 let gameSeriesData = {
@@ -62,17 +65,18 @@ function createNextRoundButton(gameContext) {
 
     const btn = document.createElement('button');
     btn.className = 'reset-button next-round-button image-button-game'; // Use general styling, add specific class
-      // Create image element
+    
+    // Create image element
     const img = document.createElement('img');
     img.src = '/images/nextroundbutton.png';
     img.alt = 'Next Round';
     img.className = 'game-button-image';
     
     btn.appendChild(img);
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
         round++;
         btn.remove();
-        resetGame(gameContext, false); // false for not a full game reset
+        await resetGame(gameContext, false); // false for not a full game reset
     });
     
     // Append to buttons container instead of document.body
@@ -166,272 +170,202 @@ function resetGame(gameContext, fullReset = false) {
     gameContext.renderBoard();
 }
 
+/**
+ * Handles the end of a round when a player wins.
+ * @param {string} winner - The color of the winning player ('w' for white, 'b' for black).
+ * @param {object} gameContext - The current game context.
+ */
+function handleRoundEnd(winner, gameContext) {
+    if (winner === 'w') {
+        winsWhite++;
+    } else if (winner === 'b') {
+        winsBlack++;
+    }
+    
+    updateRoundWinsDisplay();
+    
+    // Check if game is over (best of 3)
+    if (winsWhite === 2) {
+        if(gameContext.messageElement) {
+            gameContext.messageElement.textContent = "¡Las Blancas ganan la partida 2-" + winsBlack + "!";
+        }
+        gameContext.gameOver = true;
+        return;
+    } else if (winsBlack === 2) {
+        if(gameContext.messageElement) {
+            gameContext.messageElement.textContent = "¡Las Negras ganan la partida 2-" + winsWhite + "!";
+        }
+        gameContext.gameOver = true;
+        return;
+    } else if (round === 3) {
+        // Third round completed, determine winner
+        if (winsWhite > winsBlack) {
+            if(gameContext.messageElement) {
+                gameContext.messageElement.textContent = "¡Las Blancas ganan la partida " + winsWhite + "-" + winsBlack + "!";
+            }
+        } else if (winsBlack > winsWhite) {
+            if(gameContext.messageElement) {
+                gameContext.messageElement.textContent = "¡Las Negras ganan la partida " + winsBlack + "-" + winsWhite + "!";
+            }
+        } else {
+            if(gameContext.messageElement) {
+                gameContext.messageElement.textContent = "¡Partida empatada " + winsWhite + "-" + winsBlack + "!";
+            }
+        }
+        gameContext.gameOver = true;
+        return;
+    }
+    
+    // Continue to next round
+    createNextRoundButton(gameContext);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const boardElement = document.getElementById('board');
     const messageElement = document.getElementById('message');
     const resetButton = document.getElementById('reset');
+    const startForm = document.getElementById('game-start-form');
+    const mainLayout = document.getElementById('main-layout');
+    const startButton = document.getElementById('start-game-btn');
 
-    if (!boardElement || !messageElement || !resetButton) {
-        console.error("Essential UI elements (board, message, reset button) not found!");
+    if (!boardElement || !messageElement || !resetButton || !startForm || !mainLayout || !startButton) {
+        console.error("Essential UI elements not found!");
         return;
     }
 
-    // Dynamically import modules
-    Promise.all([
-        import('./board.js'),
-        import('./pieces.js'),
-        import('./game.js'),
-        import('./UI/pauseManager.js'),
-        // import('./powerUpManager.js') // Not directly used here, but by game.js
-    ]).then(([boardModule, piecesModule, gameModule, pauseModule]) => {
-        const { initialBoard: standardInitialBoardFunc, renderBoard: renderBoardFunc } = boardModule;
-        const { 
-            isLegalMove, 
-            getPossibleMoves, 
-            isBasicLegalMove, 
-            isSquareAttacked, 
-            findKing, 
-            isKingInCheck, 
-            isCheckmate,
-            isStalemate 
-        } = piecesModule;
-        const { updateScore: updateScoreFunc, handleClick: handleClickFunc, setupGameContext: setupGameContextFunc } = gameModule;
-        const { PauseManager } = pauseModule;
+    // Manejar el inicio de la partida
+    startButton.addEventListener('click', async () => {
+        const whitePlayerEmail = document.getElementById('white-player').value;
+        const blackPlayerEmail = document.getElementById('black-player').value;
 
-        round = 1; // Initialize for the very first game load
-        winsWhite = 0;
-        winsBlack = 0;
+        if (!whitePlayerEmail || !blackPlayerEmail) {
+            alert('Por favor ingresa el email de ambos jugadores');
+            return;
+        }
 
-        let initialMidgameBoard = getRandomBoard(midgameBoards.neutral);
-        if (!initialMidgameBoard) {
-            console.warn("Failed to load initial midgame board. Using standard board.");
-            initialMidgameBoard = standardInitialBoardFunc();
-        }        const gameContext = {
-            board: initialMidgameBoard,
-            currentColor: 'w',
-            selected: null,
-            score1: 0,
-            score2: 0,
-            boardElement,
-            messageElement,
-            EMPTY, // Make sure EMPTY is defined (const EMPTY = null;)
-            gameOver: false,
+        if (whitePlayerEmail === blackPlayerEmail) {
+            alert('Los jugadores deben tener emails diferentes');
+            return;
+        }
 
-            powerUpsWhite: [],
-            powerUpsBlack: [],
-            nextThresholdWhite: 5,
-            nextThresholdBlack: 5,
-            fencedTiles: [],
-            activePowerUps: [],
-            awaitingPowerUpTarget: null,
-
-            // NUEVO: Estado específico para Swap Power-Up
-            swapSelection: null,
-
-            // NUEVO: Sistema de seguimiento de estadísticas reales
-            gameStats: {
-                white: {
-                    turns: 0,
-                    captured: 0,
-                    powerupsUsed: 0
-                },
-                black: {
-                    turns: 0,
-                    captured: 0,
-                    powerupsUsed: 0
-                }
-            },
-
-            getSymbol, // from utils.js
-            coordsToAlgebraic, // from utils.js
-            isLegalMove: (fr, fc, tr, tc) => isLegalMove(fr, fc, tr, tc, gameContext),
-            getPossibleMoves: (r, c) => getPossibleMoves(r, c, gameContext),
-            isBasicLegalMove: (fr, fc, tr, tc) => isBasicLegalMove(fr, fc, tr, tc, gameContext),
-            isSquareAttacked: (r, c, color, attackingContext) => isSquareAttacked(r, c, color, attackingContext || gameContext), // Pass specific context if needed
-            findKing: (board, color) => findKing(board, color),
-            // Pass full gameContext to isKingInCheck as it's needed by isSquareAttacked
-            isKingInCheck: (boardToCheck, kingColor) => isKingInCheck(boardToCheck || gameContext.board, kingColor, { ...gameContext, board: boardToCheck || gameContext.board }),
-            // NUEVA FUNCIÓN: Agregar isCheckmate al gameContext
-            isCheckmate: (color) => isCheckmate(color, gameContext),
-            // NUEVA FUNCIÓN: Agregar isStalemate al gameContext (opcional para detectar ahogado)
-            isStalemate: (color) => isStalemate(color, gameContext),
-            updateScore: (player, capturedPiece) => updateScoreFunc(player, capturedPiece, gameContext), // Ensure updateScoreFunc is correctly defined in game.js
-            handleClick: (r, c) => handleClickFunc(r, c, gameContext),
-            renderBoard: () => renderBoardFunc(gameContext),
-            standardInitialBoard: standardInitialBoardFunc,
-            resetGame: resetGame,            grantPowerUp: (color, type) => {
-                if (!type) {
-                    console.warn("Attempted to grant an undefined power-up type.");
-                    return;
-                }
-                const inventory = color === 'w' ? gameContext.powerUpsWhite : gameContext.powerUpsBlack;
-                if (inventory.length < 5) {
-                    inventory.push(type);
-                    
-                    // Track newly added powerups for animation
-                    if (!gameContext.newlyAddedPowerUps) {
-                        gameContext.newlyAddedPowerUps = { white: [], black: [] };
-                    }
-                    const colorKey = color === 'w' ? 'white' : 'black';
-                    gameContext.newlyAddedPowerUps[colorKey].push(type);
-                      gameContext.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} obtienen poder: ${type}!`;
-                    renderBoardFunc(gameContext); // Re-render to update power-up display
-                } else {
-                    gameContext.messageElement.textContent = "Inventario de poderes lleno.";
-                }
-            },            declareWinner: (winnerColor) => { // Winner of the ROUND
-                if (gameContext.gameOver && !messageElement.textContent.includes("Ahogado")) return;
-
-                if (winnerColor === 'w') winsWhite++;
-                else if (winnerColor === 'b') winsBlack++;
-                updateRoundWinsDisplay();
-
-                const winnerName = winnerColor === 'w' ? 'Blancas' : 'Negras';
-                messageElement.textContent = `¡${winnerName} ganan la Ronda ${round}!`;
-                gameContext.gameOver = true; // Round is over
-
-                const existingNextRoundBtn = document.querySelector('button.next-round-button');
-                if(existingNextRoundBtn) existingNextRoundBtn.remove();
-                const existingFinalBtn = document.querySelector('button.final-reset-button');
-                if(existingFinalBtn) existingFinalBtn.remove();
-
-                // Prepare round data for statistics
-                const roundData = {
-                    round: round,
-                    winner: winnerColor,
-                    whiteScore: gameContext.score1,
-                    blackScore: gameContext.score2,
-                    winsWhite: winsWhite,
-                    winsBlack: winsBlack,
-                    gameStats: { ...gameContext.gameStats } // Deep copy of game statistics
-                };
-
-                // Store round data in series data
-                gameSeriesData.rounds.push(roundData);                // Check if this completes the series (first to 2 wins)
-                const seriesComplete = winsWhite >= 2 || winsBlack >= 2;
-
-                if (seriesComplete) {
-                    // Calculate total game duration and format it
-                    const durationMs = Date.now() - gameSeriesData.startTime;
-                    const minutes = Math.floor(durationMs / 60000);
-                    const seconds = Math.floor((durationMs % 60000) / 1000);
-                    gameSeriesData.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                    
-                    // Set the overall winner of the series
-                    gameSeriesData.winner = winsWhite >= 2 ? 'w' : 'b';
-                    
-                    // Create detailed victory message
-                    const seriesWinner = gameSeriesData.winner === 'w' ? 'Blancas' : 'Negras';
-                    const finalScore = `${winsWhite}-${winsBlack}`;
-                    let victoryType = '';
-                    
-                    if (round === 2) {
-                        victoryType = 'victoria perfecta 2-0';
-                    } else if (round === 3) {
-                        victoryType = 'victoria por 2-1 tras una batalla reñida';
-                    }
-                    
-                    messageElement.textContent = `🏆 ¡${seriesWinner} ganan la serie completa ${finalScore}! ${victoryType.charAt(0).toUpperCase() + victoryType.slice(1)}`;
-                    
-                    // Show game statistics modal for complete series
-                    setTimeout(() => {
-                        if (gameStatsModal) {
-                            gameStatsModal.show(gameSeriesData);
-                        }
-                    }, 2000); // Show victory message for 2 seconds before showing modal
-                } else {
-                    // Show round statistics modal for incomplete series
-                    setTimeout(() => {
-                        if (roundStatsModal) {
-                            roundStatsModal.show(roundData);
-                        }                    }, 1500); // Show win message for 1.5 seconds before showing modal
-                }
-            }
-        };        declareStalemate: () => { // Stalemate/Draw - both players get 1 point each
-            if (gameContext.gameOver) return;
-
-            // Both players receive 1 point each (full point, not half)
-            winsWhite += 1;
-            winsBlack += 1;
-            updateRoundWinsDisplay();
-
-            messageElement.textContent = `¡Tablas por Ahogado! Ambos jugadores reciben 1 punto.`;
-            gameContext.gameOver = true; // Round is over
-
-            const existingNextRoundBtn = document.querySelector('button.next-round-button');
-            if(existingNextRoundBtn) existingNextRoundBtn.remove();
-            const existingFinalBtn = document.querySelector('button.final-reset-button');
-            if(existingFinalBtn) existingFinalBtn.remove();
-
-            // Prepare round data for statistics
-            const roundData = {
-                round: round,
-                winner: 'stalemate', // Special case for stalemate
-                whiteScore: gameContext.score1,
-                blackScore: gameContext.score2,
-                winsWhite: winsWhite,
-                winsBlack: winsBlack,
-                gameStats: { ...gameContext.gameStats } // Deep copy of game statistics
-            };
-
-            // Store round data in series data
-            gameSeriesData.rounds.push(roundData);            // Check if this completes the series 
-            // With stalemate giving 1 point to each player, we need to handle ties
-            const seriesComplete = winsWhite >= 2 || winsBlack >= 2;
-
-            if (seriesComplete) {
-                // Calculate total game duration and format it
-                const durationMs = Date.now() - gameSeriesData.startTime;
-                const minutes = Math.floor(durationMs / 60000);
-                const seconds = Math.floor((durationMs % 60000) / 1000);
-                gameSeriesData.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
-                // Determine the overall winner of the series
-                if (winsWhite > winsBlack) {
-                    gameSeriesData.winner = 'w';
-                } else if (winsBlack > winsWhite) {
-                    gameSeriesData.winner = 'b';
-                } else {
-                    // In case of a tie (both have same score >= 2), the series continues
-                    // or we can declare it a tie series - for now we'll say it continues
-                    gameSeriesData.winner = 'w'; // Arbitrary choice for tie-breaking, or add tie logic
-                }
-                
-                // Create detailed victory message
-                const seriesWinner = gameSeriesData.winner === 'w' ? 'Blancas' : 'Negras';
-                const finalScore = `${winsWhite}-${winsBlack}`;
-                
-                messageElement.textContent = `🏆 ¡${seriesWinner} ganan la serie completa ${finalScore}!`;
-                
-                // Show game statistics modal for complete series
-                setTimeout(() => {
-                    if (gameStatsModal) {
-                        gameStatsModal.show(gameSeriesData);
-                    }
-                }, 2000); // Show victory message for 2 seconds before showing modal
-            } else {
-                // Show round statistics modal for incomplete series
-                setTimeout(() => {
-                    if (roundStatsModal) {
-                        roundStatsModal.show(roundData);
-                    }
-                }, 1500); // Show stalemate message for 1.5 seconds before showing modal
-            }
-        };// NUEVO: Configurar funciones auxiliares para gameContext (incluyendo switchTurn para Swap)
-        setupGameContextFunc(gameContext);
-
-        // Initialize pause manager
-        const pauseManager = new PauseManager(gameContext);
-        gameContext.pauseManager = pauseManager;        // Initialize round statistics modal
-        if (typeof RoundStatsModal !== 'undefined') {
-            roundStatsModal = new RoundStatsModal();
+        try {
+            // Mostrar mensaje de carga
+            startButton.textContent = 'Iniciando partida...';
+            startButton.disabled = true;
             
-            // Add event listeners for modal actions
-            window.addEventListener('nextRound', (event) => {
+            // Inicializar el juego con los emails de los jugadores
+            gameContext = await initGame(whitePlayerEmail, blackPlayerEmail);
+            
+            // Asignar el boardElement al gameContext
+            gameContext.boardElement = boardElement;
+            gameContext.messageElement = messageElement;
+            
+            // Agregar función para manejar el final de ronda
+            gameContext.handleRoundEnd = handleRoundEnd;
+            
+            // Ocultar el formulario y mostrar el tablero
+            startForm.style.display = 'none';
+            mainLayout.style.display = 'flex';
+
+            // Configurar el resto del juego
+            setupGame(gameContext);
+        } catch (error) {
+            console.error('Error iniciando el juego:', error);
+            alert('Error iniciando el juego. Por favor, verifica los emails e intenta de nuevo.');
+            
+            // Restaurar botón
+            startButton.textContent = 'Iniciar Partida';
+            startButton.disabled = false;
+        }
+    });
+
+    function setupGame(gameContext) {
+        // Dynamically import modules
+        Promise.all([
+            import('./board.js'),
+            import('./pieces.js'),
+            import('./game.js'),
+            import('./UI/pauseManager.js'),
+        ]).then(([boardModule, piecesModule, gameModule, pauseModule]) => {
+            const { initialBoard: standardInitialBoardFunc, renderBoard: renderBoardFunc } = boardModule;
+            const { 
+                isLegalMove, 
+                getPossibleMoves, 
+                isBasicLegalMove, 
+                isSquareAttacked, 
+                findKing, 
+                isKingInCheck, 
+                isCheckmate,
+                isStalemate 
+            } = piecesModule;
+            const { updateScore: updateScoreFunc, handleClick: handleClickFunc } = gameModule;
+            const { PauseManager } = pauseModule;
+
+            // Configurar el contexto del juego con todas las funciones necesarias
+            Object.assign(gameContext, {
+                renderBoard: () => renderBoardFunc(gameContext),
+                standardInitialBoard: standardInitialBoardFunc,
+                isLegalMove: (fr, fc, tr, tc) => isLegalMove(fr, fc, tr, tc, gameContext),
+                getPossibleMoves: (r, c) => getPossibleMoves(r, c, gameContext),
+                isBasicLegalMove: (fr, fc, tr, tc) => isBasicLegalMove(fr, fc, tr, tc, gameContext),
+                isSquareAttacked: (r, c, color, attackingContext) => isSquareAttacked(r, c, color, attackingContext || gameContext),
+                findKing: (board, color) => findKing(board, color),
+                isKingInCheck: (boardToCheck, kingColor) => isKingInCheck(boardToCheck || gameContext.board, kingColor, { ...gameContext, board: boardToCheck || gameContext.board }),
+                isCheckmate: (color) => isCheckmate(color, gameContext),
+                isStalemate: (color) => isStalemate(color, gameContext),
+                updateScore: (player) => updateScoreFunc(player, gameContext)
+            });
+
+            // Configurar el manejador de pausa
+            gameContext.pauseManager = new PauseManager(gameContext);
+
+            // Configurar eventos del tablero
+            boardElement.addEventListener('click', (e) => {
+                const cell = e.target.closest('.cell');
+                if (cell) {
+                    const row = parseInt(cell.dataset.row);
+                    const col = parseInt(cell.dataset.col);
+                    handleClickFunc(row, col, gameContext);
+                }
+            });
+
+            // Configurar evento del botón de reset
+            resetButton.addEventListener('click', () => {
+                const shouldReset = confirm('¿Estás seguro de que quieres reiniciar el juego?');
+                if (shouldReset) {
+                    resetGame(gameContext, true);
+                    gameContext.renderBoard();
+                }
+            });
+
+            // Renderizar el tablero inicial
+            gameContext.renderBoard();
+            
+            console.log('Juego inicializado correctamente');
+            
+            // Configurar funciones de debug si están disponibles
+            if (window.setGameContextDebug) {
+                window.setGameContextDebug();
+            }
+        }).catch(error => {
+            console.error('Error cargando módulos del juego:', error);
+            alert('Error cargando los módulos del juego');
+        });
+    }
+
+    // Initialize round statistics modal
+    if (typeof RoundStatsModal !== 'undefined') {
+        roundStatsModal = new RoundStatsModal();
+        
+        // Add event listeners for modal actions
+        window.addEventListener('nextRound', (event) => {
+            if (gameContext) {
                 round++;
                 resetGame(gameContext, false);
-            });
-              window.addEventListener('newGame', (event) => {
+            }
+        });
+        window.addEventListener('newGame', (event) => {
+            if (gameContext) {
                 round = 1;
                 winsWhite = 0;
                 winsBlack = 0;
@@ -443,71 +377,57 @@ document.addEventListener('DOMContentLoaded', () => {
                     duration: null
                 };
                 resetGame(gameContext, true);
-            });
-        } else {
-            console.warn('RoundStatsModal not available. Statistics will not be shown.');
-        }        // Initialize game statistics modal
-        if (typeof GameStatsModal !== 'undefined') {
-            gameStatsModal = new GameStatsModal();
-        } else {
-            console.warn('GameStatsModal not available. Game statistics will not be shown.');
-        }
-
-        updateRoundWinsDisplay();
-        messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
-        gameContext.renderBoard();
-
-        boardElement.addEventListener('click', (event) => {
-            if (pauseManager.isGamePaused) {
-                return;
-            }
-            const cell = event.target.closest('.cell');
-            if (cell && cell.dataset.row && cell.dataset.col) {
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                gameContext.handleClick(row, col);
             }
         });
+    } else {
+        console.warn('RoundStatsModal not available. Statistics will not be shown.');
+    }
 
-        resetButton.addEventListener('click', () => {
-          if (pauseManager.isGamePaused) {
-                return;
-            }
-            resetGame(gameContext, true);
-        });
+    // Initialize game statistics modal
+    if (typeof GameStatsModal !== 'undefined') {
+        gameStatsModal = new GameStatsModal();
+    } else {
+        console.warn('GameStatsModal not available. Game statistics will not be shown.');
+    }
 
-        // NUEVO: Agregar listener para tecla ESC para cancelar selección de Swap
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && gameContext.swapSelection) {
-                import('./game.js').then(gameModule => {
-                    gameModule.cancelSwapSelection(gameContext);
-                });
-            }
-        });
-
-        // NUEVO: Agregar funciones de ayuda para debug (opcional)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            window.gameContext = gameContext; // Para debug en consola
-            window.debugSwap = {
-                showSelection: () => console.log('Swap Selection:', gameContext.swapSelection),
-                clearSelection: () => {
-                    gameContext.swapSelection = null;
-                    gameContext.renderBoard();
-                },
-                testSwap: (r1, c1, r2, c2) => {
-                    const SwapPowerUp = gameContext.board && gameContext.board[0] ? 
-                        import('./powerups/SwapPowerUp.js') : null;
-                    if (SwapPowerUp) {
-                        SwapPowerUp.then(module => {
-                            console.log('Can swap:', module.SwapPowerUp.canSwapPieces(gameContext, r1, c1, r2, c2));
-                        });
+    // NUEVO: Agregar funciones de ayuda para debug (opcional)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Función para establecer gameContext en window después de que se inicialice
+        window.setGameContextDebug = () => {
+            if (gameContext) {
+                window.gameContext = gameContext;
+                window.debugSwap = {
+                    showSelection: () => console.log('Swap Selection:', gameContext.swapSelection),
+                    clearSelection: () => {
+                        if (gameContext) {
+                            gameContext.swapSelection = null;
+                            gameContext.renderBoard();
+                        }
+                    },
+                    testSwap: (r1, c1, r2, c2) => {
+                        if (gameContext && gameContext.board && gameContext.board[0]) {
+                            const SwapPowerUp = import('./powerups/SwapPowerUp.js');
+                            if (SwapPowerUp) {
+                                SwapPowerUp.then(module => {
+                                    console.log('Can swap:', module.SwapPowerUp.canSwapPieces(gameContext, r1, c1, r2, c2));
+                                });
+                            }
+                        }
                     }
-                }
-            };
-        }
-
-    }).catch(error => {
-        console.error("Error loading game modules:", error);
-        if(messageElement) messageElement.textContent = "Error al cargar el juego. Revisa la consola.";
-    });
+                };
+                console.log('Debug functions available: window.gameContext, window.debugSwap');
+            } else {
+                console.warn('gameContext not initialized yet');
+            }
+        };
+    }
 });
+
+// Export functions that might be needed by other modules
+export {
+    getRandomBoard,
+    updateRoundWinsDisplay,
+    createNextRoundButton,
+    resetGame,
+    handleRoundEnd
+};
