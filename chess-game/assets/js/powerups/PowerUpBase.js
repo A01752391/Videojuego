@@ -117,10 +117,18 @@ triggerRadialIllumination(gameContext, row = null, col = null, effectType = 'def
     gameContext.activePowerUps = gameContext.activePowerUps.filter(p => p.id !== activePowerUpInstance.id);
     gameContext.renderBoard(); // Re-render to remove any visual effects
   }
-
-
   onActivationComplete(gameContext, playerColor, activeInstanceData) {
     console.log(`${this.name} (ID: ${activeInstanceData.id}) used by ${playerColor}.`);
+    
+    // Track powerup usage in game statistics
+    if (gameContext.gameStats) {
+        if (playerColor === 'w') {
+            gameContext.gameStats.white.powerupsUsed++;
+        } else if (playerColor === 'b') {
+            gameContext.gameStats.black.powerupsUsed++;
+        }
+    }
+    
     if (this.duration > 0) {
         // Add to a list of active power-ups in gameContext for turn-based effects
         if (!gameContext.activePowerUps) {

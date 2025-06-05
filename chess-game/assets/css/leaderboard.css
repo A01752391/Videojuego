@@ -17,16 +17,30 @@ body {
     min-height: 100vh;
     color: #ffd54f;
     overflow-x: hidden;
+    overflow-y: auto;
     margin: 0;
     padding: 0;
+}
+
+/* Ensure page is always scrollable */
+html {
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+html, body {
+    height: auto;
+    min-height: 100vh;
 }
 
 .leaderboard-container {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    padding-bottom: 100px; /* Extra padding to ensure scroll space */
     min-height: 100vh;
-    overflow-y: auto;
+    overflow-y: visible;
+    position: relative;
 }
 
 /* Header */
@@ -44,10 +58,13 @@ body {
 .header h1 {
     font-size: 3.5rem;
     font-weight: 700;
-    color: #ffd54f;
     text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
     margin-bottom: 15px;
     filter: drop-shadow(0 0 15px #ff4081);
+    background: linear-gradient(45deg, #ffd54f, #ff4081);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .header p {
@@ -81,6 +98,117 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.search-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-controls label {
+    font-weight: 600;
+    color: #ffd54f;
+    font-size: 1.1rem;
+    white-space: nowrap;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 100px 10px 15px;
+    border: 2px solid #ff4081;
+    border-radius: 8px;
+    background: rgba(44, 30, 46, 0.9);
+    color: #ffd54f;
+    font-size: 14px;
+    font-family: 'Fredoka', Arial, sans-serif;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    background: rgba(255, 64, 129, 0.2);
+    border-color: #ffd54f;
+    box-shadow: 0 0 10px rgba(255, 64, 129, 0.3);
+}
+
+.search-input::placeholder {
+    color: rgba(255, 213, 79, 0.6);
+}
+
+.search-btn {
+    position: absolute;
+    right: 35px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ff4081;
+    border: none;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Fredoka', Arial, sans-serif;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    min-width: 60px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.search-btn:hover {
+    background: #e91e63;
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 4px 8px rgba(255, 64, 129, 0.4);
+}
+
+.search-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #ff4081;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.clear-search-btn:hover {
+    background: rgba(255, 64, 129, 0.3);
+    color: #ffd54f;
+}
+
+.search-results-count {
+    font-size: 0.9rem;
+    color: #ffd54f;
+    opacity: 0.8;
+    white-space: nowrap;
 }
 
 .sort-controls label {
@@ -183,8 +311,14 @@ body {
     border: 2px solid #ff4081;
     border-radius: 20px;
     margin: 20px 0;
+    margin-bottom: 200px; /* Ensure space for navigation button */
     box-shadow: 0 0 20px rgba(255, 64, 129, 0.3);
     backdrop-filter: blur(10px);
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .loading-spinner {
@@ -215,6 +349,64 @@ body {
 .error-state p, .empty-state p {
     margin: 0 0 20px 0;
     opacity: 0.8;
+}
+
+/* Mensaje de no resultados */
+.no-results-message {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(44, 30, 46, 0.9);
+    border-radius: 15px;
+    border: 2px dashed #ff4081;
+}
+
+.no-results-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.no-results-icon {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+.no-results-content h3 {
+    color: #ffd54f;
+    font-size: 1.5rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.no-results-content p {
+    color: rgba(255, 213, 79, 0.8);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.no-results-content strong {
+    color: #ff4081;
+}
+
+.no-results-content .btn-secondary {
+    background: #ff4081;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: 'Fredoka', Arial, sans-serif;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.no-results-content .btn-secondary:hover {
+    background: #e91e63;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 64, 129, 0.4);
 }
 
 /* Estadísticas generales - Game Style */
@@ -446,44 +638,36 @@ td {
 .navigation-controls {
     text-align: center;
     margin-top: 30px;
-    padding: 20px;
-    background: rgba(44, 30, 46, 0.8);
-    border-radius: 15px;
-    border: 2px solid #ff4081;
-    backdrop-filter: blur(10px);
+    padding: 10px;
 }
 
-/* Back to main menu button */
-.back-to-main {
-    display: inline-block;
-    background-color: #ff4081;
+/* Main menu button */
+.main-menu-btn {
+    background: transparent;
     border: none;
-    color: white;
-    padding: 15px 25px;
-    font-size: 18px;
-    font-weight: 700;
-    font-family: 'Fredoka', Arial, sans-serif;
-    border-radius: 12px;
+    padding: 0;
+    border-radius: 10px;
+    overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 5px #c2185b;
-    transition: all 0.2s ease;
-    text-align: center;
-    text-decoration: none;
-    width: 250px;
-    margin: 20px auto;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    transition: all 0.3s ease;
 }
 
-.back-to-main:hover {
-    background-color: #e91e63;
-    box-shadow: 0 3px #880e4f;
-    transform: translateY(-2px);
+.main-menu-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    filter: brightness(1.1);
+    box-shadow: 0 8px 25px rgba(255, 64, 129, 0.3);
 }
 
-.back-to-main:active {
-    transform: translateY(2px);
-    box-shadow: 0 1px #880e4f;
+.main-menu-btn .button-image {
+    width: 160px;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.main-menu-btn:active {
+    transform: translateY(-1px) scale(1.02);
 }
 
 /* Responsive - Enhanced for Game Style */
@@ -499,16 +683,42 @@ td {
     .header p {
         font-size: 1.1rem;
     }
-    
-    .controls-section {
+      .controls-section {
         flex-direction: column;
         align-items: stretch;
         padding: 15px;
     }
     
-    .refresh-controls, .sort-controls {
+    .refresh-controls, .sort-controls, .search-controls {
         justify-content: center;
         flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+    
+    .search-controls {
+        max-width: 100%;
+    }
+      .search-controls label {
+        margin-bottom: 5px;
+    }
+    
+    .search-input {
+        padding: 12px 80px 12px 15px;
+        font-size: 16px;
+    }
+    
+    .search-btn {
+        right: 40px;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .clear-search-btn {
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
     }
     
     .stats-overview {

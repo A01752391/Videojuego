@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créditos - Pawned</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('/images/mainbackground.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #2c1e2e;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            background: #2c1e2e;
+            border-radius: 20px;
+            border: 3px solid #ff4081;
+            box-shadow: 0 0 30px rgba(255, 64, 129, 0.5);
+            padding: 30px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #ff4081;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .logo {
+            width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 10px rgba(255, 64, 129, 0.7));
+        }
+
+        .title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            color: #ffd54f;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffd54f;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 213, 79, 0.3);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        .section-content {
+            line-height: 1.6;
+            color: #f5f5f5;
+            margin-bottom: 15px;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .team-card {
+            background: #3a2a3c;
+            border: 2px solid #ff4081;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .team-card:hover {
+            background: #4a3a4c;
+            border-color: #ffd54f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 64, 129, 0.4);
+        }
+
+        .member-name {
+            font-weight: bold;
+            color: #ff4081;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .member-role {
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+
+        .game-info {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .game-version {
+            color: #4caf50;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .technologies {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .tech-tag {
+            background: linear-gradient(135deg, #ff4081, #e91e63);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .tech-tag:hover {
+            transform: scale(1.05);
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            background: rgba(255, 64, 129, 0.1);
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #ff4081;
+            color: #f5f5f5;
+        }
+
+        .highlight {
+            color: #ff4081;
+            font-weight: bold;
+        }
+
+        .warning {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #ffcc02;
+        }
+
+        .navigation {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ff4081;
+        }
+
+        .nav-button {
+            display: block;
+            text-align: center;
+            background-color: transparent;
+            border: none;
+            color: white;
+            padding: 15px 25px;
+            margin: 30px auto 0;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            width: 220px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: none;
+        }
+
+        .nav-button:hover {
+            background-color: transparent;
+            transform: translateY(-3px);
+            box-shadow: none;
+        }
+
+        .button-image {
+            width: 140px;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 20px;
+                margin: 10px auto;
+            }
+
+            .title {
+                font-size: 1.8rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-button {
+                padding: 10px 25px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/images/pawnedletraslogo.png" alt="Pawned Logo" class="logo">
+            <h1 class="title">Créditos</h1>
+        </div>
+
+        <div class="section">
+            <div class="game-info">
+                <div class="game-version">Pawned v1.0</div>
+                <p>Un innovador juego de ajedrez con <span class="highlight">power-ups únicos</span> que revoluciona la experiencia clásica del ajedrez. Desarrollado con pasión y dedicación para ofrecer entretenimiento estratégico de alta calidad.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Equipo de Desarrollo</h2>
+            <div class="section-content">
+                <div class="team-grid">
+                    <div class="team-card">
+                        <div class="member-name">Equipo Pawned</div>
+                        <div class="member-role">Desarrollo del Juego y Diseño General</div>
+                    </div>
+                    
+                    <div class="team-card">
+                        <div class="member-name">Desarrollador Principal</div>
+                        <div class="member-role">Lógica del juego, Power-ups, Sistema de combate</div>
+                    </div>
+                    
+                    <div class="team-card">
+                        <div class="member-name">Diseñador UI/UX</div>
+                        <div class="member-role">Interfaz visual, Arte, Iconografía</div>
+                    </div>
+                    
+                    <div class="team-card">
+                        <div class="member-name">Ingeniero de Datos</div>
+                        <div class="member-role">Base de datos, Leaderboard, Estadísticas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Características Principales</h2>
+            <div class="section-content">
+                <ul class="feature-list">
+                    <li><strong>Sistema Roguelike:</strong> Posiciones de piezas aleatorias en cada ronda</li>
+                    <li><strong>10 Power-ups Únicos:</strong> Desde escudos protectores hasta portales dimensionales</li>
+                    <li><strong>Sistema de Puntuación Dinámico:</strong> Gana puntos por capturas y desbloquea poderes</li>
+                    <li><strong>Leaderboard Global:</strong> Compite con jugadores de todo el mundo</li>
+                    <li><strong>Detección Inteligente:</strong> Jaque mate, ahogado y situaciones especiales</li>
+                    <li><strong>Modalidad Mejor de 3:</strong> Rondas épicas con mecánicas de compensación</li>
+                    <li><strong>Efectos Visuales:</strong> Animaciones y partículas que mejoran la experiencia</li>
+                    <li><strong>Audio Inmersivo:</strong> Efectos de sonido personalizados</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Tecnologías Utilizadas</h2>
+            <div class="section-content">
+                <div class="technologies">
+                    <span class="tech-tag">HTML5</span>
+                    <span class="tech-tag">CSS3</span>
+                    <span class="tech-tag">JavaScript ES6+</span>
+                    <span class="tech-tag">Node.js</span>
+                    <span class="tech-tag">Express.js</span>
+                    <span class="tech-tag">MySQL</span>
+                    <span class="tech-tag">Git</span>
+                    <span class="tech-tag">JSON</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Recursos y Multimedia</h2>
+            <div class="section-content">
+                <ul class="feature-list">
+                    <li><strong>Gráficos Originales:</strong> Piezas de ajedrez y power-ups diseñados específicamente</li>
+                    <li><strong>Efectos de Sonido:</strong> Audio personalizado para movimientos y activaciones</li>
+                    <li><strong>Interfaz Responsiva:</strong> Optimizada para diferentes tamaños de pantalla</li>
+                    <li><strong>Iconografía Intuitiva:</strong> Símbolos claros para facilitar el aprendizaje</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Licencia y Derechos</h2>
+            <div class="section-content">
+                <div class="warning">
+                    <strong>Proyecto Educativo:</strong> Este juego fue desarrollado como parte de un proyecto académico con fines educativos y de demostración de habilidades en desarrollo de software.
+                </div>
+                <p>Todos los derechos reservados © 2025 - Equipo Pawned</p>
+                <p>El código fuente y los recursos están disponibles para propósitos educativos bajo supervisión académica.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Agradecimientos Especiales</h2>
+            <div class="section-content">
+                <p>Queremos expresar nuestro más sincero agradecimiento a:</p>
+                <ul class="feature-list">
+                    <li><strong>Beta Testers:</strong> Por su valiosa retroalimentación durante el desarrollo</li>
+                    <li><strong>Comunidad de Ajedrez:</strong> Por inspirar las mecánicas innovadoras</li>
+                    <li><strong>Profesores y Mentores:</strong> Por su guía técnica y conceptual</li>
+                    <li><strong>Familia y Amigos:</strong> Por su apoyo incondicional durante el desarrollo</li>
+                </ul>
+                
+                <div class="game-info">
+                    <p><strong>¡Esperamos que disfruten jugando Pawned tanto como nosotros disfrutamos desarrollándolo!</strong></p>
+                    <p>El ajedrez nunca había sido tan emocionante. 🏆♟️✨</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <a href="index.html" class="nav-button">
+                <img src="/images/Photoroom_20250604_174552.png" alt="Volver al Menú Principal" class="button-image">
+            </a>
+        </div>
+    </div>
+</body>
+</html>

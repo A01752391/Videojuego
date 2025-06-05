@@ -187,14 +187,24 @@ export function handleClick(r, c, gameContext) {
     if (gameContext.isLegalMove(fr, fc, r, c)) { // isLegalMove considers self-check
         console.log(`Move from ${fr},${fc} to ${r},${c} IS LEGAL`);
 
-        playSound(moveSound);
-
-        // --- Actual Move Execution ---
+        playSound(moveSound);        // --- Actual Move Execution ---
         const pieceToMove = board[fr][fc];
         const capturedPiece = board[r][c]; // Store captured piece before overwriting
 
+        // NUEVO: Incrementar contador de turnos para el jugador actual
+        if (gameContext.gameStats) {
+            const playerStats = currentColor === 'w' ? gameContext.gameStats.white : gameContext.gameStats.black;
+            playerStats.turns++;
+        }
+
         if (capturedPiece) {
             updateScoreWithPowerups(currentColor, gameContext, capturedPiece);
+            
+            // NUEVO: Incrementar contador de capturas para el jugador actual
+            if (gameContext.gameStats) {
+                const playerStats = currentColor === 'w' ? gameContext.gameStats.white : gameContext.gameStats.black;
+                playerStats.captured++;
+            }
         }
 
         board[r][c] = pieceToMove;
@@ -296,13 +306,11 @@ export function handleClick(r, c, gameContext) {
             // El jugador que acaba de mover gana
             const winnerColor = currentColor;
             gameContext.declareWinner(winnerColor);
-            turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;
-        } 
-        // Verificar ahogado usando la nueva función
+            turnMessage = `¡Jaque Mate! ${winnerColor === 'w' ? 'Blancas' : 'Negras'} ganan la ronda.`;        }        // Verificar ahogado usando la nueva función
         else if (gameContext.isStalemate && gameContext.isStalemate(gameContext.currentColor)) {
-            messageElement.textContent = "¡Tablas por Ahogado!";
-            gameContext.gameOver = true;
-        } 
+            gameContext.declareStalemate();
+            turnMessage = "¡Tablas por Ahogado! Ambos jugadores reciben 1 punto.";
+        }
         // Verificar jaque simple
         else if (gameContext.isKingInCheck(gameContext.board, gameContext.currentColor)) {
             const currentColorName = gameContext.currentColor === 'w' ? 'Blancas' : 'Negras';

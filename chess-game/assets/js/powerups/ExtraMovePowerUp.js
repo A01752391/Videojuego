@@ -44,10 +44,18 @@ export class ExtraMovePowerUp extends PowerUpBase {
     // Configurar el estado de extra move
     gameContext.extraMoveActive = true;
     gameContext.extraMovesRemaining = 2;
-    gameContext.extraMovePlayer = playerColor;
-
-    // Activar animación visual
+    gameContext.extraMovePlayer = playerColor;    // Activar animación visual
     this.triggerExtraMoveAnimation(gameContext);
+
+    // Track usage statistics
+    const activeInstanceData = {
+      id: this.id,
+      type: this.name,
+      placedBy: playerColor,
+      remainingDuration: 0 // Instant effect
+    };
+    
+    this.onActivationComplete(gameContext, playerColor, activeInstanceData);
 
     return true;
   }

@@ -167,8 +167,7 @@ function renderPowerUpInventories(gameContext) {
         tooltip.appendChild(desc);
         
         // Check if the powerup has a corresponding image
-        if (powerupImageMap[powerUpType]) {
-            // Create image button
+        if (powerupImageMap[powerUpType]) {            // Create image button
             btn.className = 'powerup-button image-powerup-button';
             const img = document.createElement('img');
             img.src = `/images/${powerupImageMap[powerUpType]}`;
