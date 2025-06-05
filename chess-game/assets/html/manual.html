@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Juego - Pawned</title>
+    <style>        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('/images/mainbackground.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #2c1e2e;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+        }        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+            background: #2c1e2e;
+            border-radius: 20px;
+            border: 3px solid #ff4081;
+            box-shadow: 0 0 30px rgba(255, 64, 129, 0.5);
+            padding: 30px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #ff4081;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .logo {
+            width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 0 10px rgba(255, 64, 129, 0.7));
+        }        .title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            color: #ffd54f;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffd54f;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 213, 79, 0.3);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        .section-content {
+            line-height: 1.6;
+            color: #f5f5f5;
+            margin-bottom: 15px;
+        }
+
+        .powerup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }        .powerup-card {
+            background: #3a2a3c;
+            border: 2px solid #ff4081;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .powerup-card:hover {
+            background: #4a3a4c;
+            border-color: #ffd54f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 64, 129, 0.4);
+        }.powerup-name {
+            font-weight: bold;
+            color: #ff4081;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }        .powerup-image {
+            max-width: 120px;
+            max-height: 120px;
+            width: auto;
+            height: auto;
+            margin: 0 auto 15px auto;
+            display: block;
+            border-radius: 10px;
+            filter: drop-shadow(0 2px 8px rgba(255, 64, 129, 0.3));
+            transition: transform 0.2s ease;
+            object-fit: contain;
+        }
+
+        .powerup-image:hover {
+            transform: scale(1.1);
+        }
+
+        .powerup-description {
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #3a2a3c;
+        }
+
+        .scoring-table th,
+        .scoring-table td {
+            border: 1px solid rgba(255, 64, 129, 0.3);
+            padding: 10px;
+            text-align: center;
+        }        .scoring-table th {
+            background: rgba(255, 64, 129, 0.2);
+            color: #ffd54f;
+            font-weight: bold;
+        }
+
+        .piece-images {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .piece-image {
+            width: 35px;
+            height: 35px;
+            object-fit: contain;
+            border-radius: 5px;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+        }
+
+        .controls-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .controls-list li {
+            background: rgba(255, 64, 129, 0.1);
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #ff4081;
+        }
+
+        .controls-list strong {
+            color: #ffd54f;
+        }
+
+        .tips-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tips-list li {
+            background: rgba(255, 213, 79, 0.1);
+            margin: 8px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #ffd54f;
+        }        .tips-list li::before {
+            content: "";
+            margin-right: 0px;
+        }
+
+        .navigation {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #ff4081;
+        }        .nav-button {
+            display: block;
+            text-align: center;            background-color: transparent;
+            border: none;
+            color: white;
+            padding: 15px 25px;
+            margin: 30px auto 0;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            width: 220px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: none;
+        }        .nav-button:hover {
+            background-color: transparent;
+            transform: translateY(-3px);
+            box-shadow: none;
+        }        .button-image {
+            width: 140px;
+            height: auto;
+        }
+
+        .game-flow {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .game-flow-title {
+            color: #4caf50;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .highlight {
+            color: #ff4081;
+            font-weight: bold;
+        }
+
+        .warning {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #ffcc02;
+        }        .warning::before {
+            content: "";
+            margin-right: 0px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 20px;
+                margin: 10px auto;
+            }
+
+            .title {
+                font-size: 1.8rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            .powerup-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-button {
+                padding: 10px 25px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/images/pawnedletraslogo.png" alt="Pawned Logo" class="logo">
+            <h1 class="title">Manual de Juego</h1>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Objetivo del Juego</h2>
+            <div class="section-content">
+                <p><strong>Pawned</strong> es un juego de ajedrez roguelike para dos jugadores locales donde las piezas comienzan en posiciones de medio juego. El objetivo principal es <span class="highlight">ganar 2 rondas</span> antes que tu oponente para conquistar la serie completa.</p>
+                
+                <div class="game-flow">
+                    <div class="game-flow-title">Condiciones de Victoria:</div>
+                    <ul>
+                        <li><strong>Victoria por Jaque Mate:</strong> Capturar el rey enemigo</li>
+                        <li><strong>Victoria por Serie:</strong> Primer jugador en ganar 2 rondas</li>
+                        <li><strong>Empate por Ahogado:</strong> Ambos jugadores reciben 1 punto</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Reglas Básicas de Ajedrez</h2>
+            <div class="section-content">
+                <p>Pawned sigue las reglas tradicionales del ajedrez con algunas adiciones especiales:</p>
+                
+                <ul class="controls-list">
+                    <li><strong>Movimiento de Piezas:</strong> Cada pieza mantiene sus movimientos tradicionales del ajedrez</li>
+                    <li><strong>Captura:</strong> Las piezas capturan ocupando la casilla del oponente</li>
+                    <li><strong>Jaque:</strong> El rey debe ser movido fuera de peligro cuando está en jaque</li>
+                    <li><strong>Jaque Mate:</strong> Cuando el rey no puede escapar del jaque, la partida termina</li>
+                    <li><strong>Enroque:</strong> Disponible si ni el rey ni la torre se han movido</li>
+                    <li><strong>Promoción de Peón:</strong> Los peones que llegan al final se convierten automáticamente en reina</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Controles</h2>
+            <div class="section-content">
+                <ul class="controls-list">
+                    <li><strong>Clic Izquierdo:</strong> Seleccionar pieza y mover a casilla válida</li>
+                    <li><strong>Clic en Power-up:</strong> Activar poder especial</li>
+                    <li><strong>Tecla Escape:</strong> Abrir menú de pausa</li>
+                    <li><strong>Casillas Iluminadas:</strong> Indican movimientos válidos para la pieza seleccionada</li>
+                    <li><strong>Indicadores Visuales:</strong> Círculos verdes para movimientos, rojos para capturas</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Sistema de Puntuación</h2>
+            <div class="section-content">
+                <p>Ganas puntos al capturar piezas enemigas. Los puntos determinan cuándo recibes power-ups:</p>
+                  <table class="scoring-table">                    <thead>
+                        <tr>
+                            <th>Pieza</th>
+                            <th>Puntos</th>
+                            <th>Símbolos</th>
+                        </tr>
+                    </thead>
+                    <tbody>                        <tr>
+                            <td>Peón</td>
+                            <td>2 puntos</td>
+                            <td>
+                                <div class="piece-images">
+                                    <img src="/images/peonblanco.png" alt="Peón Blanco" class="piece-image">
+                                    <img src="/images/peonnegro.png" alt="Peón Negro" class="piece-image">
+                                </div>
+                            </td>
+                        </tr>                        <tr>
+                            <td>Caballo / Alfil</td>
+                            <td>4 puntos</td>
+                            <td>
+                                <div class="piece-images">
+                                    <img src="/images/caballoblanco.png" alt="Caballo Blanco" class="piece-image">
+                                    <img src="/images/caballonegro.png" alt="Caballo Negro" class="piece-image">
+                                    <img src="/images/alfilblanco.png" alt="Alfil Blanco" class="piece-image">
+                                    <img src="/images/alfilnegro.png" alt="Alfil Negro" class="piece-image">
+                                </div>
+                            </td>
+                        </tr>                        <tr>
+                            <td>Torre</td>
+                            <td>6 puntos</td>
+                            <td>
+                                <div class="piece-images">
+                                    <img src="/images/torreblanca.png" alt="Torre Blanca" class="piece-image">
+                                    <img src="/images/torrenegro.png" alt="Torre Negra" class="piece-image">
+                                </div>
+                            </td>
+                        </tr>                        <tr>
+                            <td>Reina</td>
+                            <td>9 puntos</td>
+                            <td>
+                                <div class="piece-images">
+                                    <img src="/images/reinablanco.png" alt="Reina Blanca" class="piece-image">
+                                    <img src="/images/reinanegra.png" alt="Reina Negra" class="piece-image">
+                                </div>
+                            </td>
+                        </tr>                        <tr>
+                            <td>Rey (Jaque Mate)</td>
+                            <td>+12 puntos</td>
+                            <td>
+                                <div class="piece-images">
+                                    <img src="/images/reyblanco.png" alt="Rey Blanco" class="piece-image">
+                                    <img src="/images/reynegro.png" alt="Rey Negro" class="piece-image">
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="warning">
+                    <strong>Umbrales de Power-ups:</strong> Primer poder a los 5 puntos, segundo a los 10 puntos, y así sucesivamente (+5 puntos por cada nuevo poder). Máximo 5 poderes por inventario.
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Power-ups Disponibles</h2>
+            <div class="section-content">
+                <p>Los power-ups se dividen en tres categorías principales:</p>
+                
+                <h3 style="color: #ff4081; margin-top: 20px;">Poderes de Piezas</h3>
+                <div class="powerup-grid">                    <div class="powerup-card">
+                        <img src="/images/pwrshieldbutton.png" alt="Shield" class="powerup-image">
+                        <div class="powerup-description">Protege una pieza de ser capturada durante un turno. Requiere seleccionar la pieza a proteger.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrblastbutton.png" alt="Blast" class="powerup-image">
+                        <div class="powerup-description">Destruye instantáneamente una pieza enemiga (peón, caballo o alfil). Requiere seleccionar el objetivo.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrswapbutton.PNG" alt="Swap" class="powerup-image">
+                        <div class="powerup-description">Intercambia posiciones de dos de tus piezas en el tablero. Pierdes tu turno al usarlo.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrextramovebutton.PNG" alt="Extra Move" class="powerup-image">
+                        <div class="powerup-description">Permite realizar 2 movimientos en el mismo turno con piezas diferentes.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrevolutionbutton.png" alt="Evolution" class="powerup-image">
+                        <div class="powerup-description">Transforma un peón aleatorio tuyo en caballo o alfil automáticamente.</div>
+                    </div>
+                </div>
+
+                <h3 style="color: #ff4081; margin-top: 20px;">Poderes de Tablero</h3>
+                <div class="powerup-grid">                    <div class="powerup-card">
+                        <img src="/images/pwrfencebutton.png" alt="Fence" class="powerup-image">
+                        <div class="powerup-description">Bloquea una casilla durante 3 turnos. Ninguna pieza puede moverse a esa posición.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrhorizontalportalbutton.png" alt="Horizontal Portal" class="powerup-image">
+                        <div class="powerup-description">Permite a torres y reinas moverse de un extremo del tablero al otro horizontalmente.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrcagebutton.png" alt="Cage" class="powerup-image">
+                        <div class="powerup-description">Inmoviliza una pieza enemiga durante 3 turnos. La pieza no puede moverse.</div>
+                    </div>
+                </div>
+
+                <h3 style="color: #ff4081; margin-top: 20px;">Poderes de Movimiento</h3>
+                <div class="powerup-grid">                    <div class="powerup-card">
+                        <img src="/images/pwrpawnrangebutton.png" alt="Pawn Range" class="powerup-image">
+                        <div class="powerup-description">Permite que todos tus peones se muevan 2 casillas en lugar de 1 durante 3 turnos.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrreducerbutton.PNG" alt="Reducer" class="powerup-image">
+                        <div class="powerup-description">Reduce el rango de movimiento de piezas enemigas (caballo, alfil y reina) durante 3 turnos.</div>
+                    </div>                    <div class="powerup-card">
+                        <img src="/images/pwrcrazykingbutton.PNG" alt="Crazy King" class="powerup-image">
+                        <div class="powerup-description">Tu rey puede moverse como una reina durante 3 turnos, pero sigue siendo vulnerable.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Estructura de Rondas</h2>
+            <div class="section-content">
+                <div class="game-flow">
+                    <div class="game-flow-title">Flujo del Juego:</div>
+                    <ol style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>Ronda 1:</strong> Configuración estándar de medio juego - carrera por puntos y poderes</li>
+                        <li><strong>Ronda 2:</strong> Nueva disposición donde el jugador perdedor recibe ventajas:
+                            <ul style="margin: 5px 0; padding-left: 20px;">
+                                <li>+2 peones avanzados en tercera fila</li>
+                                <li>+1 pieza menor adicional (caballo o alfil) en el centro</li>
+                                <li>+1 poder gratuito en el inventario al inicio</li>
+                            </ul>
+                        </li>
+                        <li><strong>Ronda 3 (si es necesaria):</strong> Desempate final con configuración equilibrada</li>
+                    </ol>
+                </div>
+
+                <div class="warning">
+                    Los power-ups se acumulan entre rondas si no se usan, pero el límite de inventario es de 5 poderes por jugador.
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Efectos Visuales</h2>
+            <div class="section-content">
+                <ul class="controls-list">
+                    <li><strong>Aparición de Power-ups:</strong> Chispa magenta brillante con partículas</li>
+                    <li><strong>Activación de Poderes:</strong> Ráfaga de luz coloreada o barrido radial</li>
+                    <li><strong>Movimientos Válidos:</strong> Círculos verdes translúcidos</li>
+                    <li><strong>Capturas Posibles:</strong> Anillos rojos alrededor del objetivo</li>
+                    <li><strong>Rey en Jaque:</strong> Resplandor rojo intenso</li>
+                    <li><strong>Piezas Protegidas:</strong> Aura dorada (Shield activo)</li>
+                    <li><strong>Casillas Bloqueadas:</strong> Marcador de cerca visible (Fence activo)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Consejos y Estrategias</h2>
+            <div class="section-content">
+                <ul class="tips-list">
+                    <li><strong>Gestión de Power-ups:</strong> No uses todos los poderes inmediatamente. Guárdalos para momentos cruciales.</li>
+                    <li><strong>Timing del Shield:</strong> Úsalo para proteger piezas valiosas justo antes de un ataque enemigo.</li>
+                    <li><strong>Extra Move Estratégico:</strong> Perfecto para ataques combinados o escapar de situaciones peligrosas.</li>
+                    <li><strong>Control del Centro:</strong> Evolution puede darte ventaja posicional convirtiendo peones en piezas menores.</li>
+                    <li><strong>Defensive Fence:</strong> Bloquea rutas de escape del rey enemigo antes de un jaque mate.</li>
+                    <li><strong>Cage vs. Piezas Clave:</strong> Inmoviliza la reina o torre enemiga en momentos críticos.</li>
+                    <li><strong>Adaptabilidad:</strong> Cada ronda es diferente. Adapta tu estrategia al nuevo tablero.</li>
+                    <li><strong>Sacrificios Calculados:</strong> A veces vale la pena perder una pieza para ganar poder-ups.</li>
+                    <li><strong>Presión de Tiempo:</strong> Los power-ups pueden cambiar la situación instantáneamente. ¡Mantente alerta!</li>
+                    <li><strong>Ventaja de Ronda 2:</strong> Si vas perdiendo, aprovecha las ventajas compensatorias de la segunda ronda.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Reglas Especiales</h2>
+            <div class="section-content">
+                <div class="warning">
+                    <strong>Límites Importantes:</strong>
+                </div>
+                <ul class="controls-list">
+                    <li><strong>Inventario de Power-ups:</strong> Máximo 5 poderes por jugador</li>
+                    <li><strong>Duración de Efectos:</strong> La mayoría de poderes duran 3 turnos</li>
+                    <li><strong>Blast Limitado:</strong> Solo puede destruir peones, caballos y alfiles</li>
+                    <li><strong>Crazy King:</strong> Mantiene vulnerabilidad a jaque a pesar del poder extra</li>
+                    <li><strong>Fence en Casillas:</strong> Bloquea movimiento pero no afecta piezas ya presentes</li>
+                    <li><strong>Shield Temporal:</strong> Protege solo contra el siguiente intento de captura</li>
+                </ul>
+            </div>
+        </div>        <div class="navigation">
+            <a href="index.html" class="nav-button">
+                <img src="/images/Photoroom_20250604_174552.png" alt="Volver al Menú Principal" class="button-image">
+            </a>
+        </div>
+    </div>
+</body>
+</html>

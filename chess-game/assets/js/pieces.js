@@ -481,5 +481,7 @@ export function isStalemate(playerColor, gameContext) {
     }
 
     // Verificar si no hay movimientos legales disponibles
-    return !hasLegalMoves(playerColor, gameContext);
+    const hasLegal = hasLegalMoves(playerColor, gameContext);
+    
+    return !hasLegal;
 }

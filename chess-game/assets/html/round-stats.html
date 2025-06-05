@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAWNED - Estadísticas de Ronda</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/round-stats.css">
+</head>
+<body>
+    <div class="round-stats-container">
+        <header class="header">
+            <h1>📊 ESTADÍSTICAS DE RONDA</h1>
+            <p id="roundTitle">Ronda 1 Completada</p>
+        </header>
+
+        <!-- Estado de carga -->
+        <div id="loadingState" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Cargando estadísticas de la ronda...</p>
+        </div>
+
+        <!-- Estado de error -->
+        <div id="errorState" class="error-state" style="display: none;">
+            <div class="error-icon">⚠️</div>
+            <h3>Error al cargar estadísticas</h3>
+            <p id="errorMessage">No se pudieron cargar las estadísticas de la ronda.</p>
+            <button id="retryBtn" class="btn-secondary">Reintentar</button>
+        </div>
+
+        <!-- Contenido principal -->
+        <div id="statsContent" class="stats-content" style="display: none;">
+            <!-- Resultado de la ronda -->
+            <div class="round-result">
+                <div class="winner-announcement">
+                    <h2 id="roundWinner">🏆 Ganador de la Ronda</h2>
+                    <div class="winner-details">
+                        <div id="winnerInfo" class="winner-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen de puntuaciones -->
+            <div class="scores-summary">
+                <h3>📈 Resumen de Puntuaciones</h3>
+                <div class="scores-grid">
+                    <div class="player-score white-player">
+                        <div class="player-header">
+                            <img src="/images/whitelogo.png" alt="Blancas" class="player-icon">
+                            <span class="player-name">Blancas</span>
+                        </div>
+                        <div class="score-details">
+                            <div class="main-score" id="whiteScore">0</div>
+                            <div class="score-breakdown">
+                                <div>Piezas capturadas: <span id="whiteCaptured">0</span></div>
+                                <div>PowerUps usados: <span id="whitePowerups">0</span></div>
+                                <div>Turnos jugados: <span id="whiteTurns">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vs-divider">VS</div>
+
+                    <div class="player-score black-player">
+                        <div class="player-header">
+                            <img src="/images/blacklogo.png" alt="Negras" class="player-icon">
+                            <span class="player-name">Negras</span>
+                        </div>
+                        <div class="score-details">
+                            <div class="main-score" id="blackScore">0</div>
+                            <div class="score-breakdown">
+                                <div>Piezas capturadas: <span id="blackCaptured">0</span></div>
+                                <div>PowerUps usados: <span id="blackPowerups">0</span></div>
+                                <div>Turnos jugados: <span id="blackTurns">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estadísticas detalladas -->
+            <div class="detailed-stats">
+                <h3>🎯 Análisis de Rendimiento</h3>
+                <div class="stats-grid">
+                    <div class="stat-category">
+                        <h4>⚔️ Eficiencia Ofensiva</h4>
+                        <div class="stat-comparison">
+                            <div class="stat-item">
+                                <span class="stat-label">Ratio Captura/Turno</span>
+                                <div class="comparison-bar">
+                                    <div class="white-bar">
+                                        <span id="whiteCaptureRatio">0.0</span>
+                                    </div>
+                                    <div class="black-bar">
+                                        <span id="blackCaptureRatio">0.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Puntos por Captura</span>
+                                <div class="comparison-bar">
+                                    <div class="white-bar">
+                                        <span id="whitePointsPerCapture">0.0</span>
+                                    </div>
+                                    <div class="black-bar">
+                                        <span id="blackPointsPerCapture">0.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-category">
+                        <h4>🔥 Uso de PowerUps</h4>
+                        <div class="stat-comparison">
+                            <div class="stat-item">
+                                <span class="stat-label">PowerUps por Turno</span>
+                                <div class="comparison-bar">
+                                    <div class="white-bar">
+                                        <span id="whitePowerupRatio">0.0</span>
+                                    </div>
+                                    <div class="black-bar">
+                                        <span id="blackPowerupRatio">0.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Eficiencia PowerUp</span>
+                                <div class="comparison-bar">
+                                    <div class="white-bar">
+                                        <span id="whitePowerupEfficiency">0%</span>
+                                    </div>
+                                    <div class="black-bar">
+                                        <span id="blackPowerupEfficiency">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen de la serie -->
+            <div class="series-progress">
+                <h3>🏆 Progreso de la Serie</h3>
+                <div class="series-status">
+                    <div class="round-wins">
+                        <div class="wins-display">
+                            <div class="white-wins">
+                                <span class="wins-label">Blancas</span>
+                                <div class="wins-circles" id="whiteWinsCircles"></div>
+                            </div>
+                            <div class="series-info">
+                                <span id="seriesStatus">Al mejor de 2 rondas</span>
+                            </div>
+                            <div class="black-wins">
+                                <span class="wins-label">Negras</span>
+                                <div class="wins-circles" id="blackWinsCircles"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div id="actionButtons" class="action-buttons" style="display: none;">
+            <button id="nextRoundBtn" class="btn-primary next-round-btn" style="display: none;">
+                <span>🎯</span> Siguiente Ronda
+            </button>
+            <button id="newGameBtn" class="btn-primary new-game-btn" style="display: none;">
+                <span>🆕</span> Nueva Partida
+            </button>
+            <button id="viewLeaderboardBtn" class="btn-secondary">
+                <span>🏆</span> Ver Leaderboard
+            </button>
+            <button id="backToGameBtn" class="btn-secondary">
+                <span>↩️</span> Volver al Juego
+            </button>
+        </div>
+    </div>
+
+    <script src="../js/round-stats.js"></script>
+</body>
+</html>

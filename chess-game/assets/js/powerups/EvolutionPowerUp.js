@@ -66,10 +66,18 @@ export class EvolutionPowerUp extends PowerUpBase {
       type: newPieceType,
       color: playerColor,
       hasMoved: true
-    };
-
-    // Activar animación de evolución
+    };    // Activar animación de evolución
     this.triggerEvolutionAnimation(gameContext, selectedPawn.row, selectedPawn.col, newPieceType);
+
+    // Track usage statistics
+    const activeInstanceData = {
+      id: this.id,
+      type: this.name,
+      placedBy: playerColor,
+      remainingDuration: 0 // Instant effect
+    };
+    
+    this.onActivationComplete(gameContext, playerColor, activeInstanceData);
 
     return true;
   }

@@ -40,8 +40,7 @@ body {
   grid-template-columns: repeat(8, 75px);
   grid-template-rows: repeat(8, 75px);
   border: none;
-  border-radius: 0;
-  filter: drop-shadow(0 0 15px #ff4081);
+  border-radius: 0;  filter: drop-shadow(0 0 15px #ff4081);
   background-image: url('/images/tablero.png');
   background-size: 100% 100%;
   background-position: center;
@@ -63,11 +62,11 @@ body {
 }
 
 .white-cell {
-  background-color: transparent;
+  background-color: #f0d9b5;
 }
 
 .black-cell {
-  background-color: transparent;
+  background-color: #b58863;
 }
 
 #message {
@@ -189,7 +188,7 @@ body {
   transform: translate(-50%, -50%);
   width: 90%; /* Adjust size as needed */
   height: 90%;
-  background-image: url('../../../Imagenes/fenceImg.png'); /* Create a simple fence icon */
+  background-image: url('/Imagenes/fenceImg.png'); /* Create a simple fence icon */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -215,7 +214,7 @@ body {
   justify-content: center;
   gap: 2px;
   padding: 5px;
-  background-color: rgba(255, 64, 129, 0.1);
+  background-color: #f5f5f5;
   border-radius: 8px;
   align-items: flex-start;
   align-content: flex-start;

@@ -101,7 +101,14 @@ async function main() {
     // Update user data
     const buttonUpdateUser = document.getElementById("UpdateUser");
     buttonUpdateUser.addEventListener('click', UpdateUser);
-   
+    
+    // Main menu button
+    const mainMenuBtn = document.getElementById('usersMainMenuBtn');
+    if (mainMenuBtn) {
+        mainMenuBtn.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+    }
 }
 
 main();

@@ -6,20 +6,108 @@
     <title>PAWNED - Leaderboard</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/leaderboard.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('/images/mainbackground.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .leaderboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(44, 30, 46, 0.95);
+            border: 2px solid #ff4081;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .unified-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid #ff4081;
+        }
+
+        .logo-container {
+            margin-bottom: 20px;
+        }        .logo {
+            height: 60px;
+            width: auto;
+            margin-bottom: 10px;
+        }        .title {
+            color: #ffd54f !important;
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .subtitle {
+            color: #ff4081;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .main-menu-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 15px;
+            padding: 10px;
+        }
+
+        .main-menu-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 64, 129, 0.4);
+        }
+
+        .button-image {
+            width: 140px;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        .navigation-controls {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ff4081;
+        }
+    </style>
 </head>
 <body>
-    <div class="leaderboard-container">        <header class="header">
-            <h1>🏆 LEADERBOARD</h1>
-            <p>Estadísticas de los mejores jugadores de PAWNED</p>
-        </header>
-
-        <!-- Controles y filtros -->
-        <div class="controls-section">
-            <div class="refresh-controls">
+    <div class="leaderboard-container">        <div class="unified-header">
+            <div class="logo-container">
+                <img src="/images/pawnedletraslogo.png" alt="PAWNED Logo" class="logo">
+            </div>
+            <h1 class="title">LEADERBOARD</h1>
+            <p class="subtitle">Estadísticas de los mejores jugadores de PAWNED</p>
+        </div><!-- Controles y filtros -->
+        <div class="controls-section">            <div class="refresh-controls">
                 <button id="refreshBtn" class="btn-primary">
-                    <span id="refreshIcon">🔄</span> Actualizar
+                    <span id="refreshIcon"></span> Actualizar
                 </button>
                 <span id="lastUpdated" class="last-updated"></span>
+            </div><div class="search-controls">
+                <label for="playerSearch">Buscar por email:</label>                <div class="search-input-wrapper">
+                    <input type="text" id="playerSearch" class="search-input" placeholder="Escribe el email del jugador...">
+                    <button id="searchBtn" class="search-btn" title="Buscar por email específico">Buscar</button>
+                    <button id="clearSearch" class="clear-search-btn" style="display: none;"></button>                </div>
+                <span id="searchResults" class="search-results-count"></span>
             </div>
             
             <div class="sort-controls">
@@ -38,11 +126,9 @@
         <div id="loadingState" class="loading-state">
             <div class="loading-spinner"></div>
             <p>Cargando estadísticas...</p>
-        </div>
-
-        <!-- Estado de error -->
+        </div>        <!-- Estado de error -->
         <div id="errorState" class="error-state" style="display: none;">
-            <div class="error-icon">⚠️</div>
+            <div class="error-icon"></div>
             <h3>Error al cargar estadísticas</h3>
             <p id="errorMessage">No se pudieron cargar las estadísticas. Intenta nuevamente.</p>
             <button id="retryBtn" class="btn-secondary">Reintentar</button>
@@ -75,22 +161,21 @@
                     <thead>
                         <tr>
                             <th class="rank-col">Rango</th>
-                            <th class="player-col">Jugador</th>
-                            <th class="stat-col sortable" data-sort="puntajeTotal">
-                                Puntaje Total <span class="sort-arrow">↕️</span>
+                            <th class="player-col">Jugador</th>                            <th class="stat-col sortable" data-sort="puntajeTotal">
+                                Puntaje Total <span class="sort-arrow"></span>
                             </th>
                             <th class="stat-col sortable" data-sort="victorias">
-                                Victorias <span class="sort-arrow">↕️</span>
+                                Victorias <span class="sort-arrow"></span>
                             </th>
                             <th class="stat-col sortable" data-sort="partidasJugadas">
-                                Partidas <span class="sort-arrow">↕️</span>
+                                Partidas <span class="sort-arrow"></span>
                             </th>
                             <th class="stat-col">Win Rate</th>
                             <th class="stat-col sortable" data-sort="piezasCapturadas">
-                                Capturas <span class="sort-arrow">↕️</span>
+                                Capturas <span class="sort-arrow"></span>
                             </th>
                             <th class="stat-col sortable" data-sort="powerupsUsados">
-                                PowerUps <span class="sort-arrow">↕️</span>
+                                PowerUps <span class="sort-arrow"></span>
                             </th>
                             <th class="stat-col">Promedio/Partida</th>
                         </tr>
@@ -100,18 +185,16 @@
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- Estado vacío -->
+        </div>        <!-- Estado vacío -->
         <div id="emptyState" class="empty-state" style="display: none;">
-            <div class="empty-icon">📊</div>
+            <div class="empty-icon"></div>
             <h3>No hay estadísticas disponibles</h3>
             <p>Aún no hay jugadores registrados o partidas jugadas.</p>
         </div>        <!-- Botón de regreso -->
         <div class="navigation-controls">
-            <a href="index.html" class="back-to-main">
-                ← Volver al Menú Principal
-            </a>
+            <button id="leaderboardMainMenuBtn" class="main-menu-btn">
+                <img src="/images/Photoroom_20250604_174552.png" alt="Menú Principal" class="button-image">
+            </button>
         </div>
     </div>
 

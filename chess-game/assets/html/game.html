@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Chess Game</title>
-  <link rel="stylesheet" href="/css/style.css">
+<head>  <meta charset="UTF-8">
+  <title>Chess Game</title>  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/round-stats-modal.css">
+  <link rel="stylesheet" href="../css/game-stats-modal.css">
 </head>
 <body>
   <div id="main-layout">
@@ -11,8 +11,7 @@
     <div id="board-section">
       <div id="board"></div>
     </div>    <!-- Right side - Game info -->
-    <div id="info-section">
-      <img id="title" src="/images/pawnedletraslogo.png" alt="PAWNED Logo">
+    <div id="info-section">      <img id="title" src="/images/pawnedletraslogo.png" alt="PAWNED Logo">
       
       <div id="message"></div>      <div id="scores-container">        <!-- Player 1 (Blancas) -->
         <div class="player-section">
@@ -44,8 +43,7 @@
               <div id="black-powerups-display" class="powerup-inventory-vertical"></div>
             </div>
           </div>
-        </div>
-      </div><div id="buttons-container">
+        </div>      </div><div id="buttons-container">
         <button id="reset" class="reset-button image-button-game">
           <img src="/images/resetgamebutton.png" alt="Reset Game" class="game-button-image" />
         </button>
@@ -63,8 +61,8 @@
       <br>
       <button id="main-menu-btn" class="pause-button main-menu">Menú Principal</button>
     </div>
-  </div>
-
+  </div>  <script src="../js/round-stats-modal.js"></script>
+  <script src="../js/game-stats-modal.js"></script>
   <script type="module" src="../js/index.js"></script>
 </body>
 </html>
