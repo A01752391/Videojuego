@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de PowerUps - Prevención de Duplicados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background: #2a2a2a;
+        }
+        .test-section h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .test-results {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #2a1a1a;
+        }
+        .warning {
+            border-left-color: #ff9800;
+            background: #2a2a1a;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .inventory {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-success { background: #1b4332; }
+        .log-warning { background: #7d4f00; }
+        .log-error { background: #4d1a1a; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .powerup-item {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Sistema de PowerUps - Prevención de Duplicados</h1>
+    
+    <div class="test-section">
+        <h2>📊 Estadísticas de Prueba</h2>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalAttempts">0</div>
+                <div>Intentos Totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="successfulGrants">0</div>
+                <div>PowerUps Otorgados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="alternativeCount">0</div>
+                <div>Alternativos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="duplicateBlocks">0</div>
+                <div>Duplicados Bloqueados</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎮 Inventarios de Jugadores</h2>
+        <div>
+            <h3>Jugador Blanco:</h3>
+            <div class="inventory" id="whiteInventory">Vacío</div>
+        </div>
+        <div>
+            <h3>Jugador Negro:</h3>
+            <div class="inventory" id="blackInventory">Vacío</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Controles de Prueba</h2>
+        <button class="button" onclick="runBasicTest()">Test Básico</button>
+        <button class="button" onclick="runDuplicateTest()">Test de Duplicados</button>
+        <button class="button" onclick="runAlternativeTest()">Test de Alternativos</button>
+        <button class="button" onclick="runStressTest()">Test de Estrés</button>
+        <button class="button" onclick="clearAll()">Limpiar Todo</button>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Log de Eventos</h2>
+        <div id="testLog" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Último Mensaje del Sistema</h2>
+        <div id="systemMessage" class="test-results">Sistema listo para pruebas</div>
+    </div>
+
+    <script>
+        // Simulación del sistema de PowerUps
+        const powerUpRarities = {
+            'Fence': 18.75,
+            'Shield': 18.75,
+            'Pawn Range': 18.75,
+            'Evolution': 18.75,
+            'Cage': 6.67,
+            'Blast': 6.67,
+            'Horizontal Portal': 6.66,
+            'Extra Move': 1.25,
+            'Crazy King': 1.25,
+            'Reducer': 1.25,
+            'Swap': 1.25
+        };
+
+        let stats = {
+            totalAttempts: 0,
+            successfulGrants: 0,
+            alternativeCount: 0,
+            duplicateBlocks: 0
+        };
+
+        function getAvailablePowerUpTypes() {
+            return Object.keys(powerUpRarities);
+        }
+
+        function getRandomPowerUp() {
+            const availableTypes = getAvailablePowerUpTypes();
+            const availableRarities = {};
+            let totalWeight = 0;
+            
+            availableTypes.forEach(type => {
+                if (powerUpRarities[type]) {
+                    availableRarities[type] = powerUpRarities[type];
+                    totalWeight += powerUpRarities[type];
+                }
+            });
+            
+            const random = Math.random() * totalWeight;
+            let currentWeight = 0;
+            
+            for (const [type, weight] of Object.entries(availableRarities)) {
+                currentWeight += weight;
+                if (random <= currentWeight) {
+                    return type;
+                }
+            }
+            
+            return availableTypes[0];
+        }
+
+        function getPowerUpInfo(powerUpType) {
+            return { name: powerUpType };
+        }
+
+        function getPowerUpRarity(powerUpType) {
+            const commonPowerUps = ['Fence', 'Shield', 'Pawn Range', 'Evolution'];
+            const rarePowerUps = ['Cage', 'Blast', 'Horizontal Portal'];
+            const legendaryPowerUps = ['Extra Move', 'Crazy King', 'Reducer', 'Swap'];
+            
+            if (commonPowerUps.includes(powerUpType)) return 'Común';
+            if (rarePowerUps.includes(powerUpType)) return 'Raro';
+            if (legendaryPowerUps.includes(powerUpType)) return 'Legendario';
+            return 'Común';
+        }
+
+        // Sistema de inventarios
+        const gameContext = {
+            powerUpsWhite: [],
+            powerUpsBlack: [],
+            messageElement: { textContent: '' },
+            
+            grantPowerUp: function(color, powerUpType) {
+                stats.totalAttempts++;
+                
+                if (!powerUpType) {
+                    logEvent('ERROR: PowerUp tipo nulo', 'error');
+                    return;
+                }
+                
+                const inventory = color === 'w' ? this.powerUpsWhite : this.powerUpsBlack;
+                const maxPowerUps = 5;
+                
+                if (inventory.length >= maxPowerUps) {
+                    this.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} tienen el máximo de power-ups (${maxPowerUps}).`;
+                    logEvent(`Inventario lleno para ${color === 'w' ? 'Blancas' : 'Negras'}`, 'warning');
+                    updateDisplay();
+                    return;
+                }
+                
+                let selectedPowerUp = powerUpType;
+                let attempts = 0;
+                const maxAttempts = 10;
+                
+                while (inventory.includes(selectedPowerUp) && attempts < maxAttempts) {
+                    if (attempts === 0) {
+                        const powerUpInfo = getPowerUpInfo(powerUpType);
+                        const powerUpName = powerUpInfo ? powerUpInfo.name : powerUpType;
+                        this.messageElement.textContent = 
+                            `${color === 'w' ? 'Blancas' : 'Negras'} ya tienen ${powerUpName}. Buscando alternativa...`;
+                        
+                        stats.duplicateBlocks++;
+                        logEvent(`Duplicado detectado: ${powerUpType}`, 'warning');
+                    }
+                    
+                    selectedPowerUp = getRandomPowerUp();
+                    attempts++;
+                    
+                    logEvent(`Intento ${attempts}: Probando ${selectedPowerUp}`, 'info');
+                }
+                
+                if (inventory.includes(selectedPowerUp)) {
+                    this.messageElement.textContent = 
+                        `${color === 'w' ? 'Blancas' : 'Negras'} tienen todos los PowerUps disponibles. No se otorga nada.`;
+                    
+                    logEvent(`No se pudo encontrar alternativa después de ${maxAttempts} intentos`, 'error');
+                    updateDisplay();
+                    return;
+                }
+                
+                inventory.push(selectedPowerUp);
+                stats.successfulGrants++;
+                
+                const powerUpInfo = getPowerUpInfo(selectedPowerUp);
+                const powerUpName = powerUpInfo ? powerUpInfo.name : selectedPowerUp;
+                const rarity = getPowerUpRarity(selectedPowerUp);
+                
+                const rarityEmoji = {
+                    'Común': '⚪',
+                    'Raro': '🔵', 
+                    'Legendario': '🟡'
+                };
+                
+                const isAlternative = selectedPowerUp !== powerUpType;
+                if (isAlternative) {
+                    stats.alternativeCount++;
+                }
+                
+                const messagePrefix = isAlternative ? 
+                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen (alternativo) ` : 
+                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen `;
+                
+                this.messageElement.textContent = 
+                    `${messagePrefix}${rarityEmoji[rarity]} ${powerUpName} (${rarity})!`;
+                
+                if (isAlternative) {
+                    logEvent(`PowerUp alternativo otorgado: ${selectedPowerUp} en lugar de ${powerUpType}`, 'success');
+                } else {
+                    logEvent(`PowerUp otorgado: ${selectedPowerUp}`, 'success');
+                }
+                
+                updateDisplay();
+            }
+        };
+
+        function logEvent(message, type = 'info') {
+            const logContainer = document.getElementById('testLog');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateDisplay() {
+            // Actualizar estadísticas
+            document.getElementById('totalAttempts').textContent = stats.totalAttempts;
+            document.getElementById('successfulGrants').textContent = stats.successfulGrants;
+            document.getElementById('alternativeCount').textContent = stats.alternativeCount;
+            document.getElementById('duplicateBlocks').textContent = stats.duplicateBlocks;
+            
+            // Actualizar inventarios
+            const whiteInv = document.getElementById('whiteInventory');
+            const blackInv = document.getElementById('blackInventory');
+            
+            whiteInv.innerHTML = gameContext.powerUpsWhite.length === 0 ? 'Vacío' : 
+                gameContext.powerUpsWhite.map(p => `<span class="powerup-item">${p}</span>`).join('');
+            
+            blackInv.innerHTML = gameContext.powerUpsBlack.length === 0 ? 'Vacío' : 
+                gameContext.powerUpsBlack.map(p => `<span class="powerup-item">${p}</span>`).join('');
+            
+            // Actualizar mensaje del sistema
+            document.getElementById('systemMessage').textContent = gameContext.messageElement.textContent;
+        }
+
+        function runBasicTest() {
+            logEvent('=== INICIANDO TEST BÁSICO ===', 'info');
+            
+            // Otorgar algunos PowerUps únicos
+            gameContext.grantPowerUp('w', 'Fence');
+            gameContext.grantPowerUp('w', 'Shield');
+            gameContext.grantPowerUp('b', 'Cage');
+            gameContext.grantPowerUp('b', 'Blast');
+            
+            logEvent('Test básico completado', 'success');
+        }
+
+        function runDuplicateTest() {
+            logEvent('=== INICIANDO TEST DE DUPLICADOS ===', 'info');
+            
+            // Intentar otorgar PowerUps que ya existen
+            const whitePowerUps = gameContext.powerUpsWhite;
+            if (whitePowerUps.length > 0) {
+                const existingPowerUp = whitePowerUps[0];
+                logEvent(`Intentando otorgar duplicado: ${existingPowerUp}`, 'info');
+                gameContext.grantPowerUp('w', existingPowerUp);
+            } else {
+                // Si no hay PowerUps, agregar uno y luego intentar duplicarlo
+                gameContext.grantPowerUp('w', 'Evolution');
+                gameContext.grantPowerUp('w', 'Evolution');
+            }
+            
+            logEvent('Test de duplicados completado', 'success');
+        }
+
+        function runAlternativeTest() {
+            logEvent('=== INICIANDO TEST DE ALTERNATIVOS ===', 'info');
+            
+            // Llenar parcialmente el inventario y luego intentar otorgar duplicados
+            const targetPowerUps = ['Fence', 'Shield', 'Cage'];
+            
+            targetPowerUps.forEach(powerUp => {
+                if (!gameContext.powerUpsWhite.includes(powerUp)) {
+                    gameContext.grantPowerUp('w', powerUp);
+                }
+            });
+            
+            // Ahora intentar otorgar duplicados para forzar alternativas
+            targetPowerUps.forEach(powerUp => {
+                logEvent(`Intentando duplicado para forzar alternativa: ${powerUp}`, 'info');
+                gameContext.grantPowerUp('w', powerUp);
+            });
+            
+            logEvent('Test de alternativos completado', 'success');
+        }
+
+        function runStressTest() {
+            logEvent('=== INICIANDO TEST DE ESTRÉS ===', 'info');
+            
+            // Intentar otorgar muchos PowerUps aleatorios
+            for (let i = 0; i < 20; i++) {
+                const randomPowerUp = getRandomPowerUp();
+                const randomPlayer = Math.random() > 0.5 ? 'w' : 'b';
+                
+                logEvent(`Estrés ${i + 1}/20: Otorgando ${randomPowerUp} a ${randomPlayer === 'w' ? 'Blancas' : 'Negras'}`, 'info');
+                gameContext.grantPowerUp(randomPlayer, randomPowerUp);
+                
+                // Pequeña pausa visual
+                if (i % 5 === 0) {
+                    setTimeout(() => {}, 100);
+                }
+            }
+            
+            logEvent('Test de estrés completado', 'success');
+        }
+
+        function clearAll() {
+            gameContext.powerUpsWhite = [];
+            gameContext.powerUpsBlack = [];
+            gameContext.messageElement.textContent = 'Sistema reiniciado';
+            
+            stats = {
+                totalAttempts: 0,
+                successfulGrants: 0,
+                alternativeCount: 0,
+                duplicateBlocks: 0
+            };
+            
+            document.getElementById('testLog').innerHTML = '';
+            
+            updateDisplay();
+            logEvent('=== SISTEMA REINICIADO ===', 'info');
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDisplay();
+            logEvent('Sistema de pruebas inicializado', 'success');
+        });
+    </script>
+</body>
+</html>
