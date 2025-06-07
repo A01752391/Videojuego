@@ -211,9 +211,7 @@ export class BlastPowerUp extends PowerUpBase {
       default: points = 0;
     }
 
-    console.log(`Blast: Adding ${points} points for ${eliminatedPiece.type}`);
-
-    if (points > 0) {
+    console.log(`Blast: Adding ${points} points for ${eliminatedPiece.type}`);    if (points > 0) {
       if (playerColor === 'w') {
         gameContext.score1 += points;
         const score1El = document.getElementById('score1');
@@ -221,10 +219,16 @@ export class BlastPowerUp extends PowerUpBase {
         
         console.log(`Blast: White score now ${gameContext.score1}, threshold ${gameContext.nextThresholdWhite}`);
         
-        // Verificar si se gana un nuevo power-up
-        if (gameContext.score1 >= gameContext.nextThresholdWhite) {
+        // CORREGIDO: Usar while loop para otorgar múltiples PowerUps
+        let powerUpsGranted = 0;
+        while (gameContext.score1 >= gameContext.nextThresholdWhite) {
           this.grantNewPowerUp(gameContext, 'w');
+          powerUpsGranted++;
           gameContext.nextThresholdWhite += 5;
+        }
+        
+        if (powerUpsGranted > 0) {
+          console.log(`Blast: Granted ${powerUpsGranted} PowerUp(s) to white`);
         }
       } else {
         gameContext.score2 += points;
@@ -233,10 +237,16 @@ export class BlastPowerUp extends PowerUpBase {
         
         console.log(`Blast: Black score now ${gameContext.score2}, threshold ${gameContext.nextThresholdBlack}`);
         
-        // Verificar si se gana un nuevo power-up
-        if (gameContext.score2 >= gameContext.nextThresholdBlack) {
+        // CORREGIDO: Usar while loop para otorgar múltiples PowerUps
+        let powerUpsGranted = 0;
+        while (gameContext.score2 >= gameContext.nextThresholdBlack) {
           this.grantNewPowerUp(gameContext, 'b');
+          powerUpsGranted++;
           gameContext.nextThresholdBlack += 5;
+        }
+        
+        if (powerUpsGranted > 0) {
+          console.log(`Blast: Granted ${powerUpsGranted} PowerUp(s) to black`);
         }
       }
     }

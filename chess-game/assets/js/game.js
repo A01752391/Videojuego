@@ -457,17 +457,83 @@ export function handleClick(r, c, gameContext) {
 }
 
 /**
- * Selects a random power-up type from the available ones.
+ * Selects a random power-up type based on rarity weights.
  * @returns {string|null} The type name of the power-up, or null if none are available.
  */
 function getRandomPowerUp() {
+    // Define PowerUp rarities with their probabilities
+    const powerUpRarities = {
+        // COMUNES (75% total) - 18.75% cada uno
+        'Fence': 18.75,
+        'Shield': 18.75,
+        'Pawn Range': 18.75,
+        'Evolution': 18.75,
+        
+        // RAROS (20% total) - 6.67% cada uno
+        'Cage': 6.67,
+        'Blast': 6.67,
+        'Horizontal Portal': 6.66,
+        
+        // LEGENDARIOS (5% total) - 1.25% cada uno
+        'Extra Move': 1.25,
+        'Crazy King': 1.25,
+        'Reducer': 1.25,
+        'Swap': 1.25
+    };
+    
+    // Get available power-up types
     const availableTypes = getAvailablePowerUpTypes();
     if (availableTypes.length === 0) {
         console.warn("No power-up types available to grant.");
         return null;
     }
-    const randomIndex = Math.floor(Math.random() * availableTypes.length);
-    return availableTypes[randomIndex];
+    
+    // Filter rarities to only include available types
+    const availableRarities = {};
+    let totalWeight = 0;
+    
+    availableTypes.forEach(type => {
+        if (powerUpRarities[type]) {
+            availableRarities[type] = powerUpRarities[type];
+            totalWeight += powerUpRarities[type];
+        }
+    });
+    
+    if (totalWeight === 0) {
+        // Fallback to equal probability if no rarities defined
+        const randomIndex = Math.floor(Math.random() * availableTypes.length);
+        return availableTypes[randomIndex];
+    }
+    
+    // Generate random number and select based on weighted probability
+    const random = Math.random() * totalWeight;
+    let currentWeight = 0;
+    
+    for (const [type, weight] of Object.entries(availableRarities)) {
+        currentWeight += weight;
+        if (random <= currentWeight) {
+            return type;
+        }
+    }
+    
+    // Fallback (shouldn't reach here)
+    return availableTypes[0];
+}
+
+/**
+ * Gets the rarity level of a PowerUp
+ * @param {string} powerUpType - The type of the PowerUp
+ * @returns {string} The rarity level ('Común', 'Raro', 'Legendario')
+ */
+function getPowerUpRarity(powerUpType) {
+    const commonPowerUps = ['Fence', 'Shield', 'Pawn Range', 'Evolution'];
+    const rarePowerUps = ['Cage', 'Blast', 'Horizontal Portal'];
+    const legendaryPowerUps = ['Extra Move', 'Crazy King', 'Reducer', 'Swap'];
+    
+    if (commonPowerUps.includes(powerUpType)) return 'Común';
+    if (rarePowerUps.includes(powerUpType)) return 'Raro';
+    if (legendaryPowerUps.includes(powerUpType)) return 'Legendario';
+    return 'Común'; // Default
 }
 
 /**
@@ -502,10 +568,21 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
             gameContext.gameStats.white.roundScore += points;
         }
         
-        if (gameContext.score1 >= gameContext.nextThresholdWhite) {
+        // CORREGIDO: Usar while loop para otorgar múltiples PowerUps
+        let powerUpsGranted = 0;
+        while (gameContext.score1 >= gameContext.nextThresholdWhite) {
             const newPowerUp = getRandomPowerUp();
-            if (newPowerUp) gameContext.grantPowerUp('w', newPowerUp);
+            if (newPowerUp) {
+                gameContext.grantPowerUp('w', newPowerUp);
+                powerUpsGranted++;
+            }
             gameContext.nextThresholdWhite += 5;
+        }
+        
+        // Mostrar mensaje si se otorgaron PowerUps
+        if (powerUpsGranted > 0 && gameContext.messageElement) {
+            const suffix = powerUpsGranted > 1 ? `s (${powerUpsGranted})` : '';
+            gameContext.messageElement.textContent = `¡Blancas obtienen PowerUp${suffix}!`;
         }
     } else { // 'b'
         gameContext.score2 += points;
@@ -516,10 +593,21 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
             gameContext.gameStats.black.roundScore += points;
         }
         
-        if (gameContext.score2 >= gameContext.nextThresholdBlack) {
+        // CORREGIDO: Usar while loop para otorgar múltiples PowerUps
+        let powerUpsGranted = 0;
+        while (gameContext.score2 >= gameContext.nextThresholdBlack) {
             const newPowerUp = getRandomPowerUp();
-            if (newPowerUp) gameContext.grantPowerUp('b', newPowerUp);
+            if (newPowerUp) {
+                gameContext.grantPowerUp('b', newPowerUp);
+                powerUpsGranted++;
+            }
             gameContext.nextThresholdBlack += 5;
+        }
+        
+        // Mostrar mensaje si se otorgaron PowerUps
+        if (powerUpsGranted > 0 && gameContext.messageElement) {
+            const suffix = powerUpsGranted > 1 ? `s (${powerUpsGranted})` : '';
+            gameContext.messageElement.textContent = `¡Negras obtienen PowerUp${suffix}!`;
         }
     }
 }
@@ -618,14 +706,14 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
         },
         getCurrentPlayerId: function(color) {
             return this.playerIds[color];
-        },
-        // Agregar función grantPowerUp
+        },        // Agregar función grantPowerUp
         grantPowerUp: function(color, powerUpType) {
             if (!powerUpType) return;
             
             const inventory = color === 'w' ? this.powerUpsWhite : this.powerUpsBlack;
             const maxPowerUps = 5; // Límite de 5 powerups por jugador
             
+            // Verificar si el inventario está lleno
             if (inventory.length >= maxPowerUps) {
                 if (this.messageElement) {
                     this.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} tienen el máximo de power-ups (${maxPowerUps}).`;
@@ -633,12 +721,62 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
                 return;
             }
             
-            inventory.push(powerUpType);
+            let selectedPowerUp = powerUpType;
+            let attempts = 0;
+            const maxAttempts = 10; // Limite para evitar loops infinitos
+            
+            // Si el PowerUp ya existe en el inventario, intentar encontrar uno alternativo
+            while (inventory.includes(selectedPowerUp) && attempts < maxAttempts) {
+                if (attempts === 0 && this.messageElement) {
+                    const powerUpInfo = getPowerUpInfo(powerUpType);
+                    const powerUpName = powerUpInfo ? powerUpInfo.name : powerUpType;
+                    this.messageElement.textContent = 
+                        `${color === 'w' ? 'Blancas' : 'Negras'} ya tienen ${powerUpName}. Buscando alternativa...`;
+                }
+                
+                // Intentar seleccionar un PowerUp alternativo
+                selectedPowerUp = getRandomPowerUp();
+                attempts++;
+                
+                console.log(`Intento ${attempts}: PowerUp duplicado detectado (${powerUpType}), probando ${selectedPowerUp}`);
+            }
+            
+            // Si después de todos los intentos aún hay duplicado, no otorgar nada
+            if (inventory.includes(selectedPowerUp)) {
+                if (this.messageElement) {
+                    this.messageElement.textContent = 
+                        `${color === 'w' ? 'Blancas' : 'Negras'} tienen todos los PowerUps disponibles. No se otorga nada.`;
+                }
+                console.warn(`No se pudo encontrar PowerUp alternativo después de ${maxAttempts} intentos`);
+                return;
+            }
+            
+            // Agregar el PowerUp al inventario
+            inventory.push(selectedPowerUp);
             if (this.messageElement) {
-                const powerUpInfo = getPowerUpInfo(powerUpType);
-                const powerUpName = powerUpInfo ? powerUpInfo.name : powerUpType;
+                const powerUpInfo = getPowerUpInfo(selectedPowerUp);
+                const powerUpName = powerUpInfo ? powerUpInfo.name : selectedPowerUp;
+                const rarity = getPowerUpRarity(selectedPowerUp);
+                
+                // Emojis para rareza
+                const rarityEmoji = {
+                    'Común': '⚪',
+                    'Raro': '🔵', 
+                    'Legendario': '🟡'
+                };
+                
+                // Mostrar mensaje diferente si se otorgó un PowerUp alternativo
+                const isAlternative = selectedPowerUp !== powerUpType;
+                const messagePrefix = isAlternative ? 
+                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen (alternativo) ` : 
+                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen `;
+                
                 this.messageElement.textContent = 
-                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen power-up: ${powerUpName}!`;
+                    `${messagePrefix}${rarityEmoji[rarity]} ${powerUpName} (${rarity})!`;
+                    
+                if (isAlternative) {
+                    console.log(`PowerUp alternativo otorgado: ${selectedPowerUp} en lugar de ${powerUpType}`);
+                }
             }
             this.renderBoard(); // Para actualizar la UI de powerups
         }
