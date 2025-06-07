@@ -87,14 +87,12 @@ export class PauseManager {
         this.enableBoardInteractions();
         
         console.log('Game resumed');
-    }
-
-    restart() {
+    }    restart() {
         this.resume(); // Close pause menu first
         
         // Use the existing reset game functionality
         if (this.gameContext.resetGame) {
-            this.gameContext.resetGame(this.gameContext, true);
+            this.gameContext.resetGame(this.gameContext);
         }
     }
 

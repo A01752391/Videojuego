@@ -505,12 +505,9 @@ class RoundStatsModal {
             captured: gameStats[color].captured || 0,
             powerups: gameStats[color].powerupsUsed || 0
         };
-    }
-
-    /**
+    }    /**
      * Triggers next round action
-     */
-    triggerNextRound() {
+     */    triggerNextRound() {
         // Dispatch custom event for next round
         window.dispatchEvent(new CustomEvent('nextRound', {
             detail: { roundData: this.currentRoundData }
@@ -519,8 +516,7 @@ class RoundStatsModal {
 
     /**
      * Triggers new game action
-     */
-    triggerNewGame() {
+     */    triggerNewGame() {
         // Dispatch custom event for new game
         window.dispatchEvent(new CustomEvent('newGame', {
             detail: { roundData: this.currentRoundData }
