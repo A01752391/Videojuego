@@ -72,11 +72,10 @@ function createNextRoundButton(gameContext) {
     img.alt = 'Next Round';
     img.className = 'game-button-image';
     
-    btn.appendChild(img);
-    btn.addEventListener('click', async () => {
+    btn.appendChild(img);    btn.addEventListener('click', async () => {
         round++;
         btn.remove();
-        await resetGame(gameContext, false); // false for not a full game reset
+        resetRound(gameContext); // Solo resetear la ronda
     });
     
     // Append to buttons container instead of document.body
@@ -89,66 +88,40 @@ function createNextRoundButton(gameContext) {
 }
 
 /**
- * Resets the game state for a new round or a full game restart.
+ * Resets only the round state (keeps scores and power-ups between rounds).
  * @param {object} gameContext - The current game context.
- * @param {boolean} [fullReset=false] - True to reset all rounds and scores, false for next round.
  */
-function resetGame(gameContext, fullReset = false) {
+function resetRound(gameContext) {
     let newBoard;
 
-    if (fullReset) {
-        round = 1;
-        winsWhite = 0;
-        winsBlack = 0;
+    // Determine board based on current round and wins
+    if (round === 1) {
         newBoard = getRandomBoard(midgameBoards.neutral);
-    } else { // Starting a new round (round has already been incremented by createNextRoundButton)
-        if (round === 1) { // Should ideally not happen if fullReset is for round 1
-            newBoard = getRandomBoard(midgameBoards.neutral);
-        } else if (round === 2) {
-            if (winsWhite === 1 && winsBlack === 0) {
-                newBoard = getRandomBoard(midgameBoards.favorBlack);
-            } else if (winsBlack === 1 && winsWhite === 0) {
-                newBoard = getRandomBoard(midgameBoards.favorWhite);
-            } else { // Draw or unexpected state
-                newBoard = getRandomBoard(midgameBoards.neutral);
-            }
-        } else if (round === 3) { // Game is 1-1
-            newBoard = getRandomBoard(midgameBoards.neutral);
-        } else { // Should not be reached if game ends after 2 wins or 3 rounds
+    } else if (round === 2) {
+        if (winsWhite === 1 && winsBlack === 0) {
+            newBoard = getRandomBoard(midgameBoards.favorBlack);
+        } else if (winsBlack === 1 && winsWhite === 0) {
+            newBoard = getRandomBoard(midgameBoards.favorWhite);
+        } else { // Draw or unexpected state
             newBoard = getRandomBoard(midgameBoards.neutral);
         }
+    } else if (round === 3) { // Game is 1-1
+        newBoard = getRandomBoard(midgameBoards.neutral);
+    } else { // Should not be reached if game ends after 2 wins or 3 rounds
+        newBoard = getRandomBoard(midgameBoards.neutral);
     }
 
-    if (!newBoard && gameContext.standardInitialBoard) { // Fallback if midgame board loading fails
+    if (!newBoard && gameContext.standardInitialBoard) {
         console.error("Failed to load midgame board. Falling back to standard initial board.");
         newBoard = gameContext.standardInitialBoard();
     } else if (!newBoard) {
         console.error("CRITICAL: Failed to load any board. Game cannot continue.");
-        // Display error to user
         if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
         return;
     }
     gameContext.board = newBoard;
 
-    // MODIFICACIÓN: Solo resetear puntos y power-ups en reset completo
-    if (fullReset) {
-        // Reset scores for a full game restart
-        gameContext.score1 = 0;
-        gameContext.score2 = 0;
-        const score1El = document.getElementById('score1');
-        const score2El = document.getElementById('score2');
-        if (score1El) score1El.textContent = '0';
-        if (score2El) score2El.textContent = '0';
-
-        // Reset power-ups for a full game restart
-        gameContext.powerUpsWhite = [];
-        gameContext.powerUpsBlack = [];
-        gameContext.nextThresholdWhite = 5;
-        gameContext.nextThresholdBlack = 5;
-    }
-    // NOTA: Los puntos y power-ups se mantienen entre rondas (solo se resetean en fullReset)
-
-    // Reset game state (esto se resetea siempre)
+    // Reset game state for new round (NO resetear scores ni power-ups)
     gameContext.currentColor = 'w';
     gameContext.selected = null;
     gameContext.gameOver = false;
@@ -157,13 +130,98 @@ function resetGame(gameContext, fullReset = false) {
     gameContext.fencedTiles = [];
     gameContext.activePowerUps = [];
     gameContext.awaitingPowerUpTarget = null;
-    
-    // NUEVO: Reset específico para Swap
     gameContext.swapSelection = null;
-    
-    // Reset efectos temporales de power-ups
     gameContext.pawnRangeActive = {};
     gameContext.crazyKingActive = {};
+
+    // CRÍTICO: Reset de estadísticas de ronda para ROUND STATS MODAL
+    // Esto asegura que cada ronda empiece con estadísticas en 0
+    gameContext.gameStats = {
+        white: {
+            turns: 0,
+            captured: 0,
+            powerupsUsed: 0,
+            roundScore: 0
+        },
+        black: {
+            turns: 0,
+            captured: 0,
+            powerupsUsed: 0,
+            roundScore: 0
+        }
+    };
+
+    updateRoundWinsDisplay();
+    if(gameContext.messageElement) gameContext.messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
+    gameContext.renderBoard();
+}
+
+/**
+ * Resets the entire game state (full restart).
+ * @param {object} gameContext - The current game context.
+ */
+function resetGame(gameContext) {
+    // Reset round counters
+    round = 1;
+    winsWhite = 0;
+    winsBlack = 0;
+
+    // Get neutral board for new game
+    const newBoard = getRandomBoard(midgameBoards.neutral);
+    
+    if (!newBoard && gameContext.standardInitialBoard) {
+        console.error("Failed to load midgame board. Falling back to standard initial board.");
+        gameContext.board = gameContext.standardInitialBoard();
+    } else if (!newBoard) {
+        console.error("CRITICAL: Failed to load any board. Game cannot continue.");
+        if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
+        return;
+    } else {
+        gameContext.board = newBoard;
+    }
+
+    // Reset scores for a full game restart
+    gameContext.score1 = 0;
+    gameContext.score2 = 0;
+    const score1El = document.getElementById('score1');
+    const score2El = document.getElementById('score2');
+    if (score1El) score1El.textContent = '0';
+    if (score2El) score2El.textContent = '0';
+
+    // Reset power-ups for a full game restart
+    gameContext.powerUpsWhite = [];
+    gameContext.powerUpsBlack = [];
+    gameContext.nextThresholdWhite = 5;
+    gameContext.nextThresholdBlack = 5;
+
+    // Reset game state
+    gameContext.currentColor = 'w';
+    gameContext.selected = null;
+    gameContext.gameOver = false;
+    
+    // Reset power-ups activos y vallas
+    gameContext.fencedTiles = [];
+    gameContext.activePowerUps = [];
+    gameContext.awaitingPowerUpTarget = null;
+    gameContext.swapSelection = null;
+    gameContext.pawnRangeActive = {};
+    gameContext.crazyKingActive = {};
+
+    // Reset estadísticas de ronda
+    gameContext.gameStats = {
+        white: {
+            turns: 0,
+            captured: 0,
+            powerupsUsed: 0,
+            roundScore: 0
+        },
+        black: {
+            turns: 0,
+            captured: 0,
+            powerupsUsed: 0,
+            roundScore: 0
+        }
+    };
 
     updateRoundWinsDisplay();
     if(gameContext.messageElement) gameContext.messageElement.textContent = `Ronda ${round}. Turno de las Blancas.`;
@@ -172,52 +230,172 @@ function resetGame(gameContext, fullReset = false) {
 
 /**
  * Handles the end of a round when a player wins.
- * @param {string} winner - The color of the winning player ('w' for white, 'b' for black).
+ * @param {string} winner - The color of the winning player ('w' for white, 'b' for black, or 'stalemate').
  * @param {object} gameContext - The current game context.
  */
 function handleRoundEnd(winner, gameContext) {
-    if (winner === 'w') {
+    // Handle stalemate case
+    if (winner === 'stalemate') {
+        // Both players get a win for stalemate
+        winsWhite++;
+        winsBlack++;
+    } else if (winner === 'w') {
         winsWhite++;
     } else if (winner === 'b') {
         winsBlack++;
     }
+      updateRoundWinsDisplay();    
     
-    updateRoundWinsDisplay();
+    // CRITICAL FIX: Capturar solo los datos de la ronda actual para el modal
+    const currentRoundWhiteStats = {
+        turns: gameContext.gameStats?.white?.turns || 0,
+        captured: gameContext.gameStats?.white?.captured || 0,
+        powerupsUsed: gameContext.gameStats?.white?.powerupsUsed || 0,
+        roundScore: gameContext.gameStats?.white?.roundScore || 0
+    };
+    const currentRoundBlackStats = {
+        turns: gameContext.gameStats?.black?.turns || 0,
+        captured: gameContext.gameStats?.black?.captured || 0,
+        powerupsUsed: gameContext.gameStats?.black?.powerupsUsed || 0,
+        roundScore: gameContext.gameStats?.black?.roundScore || 0
+    };
+
+    const roundData = {
+        roundNumber: round,
+        winner: winner,
+        whiteScore: currentRoundWhiteStats.roundScore,
+        blackScore: currentRoundBlackStats.roundScore,
+        winsWhite: winsWhite,
+        winsBlack: winsBlack,
+        stalemateReason: winner === 'stalemate' ? 'Tablas por ahogado o solo dos reyes' : null,
+        // Solo datos de la ronda actual
+        gameStats: {
+            white: currentRoundWhiteStats,
+            black: currentRoundBlackStats
+        },
+        gameSeriesData: gameSeriesData,
+        timestamp: new Date().toISOString()
+    };
+
+
+
+    // Prepare current round data for series (with cumulative scores)
+    const currentRoundData = {
+        roundNumber: round,
+        winner: winner,
+        whiteScore: gameContext.score1 || 0, // Cumulative score for series
+        blackScore: gameContext.score2 || 0, // Cumulative score for series
+        gameStats: gameContext.gameStats || null,
+        timestamp: new Date().toISOString()
+    };
+      // Add round data to series ALWAYS (for both ending and non-ending rounds)
+    gameSeriesData.rounds.push(currentRoundData);
     
     // Check if game is over (best of 3)
+    const gameEnded = winsWhite === 2 || winsBlack === 2 || round === 3;
+    
+    // Show the round statistics modal ONLY if game hasn't ended
+    if (!gameEnded && roundStatsModal) {
+        roundStatsModal.show(roundData);
+    }
+    
     if (winsWhite === 2) {
         if(gameContext.messageElement) {
             gameContext.messageElement.textContent = "¡Las Blancas ganan la partida 2-" + winsBlack + "!";
         }
         gameContext.gameOver = true;
-        return;
+        gameSeriesData.winner = 'w';
+        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
     } else if (winsBlack === 2) {
         if(gameContext.messageElement) {
             gameContext.messageElement.textContent = "¡Las Negras ganan la partida 2-" + winsWhite + "!";
         }
         gameContext.gameOver = true;
-        return;
+        gameSeriesData.winner = 'b';
+        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
     } else if (round === 3) {
         // Third round completed, determine winner
         if (winsWhite > winsBlack) {
             if(gameContext.messageElement) {
                 gameContext.messageElement.textContent = "¡Las Blancas ganan la partida " + winsWhite + "-" + winsBlack + "!";
             }
+            gameSeriesData.winner = 'w';
         } else if (winsBlack > winsWhite) {
             if(gameContext.messageElement) {
                 gameContext.messageElement.textContent = "¡Las Negras ganan la partida " + winsBlack + "-" + winsWhite + "!";
             }
+            gameSeriesData.winner = 'b';
         } else {
             if(gameContext.messageElement) {
                 gameContext.messageElement.textContent = "¡Partida empatada " + winsWhite + "-" + winsBlack + "!";
             }
+            gameSeriesData.winner = 'tie';
         }
         gameContext.gameOver = true;
-        return;
+        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;    }
+      // If game ended, show game statistics modal directly
+    if (gameEnded) {
+        // Show game statistics modal immediately when game ends
+        if (gameStatsModal) {
+            setTimeout(() => {
+                gameStatsModal.show(gameSeriesData);
+            }, 500); // Small delay to allow win message to be seen
+        } else {
+            console.error('gameStatsModal is null or undefined');
+        }
+        
+        // Listen for game stats modal events to handle new game
+        const handleGameStatsEvent = (event) => {
+            if (event.type === 'newGame') {
+                // Reset everything for new game
+                round = 1;
+                winsWhite = 0;
+                winsBlack = 0;
+                
+                // Reset game series data
+                gameSeriesData = {
+                    rounds: [],
+                    startDate: new Date().toISOString(),
+                    startTime: Date.now(),
+                    duration: null
+                };
+                
+                resetGame(gameContext);
+            }
+            
+            // Remove the event listener after handling
+            window.removeEventListener('newGame', handleGameStatsEvent);
+        };
+        
+        // Add event listener for new game from game stats modal
+        window.addEventListener('newGame', handleGameStatsEvent);} else {
+        // Game continues - add simple event listeners for next round
+        const handleContinueGame = (event) => {
+            if (event.type === 'nextRound' && gameContext && !gameContext.gameOver) {
+                round++;
+                resetRound(gameContext); // Solo resetear la ronda, no el juego completo
+            } else if (event.type === 'newGame' && gameContext) {
+                round = 1;
+                winsWhite = 0;
+                winsBlack = 0;
+                
+                gameSeriesData = {
+                    rounds: [],
+                    startDate: new Date().toISOString(),
+                    startTime: Date.now(),
+                    duration: null
+                };
+                
+                resetGame(gameContext); // Reset completo del juego
+            }
+            
+            // Remove listeners after use
+            window.removeEventListener('newGame', handleContinueGame);
+            window.removeEventListener('nextRound', handleContinueGame);
+        };
+          window.addEventListener('newGame', handleContinueGame);
+        window.addEventListener('nextRound', handleContinueGame);
     }
-    
-    // Continue to next round
-    createNextRoundButton(gameContext);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -255,13 +433,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Inicializar el juego con los emails de los jugadores
             gameContext = await initGame(whitePlayerEmail, blackPlayerEmail);
-            
-            // Asignar el boardElement al gameContext
+              // Asignar el boardElement al gameContext
             gameContext.boardElement = boardElement;
             gameContext.messageElement = messageElement;
             
             // Agregar función para manejar el final de ronda
             gameContext.handleRoundEnd = handleRoundEnd;
+            
+            // Agregar funciones para declarar ganador y tablas
+            gameContext.declareWinner = function(winnerColor) {
+                handleRoundEnd(winnerColor, gameContext);
+            };
+            
+            gameContext.declareStalemate = function() {
+                handleRoundEnd('stalemate', gameContext);
+            };
             
             // Ocultar el formulario y mostrar el tablero
             startForm.style.display = 'none';
@@ -330,12 +516,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Configurar evento del botón de reset
-            resetButton.addEventListener('click', () => {
-                const shouldReset = confirm('¿Estás seguro de que quieres reiniciar el juego?');
-                if (shouldReset) {
-                    resetGame(gameContext, true);
-                    gameContext.renderBoard();
-                }
+            resetButton.addEventListener('click', () => {            const shouldReset = confirm('¿Estás seguro de que quieres reiniciar el juego?');
+            if (shouldReset) {
+                resetGame(gameContext); // Reset completo del juego
+                gameContext.renderBoard();
+            }
             });
 
             // Renderizar el tablero inicial
@@ -351,39 +536,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error cargando módulos del juego:', error);
             alert('Error cargando los módulos del juego');
         });
-    }
-
-    // Initialize round statistics modal
+    }    // Initialize round statistics modal
     if (typeof RoundStatsModal !== 'undefined') {
         roundStatsModal = new RoundStatsModal();
         
-        // Add event listeners for modal actions
-        window.addEventListener('nextRound', (event) => {
-            if (gameContext) {
-                round++;
-                resetGame(gameContext, false);
-            }
-        });
-        window.addEventListener('newGame', (event) => {
-            if (gameContext) {
-                round = 1;
-                winsWhite = 0;
-                winsBlack = 0;
-                // Reset game series data
-                gameSeriesData = {
-                    rounds: [],
-                    startDate: new Date().toISOString(),
-                    startTime: Date.now(),
-                    duration: null
-                };
-                resetGame(gameContext, true);
-            }
-        });
+        // Note: Event listeners for nextRound and newGame are now handled 
+        // within handleRoundEnd to avoid conflicts with Game Stats Modal
     } else {
         console.warn('RoundStatsModal not available. Statistics will not be shown.');
-    }
-
-    // Initialize game statistics modal
+    }    // Initialize game statistics modal
     if (typeof GameStatsModal !== 'undefined') {
         gameStatsModal = new GameStatsModal();
     } else {
@@ -429,5 +590,6 @@ export {
     updateRoundWinsDisplay,
     createNextRoundButton,
     resetGame,
+    resetRound,
     handleRoundEnd
 };

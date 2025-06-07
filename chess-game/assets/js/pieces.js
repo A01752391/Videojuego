@@ -485,3 +485,37 @@ export function isStalemate(playerColor, gameContext) {
     
     return !hasLegal;
 }
+
+/**
+ * Verifica si solo quedan los dos reyes en el tablero (tablas por material insuficiente)
+ * @param {object} gameContext - Contexto del juego
+ * @returns {boolean} True si solo quedan dos reyes
+ */
+export function isOnlyKingsRemaining(gameContext) {
+    const { board } = gameContext;
+    let pieceCount = 0;
+    let whiteKingFound = false;
+    let blackKingFound = false;
+    
+    // Contar todas las piezas en el tablero
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (piece) {
+                pieceCount++;
+                if (piece.type === 'k') {
+                    if (piece.color === 'w') {
+                        whiteKingFound = true;
+                    } else if (piece.color === 'b') {
+                        blackKingFound = true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Solo quedan dos reyes si:
+    // 1. Hay exactamente 2 piezas en el tablero
+    // 2. Ambos reyes están presentes
+    return pieceCount === 2 && whiteKingFound && blackKingFound;
+}

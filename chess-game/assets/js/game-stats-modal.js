@@ -343,9 +343,7 @@ class GameStatsModal {
         document.getElementById('gameModalErrorState').style.display = 'none';
         document.getElementById('gameModalStatsContent').style.display = 'block';
         document.getElementById('gameModalActionButtons').style.display = 'flex';
-    }
-
-    /**
+    }    /**
      * Processes and displays game statistics
      */
     async processAndDisplayGameStats(gameData) {
@@ -365,8 +363,8 @@ class GameStatsModal {
             // Display performance stats
             this.displayGamePerformanceStats(aggregatedData);
 
-            // Fetch and display powerup statistics
-            await this.displayPowerupAnalysis();
+            // Display powerup statistics using real game data
+            this.displayPowerupAnalysis(gameData);
 
             // Display round progress
             this.displayRoundsProgress(gameData);
@@ -581,56 +579,87 @@ class GameStatsModal {
             document.getElementById(whiteBarId).style.width = `${Math.max(15, whitePercent)}%`;
             document.getElementById(blackBarId).style.width = `${Math.max(15, blackPercent)}%`;
         }
+    }    /**
+     * Displays PowerUp analysis using real game session data
+     */
+    displayPowerupAnalysis(gameData) {
+        try {
+            const topPowerupsContainer = document.getElementById('topPowerups');
+            const powerupChartContainer = document.getElementById('powerupChart');
+            
+            // Aggregate PowerUp usage from all rounds
+            const powerupUsage = this.aggregatePowerupUsage(gameData);
+            
+            // Display top 5 most used powerups
+            topPowerupsContainer.innerHTML = '';
+            if (powerupUsage.length > 0) {
+                powerupUsage.slice(0, 5).forEach((powerup, index) => {
+                    const powerupElement = document.createElement('div');
+                    powerupElement.className = 'powerup-item';
+                    powerupElement.innerHTML = `
+                        <span class="powerup-rank">${index + 1}</span>
+                        <span class="powerup-name">${powerup.name}</span>
+                        <span class="powerup-uses">${powerup.uses} usos</span>
+                    `;
+                    topPowerupsContainer.appendChild(powerupElement);
+                });
+            } else {
+                topPowerupsContainer.innerHTML = '<p>No se han usado PowerUps en esta partida</p>';
+            }
+
+            // Calculate and display usage statistics
+            powerupChartContainer.innerHTML = '';
+            const totalUses = powerupUsage.reduce((sum, p) => sum + p.uses, 0);
+            const mostPopular = powerupUsage.length > 0 ? powerupUsage[0].name : 'N/A';
+            
+            powerupChartContainer.innerHTML = `
+                <div class="chart-stat">
+                    <span class="chart-label">Total usos:</span>
+                    <span class="chart-value">${totalUses}</span>
+                </div>
+                <div class="chart-stat">
+                    <span class="chart-label">Más popular:</span>
+                    <span class="chart-value">${mostPopular}</span>
+                </div>
+                <div class="chart-stat">
+                    <span class="chart-label">Tipos diferentes usados:</span>
+                    <span class="chart-value">${powerupUsage.length}</span>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error displaying powerup analysis:', error);
+            document.getElementById('topPowerups').innerHTML = '<p>Error al procesar datos de PowerUps</p>';
+        }
     }
 
     /**
-     * Displays PowerUp analysis using API data
+     * Aggregates PowerUp usage data from all game rounds
      */
-    async displayPowerupAnalysis() {
-        try {
-            const response = await fetch('/api/powerups');
-            if (response.ok) {
-                const powerupData = await response.json();
-                
-                const topPowerupsContainer = document.getElementById('topPowerups');
-                const powerupChartContainer = document.getElementById('powerupChart');
-                
-                // Display top 5 most used powerups
-                topPowerupsContainer.innerHTML = '';
-                if (powerupData.data && powerupData.data.length > 0) {
-                    powerupData.data.slice(0, 5).forEach((powerup, index) => {
-                        const powerupElement = document.createElement('div');
-                        powerupElement.className = 'powerup-item';
-                        powerupElement.innerHTML = `
-                            <span class="powerup-rank">${index + 1}</span>
-                            <span class="powerup-name">${powerup.nombre}</span>
-                            <span class="powerup-uses">${powerup.vecesUsado} usos</span>
-                        `;
-                        topPowerupsContainer.appendChild(powerupElement);
+    aggregatePowerupUsage(gameData) {
+        const powerupTotals = {};
+        
+        if (gameData.rounds) {
+            gameData.rounds.forEach(round => {
+                // Aggregate from white player
+                if (round.gameStats && round.gameStats.white && round.gameStats.white.powerupTypesUsed) {
+                    Object.entries(round.gameStats.white.powerupTypesUsed).forEach(([type, count]) => {
+                        powerupTotals[type] = (powerupTotals[type] || 0) + count;
                     });
-                } else {
-                    topPowerupsContainer.innerHTML = '<p>No hay datos de PowerUps disponibles</p>';
                 }
-
-                // Simple usage chart representation
-                powerupChartContainer.innerHTML = '';
-                if (powerupData.estadisticas) {
-                    powerupChartContainer.innerHTML = `
-                        <div class="chart-stat">
-                            <span class="chart-label">Total usos:</span>
-                            <span class="chart-value">${powerupData.estadisticas.totalUsos}</span>
-                        </div>
-                        <div class="chart-stat">
-                            <span class="chart-label">Más popular:</span>
-                            <span class="chart-value">${powerupData.estadisticas.powerupMasPopular || 'N/A'}</span>
-                        </div>
-                    `;
+                
+                // Aggregate from black player
+                if (round.gameStats && round.gameStats.black && round.gameStats.black.powerupTypesUsed) {
+                    Object.entries(round.gameStats.black.powerupTypesUsed).forEach(([type, count]) => {
+                        powerupTotals[type] = (powerupTotals[type] || 0) + count;
+                    });
                 }
-            }
-        } catch (error) {
-            console.error('Error fetching powerup data:', error);
-            document.getElementById('topPowerups').innerHTML = '<p>Error al cargar datos de PowerUps</p>';
+            });
         }
+        
+        // Convert to array and sort by usage count
+        return Object.entries(powerupTotals)
+            .map(([name, uses]) => ({ name, uses }))
+            .sort((a, b) => b.uses - a.uses);
     }
 
     /**

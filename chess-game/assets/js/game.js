@@ -16,7 +16,7 @@ const moveSound = new Audio('../Sonidos/moving-piece.mp3');
  * @param {string} powerupName - The name of the powerup
  * @returns {number} The database ID of the powerup
  */
-function getPowerUpIdByName(powerupName) {
+export function getPowerUpIdByName(powerupName) {
     // Mapping de nombres de powerups a sus IDs en la base de datos
     const powerupIdMap = {
         'Fence': 1,
@@ -493,11 +493,15 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
         const playerDisplayColor = playerColor === 'w' ? 'Blancas' : 'Negras';
         // gameContext.messageElement.textContent = `${playerDisplayColor} capturan ${capturedPiece.type} y ganan ${points} puntos.`;
         // This message might be overwritten by check/checkmate/turn message, consider appending or a separate log area.
-    }
-
-    if (playerColor === 'w') {
+    }    if (playerColor === 'w') {
         gameContext.score1 += points;
         document.getElementById('score1').textContent = gameContext.score1;
+        
+        // NUEVO: Agregar puntos al score individual de la ronda
+        if (gameContext.gameStats && gameContext.gameStats.white) {
+            gameContext.gameStats.white.roundScore += points;
+        }
+        
         if (gameContext.score1 >= gameContext.nextThresholdWhite) {
             const newPowerUp = getRandomPowerUp();
             if (newPowerUp) gameContext.grantPowerUp('w', newPowerUp);
@@ -506,6 +510,12 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
     } else { // 'b'
         gameContext.score2 += points;
         document.getElementById('score2').textContent = gameContext.score2;
+        
+        // NUEVO: Agregar puntos al score individual de la ronda
+        if (gameContext.gameStats && gameContext.gameStats.black) {
+            gameContext.gameStats.black.roundScore += points;
+        }
+        
         if (gameContext.score2 >= gameContext.nextThresholdBlack) {
             const newPowerUp = getRandomPowerUp();
             if (newPowerUp) gameContext.grantPowerUp('b', newPowerUp);
@@ -588,10 +598,23 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
         score2: 0,
         // Inicializar umbrales de powerups
         nextThresholdWhite: 5,
-        nextThresholdBlack: 5,
-        playerIds: {
+        nextThresholdBlack: 5,        playerIds: {
             'w': null,
             'b': null
+        },        // NUEVO: Inicializar estadísticas de la ronda
+        gameStats: {
+            white: {
+                turns: 0,
+                captured: 0,
+                powerupsUsed: 0,
+                roundScore: 0  // NUEVO: Score individual de la ronda
+            },
+            black: {
+                turns: 0,
+                captured: 0,
+                powerupsUsed: 0,
+                roundScore: 0  // NUEVO: Score individual de la ronda
+            }
         },
         getCurrentPlayerId: function(color) {
             return this.playerIds[color];
@@ -672,88 +695,121 @@ function getRandomBoard(boardArray) {
 }
 
 /**
- * Resets the game state for a new round or a full game restart.
- * @param {object} gameContext - The current game context.
- * @param {boolean} [fullReset=false] - True to reset all rounds and scores, false for next round.
+ * Reset the entire game state (full restart)
+ * @param {object} gameContext - The current game context
  */
-export async function resetGame(gameContext, fullReset = false) {
-    let newBoard;
+export async function resetGame(gameContext) {
+    // For full reset, use neutral boards
+    let newBoard = getRandomBoard(midgameBoards.neutral);
 
-    if (fullReset) {
-        // For full reset, use neutral boards
-        newBoard = getRandomBoard(midgameBoards.neutral);
-    } else { 
-        // For round resets, the board selection logic would be handled by index.js
-        // based on the round number and wins, so we default to neutral here
-        newBoard = getRandomBoard(midgameBoards.neutral);
-
-        // Crear nueva ronda en la base de datos si no es reset completo
-        try {
-            if (gameContext.currentGameId) {
-                const roundNumber = gameContext.currentRound || 1;
-                const roundId = await createNewRound(gameContext.currentGameId, roundNumber);
-                gameContext.currentRoundId = roundId;
-            }
-        } catch (error) {
-            console.error('Error creando nueva ronda:', error);
-            if(gameContext.messageElement) {
-                gameContext.messageElement.textContent = 'Error al crear nueva ronda. Algunas funciones pueden no estar disponibles.';
-            }
-        }
-    }
-
-    if (!newBoard && gameContext.standardInitialBoard) { // Fallback if midgame board loading fails
+    if (!newBoard && gameContext.standardInitialBoard) {
         console.error("Failed to load midgame board. Falling back to standard initial board.");
         newBoard = gameContext.standardInitialBoard();
     } else if (!newBoard) {
         console.error("CRITICAL: Failed to load any board. Game cannot continue.");
-        // Display error to user
         if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
         return;
     }
     gameContext.board = newBoard;
 
-    // MODIFICACIÓN: Solo resetear puntos y power-ups en reset completo
-    if (fullReset) {
-        // Reset scores for a full game restart
-        gameContext.score1 = 0;
-        gameContext.score2 = 0;
-        const score1El = document.getElementById('score1');
-        const score2El = document.getElementById('score2');
-        if (score1El) score1El.textContent = '0';
-        if (score2El) score2El.textContent = '0';
+    // Reset scores for a full game restart
+    gameContext.score1 = 0;
+    gameContext.score2 = 0;
+    const score1El = document.getElementById('score1');
+    const score2El = document.getElementById('score2');
+    if (score1El) score1El.textContent = '0';
+    if (score2El) score2El.textContent = '0';
 
-        // Reset power-ups for a full game restart
-        gameContext.powerUpsWhite = [];
-        gameContext.powerUpsBlack = [];
-        gameContext.nextThresholdWhite = 5;
-        gameContext.nextThresholdBlack = 5;
-    }
-    // NOTA: Los puntos y power-ups se mantienen entre rondas (solo se resetean en fullReset)
+    // Reset power-ups for a full game restart
+    gameContext.powerUpsWhite = [];
+    gameContext.powerUpsBlack = [];
+    gameContext.nextThresholdWhite = 5;
+    gameContext.nextThresholdBlack = 5;
 
-    // Reset game state (esto se resetea siempre)
+    // Reset game state
     gameContext.currentColor = 'w';
     gameContext.selected = null;
     gameContext.gameOver = false;
+    
+    // Reset estadísticas de ronda
+    gameContext.gameStats = {
+        white: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 },
+        black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
+    };
+    
+    // Reset power-ups activos y vallas
+    gameContext.fencedTiles = [];
+    gameContext.activePowerUps = [];
+    gameContext.awaitingPowerUpTarget = null;
+    gameContext.swapSelection = null;
+    gameContext.pawnRangeActive = {};
+    gameContext.crazyKingActive = {};
+
+    if(gameContext.messageElement) {
+        gameContext.messageElement.textContent = "Juego reiniciado. Turno de las Blancas.";
+    }
+    
+    if (gameContext.renderBoard) {
+        gameContext.renderBoard();
+    }
+}
+
+/**
+ * Reset only the round state (keeps scores and power-ups between rounds)
+ * @param {object} gameContext - The current game context
+ */
+export async function resetRound(gameContext) {
+    // For round resets, use neutral boards by default
+    // The actual board selection logic is handled by index.js
+    let newBoard = getRandomBoard(midgameBoards.neutral);
+
+    // Create new round in database for round resets
+    try {
+        if (gameContext.currentGameId) {
+            const roundNumber = gameContext.currentRound || 1;
+            const roundId = await createNewRound(gameContext.currentGameId, roundNumber);
+            gameContext.currentRoundId = roundId;
+        }
+    } catch (error) {
+        console.error('Error creando nueva ronda:', error);
+        if(gameContext.messageElement) {
+            gameContext.messageElement.textContent = 'Error al crear nueva ronda. Algunas funciones pueden no estar disponibles.';
+        }
+    }
+
+    if (!newBoard && gameContext.standardInitialBoard) {
+        console.error("Failed to load midgame board. Falling back to standard initial board.");
+        newBoard = gameContext.standardInitialBoard();
+    } else if (!newBoard) {
+        console.error("CRITICAL: Failed to load any board. Game cannot continue.");
+        if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
+        return;
+    }
+    gameContext.board = newBoard;
+
+    // Reset game state for new round (NO resetear scores ni power-ups)
+    gameContext.currentColor = 'w';
+    gameContext.selected = null;
+    gameContext.gameOver = false;
+    
+    // CRÍTICO: Reset de estadísticas de ronda para ROUND STATS MODAL
+    gameContext.gameStats = {
+        white: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 },
+        black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
+    };
     
     // Reset power-ups activos y vallas (estos sí se resetean cada ronda)
     gameContext.fencedTiles = [];
     gameContext.activePowerUps = [];
     gameContext.awaitingPowerUpTarget = null;
-    
-    // NUEVO: Reset específico para Swap
     gameContext.swapSelection = null;
-    
-    // Reset efectos temporales de power-ups
     gameContext.pawnRangeActive = {};
     gameContext.crazyKingActive = {};
 
-    // Update message if messageElement exists
     if(gameContext.messageElement) {
-        gameContext.messageElement.textContent = "Juego reiniciado. Turno de las Blancas.";
+        gameContext.messageElement.textContent = "Nueva ronda iniciada. Turno de las Blancas.";
     }
     
-    // Render board if render function exists
     if (gameContext.renderBoard) {
         gameContext.renderBoard();
     }
