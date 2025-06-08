@@ -63,9 +63,85 @@ export class FencePowerUp extends PowerUpBase {
 
     gameContext.messageElement.textContent = `¡Valla colocada en ${r},${c} por ${playerColor === 'w' ? 'Blancas' : 'Negras'}! Durará ${this.duration} turnos.`;
     
+    // Trigger radial illumination effect
+    this.triggerRadialIllumination(gameContext, r, c, 'fence');
+      // Trigger fence placement animation
+    this.triggerFencePlacementAnimation(gameContext, r, c);
+    
     super.onActivationComplete(gameContext, playerColor, fenceInstanceData);
-    gameContext.renderBoard(); // Re-render to show the fence
+    
+    // Delay board render to allow animation to play
+    setTimeout(() => {
+      gameContext.renderBoard(); // Re-render to show the fence
+    }, 100); // Small delay to allow animation to start
+    
     return true; // Activation successful
+  }
+
+  /**
+   * Triggers a placement animation when a fence is placed
+   */
+  triggerFencePlacementAnimation(gameContext, row, col) {
+    const { boardElement } = gameContext;
+    if (!boardElement) return;
+
+    // Find the target cell
+    const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!targetCell) return;
+
+    // Create placement animation element
+    const placementEffect = document.createElement('div');
+    placementEffect.className = 'fence-placement-animation';
+    placementEffect.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 80%;
+      height: 80%;
+      background-image: url('/images/powerupfenceicon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+      animation: fencePlacement 0.8s ease-out forwards;
+    `;
+
+    // Add CSS animation if it doesn't exist
+    if (!document.querySelector('#fence-placement-style')) {
+      const style = document.createElement('style');
+      style.id = 'fence-placement-style';
+      style.textContent = `
+        @keyframes fencePlacement {
+          0% { 
+            transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+            opacity: 0;
+          }
+          50% { 
+            transform: translate(-50%, -50%) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
+          }
+          100% { 
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Add the animation element to the cell
+    targetCell.style.position = 'relative';
+    targetCell.appendChild(placementEffect);
+
+    // Remove the animation after it completes
+    setTimeout(() => {
+      if (placementEffect.parentNode) {
+        placementEffect.remove();
+      }
+    }, 800);
   }
 
   // Override deactivate to remove the specific fence from the board

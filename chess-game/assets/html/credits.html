@@ -181,35 +181,45 @@
             margin-top: 30px;
             padding-top: 20px;
             border-top: 2px solid #ff4081;
-        }
-
-        .nav-button {
-            display: block;
-            text-align: center;
-            background-color: transparent;
-            border: none;
-            color: white;
-            padding: 15px 25px;
-            margin: 30px auto 0;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 12px;
-            width: 220px;
+        }        .nav-button {
+            background-color: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            border: none !important;
+            width: 160px !important;
+            height: auto !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 30px auto 0 !important;
             cursor: pointer;
             text-decoration: none;
-            transition: all 0.3s ease;
-            box-shadow: none;
+            transition: all 0.2s ease;
         }
 
         .nav-button:hover {
-            background-color: transparent;
-            transform: translateY(-3px);
-            box-shadow: none;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            transform: scale(1.05);
+        }
+
+        .nav-button:active {
+            transform: scale(0.95);
+            box-shadow: none !important;
         }
 
         .button-image {
             width: 140px;
             height: auto;
+            border-radius: 10px;
+            filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: block;
+        }
+
+        .button-image:hover {
+            filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.4)) brightness(1.1);
         }
 
         @media (max-width: 768px) {

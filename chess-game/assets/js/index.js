@@ -485,9 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 isStalemate 
             } = piecesModule;
             const { updateScore: updateScoreFunc, handleClick: handleClickFunc } = gameModule;
-            const { PauseManager } = pauseModule;
-
-            // Configurar el contexto del juego con todas las funciones necesarias
+            const { PauseManager } = pauseModule;            // Configurar el contexto del juego con todas las funciones necesarias
             Object.assign(gameContext, {
                 renderBoard: () => renderBoardFunc(gameContext),
                 standardInitialBoard: standardInitialBoardFunc,
@@ -499,7 +497,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 isKingInCheck: (boardToCheck, kingColor) => isKingInCheck(boardToCheck || gameContext.board, kingColor, { ...gameContext, board: boardToCheck || gameContext.board }),
                 isCheckmate: (color) => isCheckmate(color, gameContext),
                 isStalemate: (color) => isStalemate(color, gameContext),
-                updateScore: (player) => updateScoreFunc(player, gameContext)
+                updateScore: (player) => updateScoreFunc(player, gameContext),
+                resetGame: (context) => resetGame(context || gameContext) // Add the local resetGame function
             });
 
             // Configurar el manejador de pausa

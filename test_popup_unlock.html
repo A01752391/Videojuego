@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerUp Unlock Popup Test</title>
+    <link rel="stylesheet" href="chess-game/assets/css/style.css">
+    <link rel="stylesheet" href="chess-game/assets/css/powerup-unlock-modal.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #2c1e2e, #ff4081);
+            color: white;
+            font-family: 'Fredoka', sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .test-controls {
+            background: rgba(44, 30, 46, 0.8);
+            border: 2px solid #ff4081;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .test-btn {
+            background: linear-gradient(45deg, #ff4081, #c2185b);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(255, 64, 129, 0.4);
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        .test-btn:hover {
+            background: linear-gradient(45deg, #c2185b, #ff4081);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 64, 129, 0.6);
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            color: #ffd54f;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .description {
+            font-size: 1.2rem;
+            color: #f9e5a7;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h1 class="title">🔓 PowerUp Unlock Popup Test</h1>
+        <p class="description">Prueba el nuevo sistema de popups para desbloqueos de PowerUps. Haz clic en los botones para ver como aparecen los popups con diferentes raridades.</p>
+        
+        <div>
+            <button class="test-btn" onclick="testUnlock('Shield')">🔓 Unlock Shield (Común)</button>
+            <button class="test-btn" onclick="testUnlock('Cage')">🔓 Unlock Cage (Raro)</button>
+            <button class="test-btn" onclick="testUnlock('Swap')">🔓 Unlock Swap (Legendario)</button>
+            <button class="test-btn" onclick="testUnlock('Reducer')">🔓 Unlock Reducer (Legendario)</button>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button class="test-btn" onclick="testMultiple()">🎉 Test Multiple Unlocks</button>
+        </div>
+    </div>
+
+    <!-- PowerUp Unlock Modal -->
+    <div id="powerup-unlock-modal" class="powerup-unlock-modal">
+        <div class="unlock-modal-content">
+            <div class="unlock-particles"></div>
+            <div class="unlock-icon">🔓</div>
+            <div class="unlock-title">¡POWER-UP DESBLOQUEADO!</div>
+            <div id="unlock-powerup-name" class="unlock-powerup-name"></div>
+            <div id="unlock-rarity" class="unlock-rarity"></div>
+            <div class="unlock-description">Ya está disponible para ambos jugadores</div>
+            <button id="unlock-close-btn" class="unlock-close-btn">¡Genial!</button>
+        </div>
+    </div>
+
+    <script>
+        // PowerUp rarity mapping
+        function getPowerUpRarity(powerUpType) {
+            const commonPowerUps = ['Fence', 'Shield', 'Pawn Range', 'Evolution'];
+            const rarePowerUps = ['Cage', 'Blast', 'Horizontal Portal'];
+            const legendaryPowerUps = ['Extra Move', 'Crazy King', 'Reducer', 'Swap'];
+            
+            if (commonPowerUps.includes(powerUpType)) return 'Común';
+            if (rarePowerUps.includes(powerUpType)) return 'Raro';
+            if (legendaryPowerUps.includes(powerUpType)) return 'Legendario';
+            return 'Común'; // Default
+        }
+
+        // Test single unlock
+        function testUnlock(powerUpType) {
+            showPowerUpUnlockModal(powerUpType);
+        }
+
+        // Test multiple unlocks
+        function testMultiple() {
+            const powerUps = ['Shield', 'Cage', 'Swap', 'Reducer'];
+            powerUps.forEach((powerUpType, index) => {
+                setTimeout(() => {
+                    showPowerUpUnlockModal(powerUpType);
+                }, index * 3500); // 3.5 seconds between each
+            });
+        }
+
+        // Modal functions (copied from game.js)
+        function showPowerUpUnlockModal(powerUpType) {
+            const modal = document.getElementById('powerup-unlock-modal');
+            const powerUpNameElement = document.getElementById('unlock-powerup-name');
+            const rarityElement = document.getElementById('unlock-rarity');
+            const closeBtn = document.getElementById('unlock-close-btn');
+            const particlesContainer = modal.querySelector('.unlock-particles');
+            
+            if (!modal || !powerUpNameElement || !rarityElement) {
+                console.error('Modal elements not found');
+                return;
+            }
+            
+            // Get PowerUp rarity and set content
+            const rarity = getPowerUpRarity(powerUpType);
+            const rarityEmoji = {
+                'Común': '⚪',
+                'Raro': '🔵', 
+                'Legendario': '🟡'
+            };
+            
+            // Set modal content
+            powerUpNameElement.textContent = powerUpType;
+            rarityElement.textContent = `${rarityEmoji[rarity]} ${rarity}`;
+            
+            // Set rarity class for styling
+            rarityElement.className = 'unlock-rarity';
+            if (rarity === 'Común') {
+                rarityElement.classList.add('rarity-common');
+            } else if (rarity === 'Raro') {
+                rarityElement.classList.add('rarity-rare');
+            } else if (rarity === 'Legendario') {
+                rarityElement.classList.add('rarity-legendary');
+            }
+            
+            // Create particle effect
+            createUnlockParticles(particlesContainer);
+            
+            // Show modal
+            modal.classList.add('show');
+            
+            // Close modal functionality
+            const closeModal = () => {
+                modal.classList.remove('show');
+                clearParticles(particlesContainer);
+            };
+            
+            // Remove any existing event listeners
+            closeBtn.replaceWith(closeBtn.cloneNode(true));
+            const newCloseBtn = document.getElementById('unlock-close-btn');
+              // Add event listeners
+            newCloseBtn.addEventListener('click', closeModal);
+            
+            // NO auto-close - el jugador debe hacer clic para cerrar
+        }
+
+        function createUnlockParticles(container) {
+            clearParticles(container);
+            
+            // Create 15 particles
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Random horizontal position
+                particle.style.left = Math.random() * 100 + '%';
+                
+                // Random animation delay
+                particle.style.animationDelay = Math.random() * 2 + 's';
+                
+                // Random size variation
+                const size = 6 + Math.random() * 4;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                container.appendChild(particle);
+            }
+        }
+
+        function clearParticles(container) {
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

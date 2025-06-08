@@ -19,11 +19,10 @@ const POWERUP_VISUAL_CONFIG = {
             position: 'center',
             showOnPiece: true,
             showOnCell: false
-        },
-        'Shield': {
+        },        'Shield': {
             image: '/images/powerupshieldicon.png',
-            size: '25px',
-            position: 'top-left',
+            size: '80%',
+            position: 'center',
             showOnPiece: true,
             showOnCell: false
         },

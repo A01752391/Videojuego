@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Powerup Animations - Updated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #2c3e50;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background-color: #34495e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        
+        .powerup-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .powerup-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .powerup-button:active {
+            transform: scale(0.95);
+        }
+        
+        .board-container {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #ecf0f1;
+            margin: 20px auto;
+            background: #8b4513;
+            position: relative;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #2c3e50;
+            border-radius: 5px;
+        }
+        
+        .description {
+            background-color: #1a252f;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .description h3 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        
+        .fixed-note {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Test de Animaciones de Powerups - Actualizadas</h1>
+        
+        <div class="fixed-note">
+            ✅ Todas las animaciones han sido actualizadas: Sin rotaciones extrañas, crecen hasta cubrir la pantalla y se desvanecen
+        </div>
+        
+        <div class="description">
+            <h3>📋 Cambios Realizados:</h3>
+            <ul>
+                <li><strong>Rotación eliminada:</strong> Ya no hay giros extraños en las animaciones</li>
+                <li><strong>Escala mejorada:</strong> Inician pequeñas (0.3) y crecen hasta ser enormes (15-20)</li>
+                <li><strong>Posicionamiento fijo:</strong> Todas usan <code>position: fixed</code> centradas en la pantalla</li>
+                <li><strong>Z-index alto:</strong> Garantiza visibilidad por encima de todo (9999)</li>
+                <li><strong>Duración optimizada:</strong> Animaciones más rápidas (1.5-2s) para mejor experiencia</li>
+                <li><strong>Contenedor adecuado:</strong> Se agregan al gameContainer para evitar problemas de z-index</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Powerups de Activación Central</h2>
+            <p>Estos powerups muestran animación en el centro de la pantalla:</p>
+            
+            <button class="powerup-button" onclick="testPawnRange()">🎯 Pawn Range</button>
+            <button class="powerup-button" onclick="testBlast()">💥 Blast</button>
+            <button class="powerup-button" onclick="testCrazyKing()">👑 Crazy King</button>
+            <button class="powerup-button" onclick="testReducer()">📉 Reducer</button>
+            <button class="powerup-button" onclick="testHorizontalPortal()">🌀 Horizontal Portal</button>
+            <button class="powerup-button" onclick="testExtraMove()">⚡ Extra Move</button>
+            <button class="powerup-button" onclick="testEvolution()">🔄 Evolution</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 Powerups de Intercambio</h2>
+            <p>Este powerup muestra animación en células específicas (menor escala):</p>
+            
+            <button class="powerup-button" onclick="testSwap()">🔄 Swap</button>
+        </div>
+        
+        <div class="board-container" id="testBoard">
+            <div class="status">Tablero de Prueba</div>
+        </div>
+        
+        <div class="status" id="status">Presiona un botón para probar la animación</div>
+        
+        <div class="description">
+            <h3>🎯 Patrón de Animación Actualizado:</h3>
+            <pre style="background: #1a1a1a; padding: 15px; border-radius: 5px; overflow-x: auto;">
+@keyframes powerupAnimation {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(15);
+    opacity: 0.8;
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(20);
+    opacity: 0;
+  }
+}</pre>
+        </div>
+    </div>
+
+    <script>
+        // Mock gameContext for testing
+        const mockGameContext = {
+            boardElement: document.getElementById('testBoard'),
+            messageElement: document.getElementById('status')
+        };
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            setTimeout(() => {
+                document.getElementById('status').textContent = 'Presiona un botón para probar la animación';
+            }, 3000);
+        }
+        
+        function createTestAnimation(imageName, animationName, duration = 2000) {
+            const boardElement = mockGameContext.boardElement;
+            
+            // Crear efecto de transformación
+            const transformEffect = document.createElement('div');
+            transformEffect.className = `${animationName}-transform`;
+            transformEffect.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 80px;
+                height: 80px;
+                background-image: url('/Imagenes/${imageName}');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                animation: ${animationName}Transform ${duration/1000}s ease-out;
+                pointer-events: none;
+                z-index: 9999;
+            `;
+            
+            // Agregar CSS de animación
+            if (!document.querySelector(`#${animationName}-animation-style`)) {
+                const style = document.createElement('style');
+                style.id = `${animationName}-animation-style`;
+                style.textContent = `
+                    @keyframes ${animationName}Transform {
+                        0% { 
+                            transform: translate(-50%, -50%) scale(0.3);
+                            opacity: 1;
+                        }
+                        50% { 
+                            transform: translate(-50%, -50%) scale(15);
+                            opacity: 0.8;
+                        }
+                        100% { 
+                            transform: translate(-50%, -50%) scale(20);
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Agregar la animación al contenedor
+            const gameContainer = boardElement.parentElement || document.body;
+            gameContainer.appendChild(transformEffect);
+            
+            // Remover efectos después de la animación
+            setTimeout(() => {
+                if (transformEffect.parentNode) {
+                    transformEffect.parentNode.removeChild(transformEffect);
+                }
+            }, duration);
+        }
+        
+        function createSwapAnimation() {
+            const boardElement = mockGameContext.boardElement;
+            
+            // Crear dos efectos de intercambio
+            const positions = [
+                { top: '30%', left: '30%' },
+                { top: '70%', left: '70%' }
+            ];
+            
+            positions.forEach((pos, index) => {
+                const swapEffect = document.createElement('div');
+                swapEffect.className = `swap-effect-${index}`;
+                swapEffect.style.cssText = `
+                    position: fixed;
+                    top: ${pos.top};
+                    left: ${pos.left};
+                    transform: translate(-50%, -50%);
+                    width: 50px;
+                    height: 50px;
+                    background-image: url('/Imagenes/powerupswapanimation.png');
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    animation: swapPulse 2s ease-out;
+                    pointer-events: none;
+                    z-index: 9999;
+                `;
+                
+                boardElement.appendChild(swapEffect);
+                
+                setTimeout(() => {
+                    if (swapEffect.parentNode) {
+                        swapEffect.parentNode.removeChild(swapEffect);
+                    }
+                }, 2000);
+            });
+            
+            // Agregar CSS de animación si no existe
+            if (!document.querySelector('#swap-animation-style')) {
+                const style = document.createElement('style');
+                style.id = 'swap-animation-style';
+                style.textContent = `
+                    @keyframes swapPulse {
+                        0% { 
+                            transform: translate(-50%, -50%) scale(0.3);
+                            opacity: 1;
+                        }
+                        50% { 
+                            transform: translate(-50%, -50%) scale(8);
+                            opacity: 0.8;
+                        }
+                        100% { 
+                            transform: translate(-50%, -50%) scale(12);
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+        
+        // Funciones de prueba individuales
+        function testPawnRange() {
+            updateStatus('🎯 Probando animación de Pawn Range...');
+            createTestAnimation('poweruppawnrangeanimation.png', 'pawnRange');
+        }
+        
+        function testBlast() {
+            updateStatus('💥 Probando animación de Blast...');
+            createTestAnimation('powerupblastanimation.png', 'blast', 1500);
+        }
+        
+        function testCrazyKing() {
+            updateStatus('👑 Probando animación de Crazy King...');
+            createTestAnimation('powerupcrazykinganimation.png', 'crazyKing');
+        }
+        
+        function testReducer() {
+            updateStatus('📉 Probando animación de Reducer...');
+            createTestAnimation('reduceranimation.png', 'reducer');
+        }
+        
+        function testHorizontalPortal() {
+            updateStatus('🌀 Probando animación de Horizontal Portal...');
+            createTestAnimation('poweruphorizontalportalicon.png', 'portal');
+        }
+        
+        function testExtraMove() {
+            updateStatus('⚡ Probando animación de Extra Move...');
+            createTestAnimation('powerupextramoveanimation.png', 'extraMove');
+        }
+        
+        function testEvolution() {
+            updateStatus('🔄 Probando animación de Evolution...');
+            createTestAnimation('powerupevolutionanimation.png', 'evolution');
+        }
+        
+        function testSwap() {
+            updateStatus('🔄 Probando animación de Swap...');
+            createSwapAnimation();
+        }
+        
+        // Mensaje inicial
+        console.log('🎮 Test de animaciones de powerups cargado - Animaciones actualizadas sin rotaciones');
+    </script>
+</body>
+</html>

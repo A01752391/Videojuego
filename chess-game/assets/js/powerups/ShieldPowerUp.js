@@ -106,12 +106,11 @@ export class ShieldPowerUp extends PowerUpBase {
 
     if (gameContext.messageElement) {
       gameContext.messageElement.textContent = `¡${playerColorName} protegen su ${pieceName} con Shield por 1 turno!`;
-    }
-
-    
+    }    
     this.triggerRadialIllumination(gameContext, row, col, 'shield');
 
-    this.triggerShieldAnimation(gameContext, row, col);
+    // Trigger placement animation first
+    this.triggerShieldPlacementAnimation(gameContext, row, col);
 
     const activeInstanceData = {
       id: this.id,
@@ -123,7 +122,11 @@ export class ShieldPowerUp extends PowerUpBase {
       protectedPiece: { ...targetPiece }
     };
 
-    this.onActivationComplete(gameContext, playerColor, activeInstanceData);
+    // Delay the board render slightly to let the placement animation start
+    setTimeout(() => {
+      this.onActivationComplete(gameContext, playerColor, activeInstanceData);
+    }, 100);
+    
     return true;
   }
 
@@ -224,47 +227,45 @@ export class ShieldPowerUp extends PowerUpBase {
         shieldElement.remove();
       }
     });
-  }
-
-  /**
-   * NUEVO: Actualiza la posición visual del shield cuando la pieza protegida se mueve
+  }  /**
+   * UPDATED: Updates the position visual and active instance data when the protected piece moves
    */
   static updateShieldPosition(gameContext, oldRow, oldCol, newRow, newCol) {
     const { boardElement } = gameContext;
     if (!boardElement) return;
     
-    // Buscar shield en la posición anterior
-    const oldCell = boardElement.querySelector(`[data-row="${oldRow}"][data-col="${oldCol}"]`);
-    if (!oldCell) return;
-    
-    const shieldElement = oldCell.querySelector('.shield-effect');
-    if (!shieldElement) return;
-    
-    // Remover shield de la posición anterior
-    shieldElement.remove();
-    
-    // Agregar shield a la nueva posición
-    const newCell = boardElement.querySelector(`[data-row="${newRow}"][data-col="${newCol}"]`);
-    if (!newCell) return;
-    
-    // Crear nuevo elemento shield en la nueva posición
-    const newShieldEffect = document.createElement('div');
-    newShieldEffect.className = 'shield-effect';
-    newShieldEffect.textContent = '🛡️';
-    newShieldEffect.style.cssText = `
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      font-size: 1.2em;
-      color: #4CAF50;
-      text-shadow: 0 0 3px rgba(76, 175, 80, 0.8);
-      pointer-events: none;
-      z-index: 999;
-      animation: shieldPulse 2s infinite;
-    `;
-    
-    newCell.style.position = 'relative';
-    newCell.appendChild(newShieldEffect);
+    // Update the active instance data first
+    if (gameContext.activePowerUps) {
+      const shieldInstance = gameContext.activePowerUps.find(powerUp => 
+        powerUp.type === 'Shield' && 
+        powerUp.targetRow === oldRow && 
+        powerUp.targetCol === oldCol &&
+        powerUp.remainingDuration > 0
+      );
+      
+      if (shieldInstance) {
+        // Update position data
+        shieldInstance.targetRow = newRow;
+        shieldInstance.targetCol = newCol;
+        
+        // Remove old shield visual
+        const oldCell = boardElement.querySelector(`[data-row="${oldRow}"][data-col="${oldCol}"]`);
+        if (oldCell) {
+          const shieldElement = oldCell.querySelector('.shield-effect');
+          if (shieldElement) {
+            shieldElement.remove();
+          }
+        }
+        
+        // Create new shield visual at new position
+        const newCell = boardElement.querySelector(`[data-row="${newRow}"][data-col="${newCol}"]`);
+        if (newCell) {
+          // Use ShieldPowerUp instance to create the visual
+          const shieldPowerUp = new ShieldPowerUp();
+          shieldPowerUp.triggerShieldAnimation(gameContext, newRow, newCol);
+        }
+      }
+    }
   }
 
   static triggerBlockAnimation(gameContext, row, col) {
@@ -297,45 +298,139 @@ export class ShieldPowerUp extends PowerUpBase {
         }
     }, 1000);
   }
-
-  triggerShieldAnimation(gameContext, row, col) {
+  /**
+   * Triggers placement animation for Shield powerup
+   */
+  triggerShieldPlacementAnimation(gameContext, row, col) {
     const { boardElement } = gameContext;
     if (!boardElement) return;
 
     const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
     if (!targetCell) return;
 
+    // Create placement animation element with shield image
+    const placementEffect = document.createElement('div');
+    placementEffect.className = 'shield-placement-animation';
+    placementEffect.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 30px;
+      height: 30px;
+      background-image: url('/images/powerupshieldicon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+      animation: shieldPlacement 0.8s ease-out forwards;
+    `;
+
+    // Add CSS animation if it doesn't exist
+    if (!document.querySelector('#shield-placement-style')) {
+      const style = document.createElement('style');
+      style.id = 'shield-placement-style';
+      style.textContent = `
+        @keyframes shieldPlacement {
+          0% { 
+            transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+            opacity: 0;
+          }
+          50% { 
+            transform: translate(-50%, -50%) scale(1.2) rotate(-90deg);
+            opacity: 0.8;
+          }
+          100% { 
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    targetCell.style.position = 'relative';
+    targetCell.appendChild(placementEffect);
+
+    // Remove placement animation and show permanent shield
+    setTimeout(() => {
+      if (placementEffect.parentNode) {
+        placementEffect.remove();
+      }
+      this.triggerShieldAnimation(gameContext, row, col);
+    }, 800);
+  }  triggerShieldAnimation(gameContext, row, col) {
+    const { boardElement } = gameContext;
+    if (!boardElement) return;
+
+    const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!targetCell) return;    // Create permanent shield effect that covers the entire cell
     const shieldEffect = document.createElement('div');
     shieldEffect.className = 'shield-effect';
-    shieldEffect.textContent = '🛡️';
     shieldEffect.style.cssText = `
       position: absolute;
-      top: 5px;
-      right: 5px;
-      font-size: 1.2em;
-      color: #4CAF50;
-      text-shadow: 0 0 3px rgba(76, 175, 80, 0.8);
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      opacity: 1;
       pointer-events: none;
-      z-index: 999;
-      animation: shieldPulse 2s infinite;
+      z-index: 998;
     `;
+
+    // Add shield icon in center - made much larger to fill the cell
+    const shieldIcon = document.createElement('div');
+    shieldIcon.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 80%;
+      background-image: url('/images/powerupshieldicon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.9;
+      z-index: 999;
+      animation: shieldIconPulse 2s infinite;
+    `;
+
+    shieldEffect.appendChild(shieldIcon);
 
     if (!document.querySelector('#shield-animation-style')) {
       const style = document.createElement('style');
       style.id = 'shield-animation-style';
-      style.textContent = `
-        @keyframes shieldPulse {
+      style.textContent = `        @keyframes shieldPulse {
           0% { 
             opacity: 1;
-            transform: scale(1);
           }
           50% { 
             opacity: 0.7;
-            transform: scale(1.1);
           }
           100% { 
             opacity: 1;
-            transform: scale(1);
+          }
+        }
+        @keyframes shieldIconPulse {
+          0% { 
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% { 
+            opacity: 0.6;
+            transform: translate(-50%, -50%) scale(1.05);
+          }
+          100% { 
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(1);
           }
         }
         @keyframes shieldBlock {

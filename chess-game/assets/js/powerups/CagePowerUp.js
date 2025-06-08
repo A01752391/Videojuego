@@ -131,10 +131,8 @@ export class CagePowerUp extends PowerUpBase {
     // Mostrar mensaje de éxito
     if (gameContext.messageElement) {
       gameContext.messageElement.textContent = `¡${playerColorName} enjaulan el ${pieceName} de ${opponentColorName} por 3 turnos!`;
-    }
-
-    
-    this.triggerRadialIllumination(gameContext, row, col, 'cage');
+    }    // Trigger placement animation first
+    this.triggerCagePlacementAnimation(gameContext, row, col);
 
     // Activar animación visual
     this.triggerCageAnimation(gameContext, row, col);
@@ -151,6 +149,14 @@ export class CagePowerUp extends PowerUpBase {
     };
 
     this.onActivationComplete(gameContext, playerColor, activeInstanceData);
+    
+    // Delay board render to allow placement animation to play
+    setTimeout(() => {
+      if (gameContext.renderBoard) {
+        gameContext.renderBoard(); // Re-render to show any changes
+      }
+    }, 100); // Small delay to allow animation to start
+    
     return true;
   }
 
@@ -285,9 +291,7 @@ export class CagePowerUp extends PowerUpBase {
             blockEffect.parentNode.removeChild(blockEffect);
         }
     }, 1000);
-  }
-
-  /**
+  }  /**
    * Activa una animación visual para el efecto de Cage.
    */
   triggerCageAnimation(gameContext, row, col) {
@@ -298,17 +302,21 @@ export class CagePowerUp extends PowerUpBase {
     const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
     if (!targetCell) return;
 
-    // Crear elemento de jaula permanente
+    // Create permanent cage element with image (centered)
     const cageEffect = document.createElement('div');
     cageEffect.className = 'cage-effect';
-    cageEffect.textContent = '🔒';
     cageEffect.style.cssText = `
       position: absolute;
-      top: 2px;
-      left: 2px;
-      font-size: 1.3em;
-      color: #FF6B6B;
-      text-shadow: 0 0 3px rgba(255, 107, 107, 0.8);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 30px;
+      background-image: url('/images/powerupcageicon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.9;
       pointer-events: none;
       z-index: 999;
       animation: cageShake 2s infinite;
@@ -321,23 +329,23 @@ export class CagePowerUp extends PowerUpBase {
       style.textContent = `
         @keyframes cageShake {
           0% { 
-            transform: rotate(0deg);
+            transform: translate(-50%, -50%) rotate(0deg);
             opacity: 1;
           }
           25% { 
-            transform: rotate(-2deg);
+            transform: translate(-50%, -50%) rotate(-2deg);
             opacity: 0.8;
           }
           50% { 
-            transform: rotate(2deg);
+            transform: translate(-50%, -50%) rotate(2deg);
             opacity: 1;
           }
           75% { 
-            transform: rotate(-1deg);
+            transform: translate(-50%, -50%) rotate(-1deg);
             opacity: 0.9;
           }
           100% { 
-            transform: rotate(0deg);
+            transform: translate(-50%, -50%) rotate(0deg);
             opacity: 1;
           }
         }
@@ -355,13 +363,70 @@ export class CagePowerUp extends PowerUpBase {
             opacity: 0;
           }
         }
+        @keyframes cagePlacement {
+          0% { 
+            transform: translate(-50%, -50%) scale(0) rotateY(0deg);
+            opacity: 0;
+          }
+          50% { 
+            transform: translate(-50%, -50%) scale(1.3) rotateY(180deg);
+            opacity: 0.7;
+          }
+          100% { 
+            transform: translate(-50%, -50%) scale(1) rotateY(360deg);
+            opacity: 1;
+          }
+        }
       `;
       document.head.appendChild(style);
-    }
+    }    // Add cage to cell (permanent until it expires), delayed to show placement animation first
+    setTimeout(() => {
+      targetCell.style.position = 'relative';
+      targetCell.appendChild(cageEffect);
+    }, 850); // Wait for placement animation to complete (800ms + small buffer)
+  }
 
-    // Agregar jaula a la celda (permanente hasta que expire)
+  /**
+   * Triggers a placement animation when a cage is placed
+   */
+  triggerCagePlacementAnimation(gameContext, row, col) {
+    const { boardElement } = gameContext;
+    if (!boardElement) return;
+
+    // Find the target cell
+    const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!targetCell) return;
+
+    // Create placement animation element
+    const placementEffect = document.createElement('div');
+    placementEffect.className = 'cage-placement-animation';
+    placementEffect.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 50px;
+      height: 50px;
+      background-image: url('/images/powerupcageicon.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1001;
+      animation: cagePlacement 0.8s ease-out forwards;
+    `;
+
+    // Add the animation element to the cell
     targetCell.style.position = 'relative';
-    targetCell.appendChild(cageEffect);
+    targetCell.appendChild(placementEffect);
+
+    // Remove the animation after it completes
+    setTimeout(() => {
+      if (placementEffect.parentNode) {
+        placementEffect.remove();
+      }
+    }, 800);
   }
 
   /**

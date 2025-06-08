@@ -4,6 +4,7 @@
   <title>Chess Game</title>  <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/round-stats-modal.css">
   <link rel="stylesheet" href="../css/game-stats-modal.css">
+  <link rel="stylesheet" href="../css/powerup-unlock-modal.css">
 </head>
 <body>
   <!-- Game Start Form -->
@@ -74,19 +75,32 @@
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- Pause Menu Overlay -->
-  <div id="pause-overlay" class="pause-overlay">
+  </div>  <!-- Pause Menu Overlay -->  <div id="pause-overlay" class="pause-overlay">
     <div class="pause-menu">
-      <h2>⏸️ PAUSA</h2>
-      <button id="resume-btn" class="pause-button resume">Continuar</button>
-      <br>
-      <button id="restart-btn" class="pause-button">Reiniciar Partida</button>
-      <br>
-      <button id="main-menu-btn" class="pause-button main-menu">Menú Principal</button>
+      <h2>PAUSA</h2>
+      <button id="resume-btn" class="pause-button">
+        <img src="/images/continuegamebutton.png" alt="Continuar" class="pause-button-image" />
+      </button>
+      <button id="restart-btn" class="pause-button">
+        <img src="/images/resetgamebutton.png" alt="Reiniciar Partida" class="pause-button-image" />
+      </button>      <button id="main-menu-btn" class="pause-button">
+        <img src="/images/Photoroom_20250604_174552.png" alt="Menú Principal" class="pause-button-image" />
+      </button>
     </div>
-  </div>  <script src="../js/round-stats-modal.js"></script>
+  </div>
+  <!-- PowerUp Unlock Modal -->
+  <div id="powerup-unlock-modal" class="powerup-unlock-modal">
+    <div class="unlock-modal-content">
+      <div class="unlock-particles"></div>
+      <div class="unlock-icon">🔓</div>
+      <div class="unlock-title">¡POWER-UP DESBLOQUEADO!</div>
+      <img id="unlock-powerup-image" class="unlock-powerup-image" src="" alt="PowerUp Image" style="display: none;">
+      <div id="unlock-powerup-name" class="unlock-powerup-name"></div>
+      <div id="unlock-rarity" class="unlock-rarity"></div>
+      <div class="unlock-description">Ya está disponible para ambos jugadores</div>
+      <button id="unlock-close-btn" class="unlock-close-btn">¡Genial!</button>
+    </div>
+  </div><script src="../js/round-stats-modal.js"></script>
   <script src="../js/game-stats-modal.js"></script>
   <script src="../js/setupPowerups.js"></script>
   <script type="module" src="../js/index.js"></script>

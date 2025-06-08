@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Powerup Animations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+        }
+        .test-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background-color: #45a049;
+        }
+        .mock-board {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #8B4513;
+            margin: 20px auto;
+            position: relative;
+            background: repeating-conic-gradient(#f0d9b5 0% 25%, #b58863 25% 50%);
+            background-size: 50px 50px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Powerup Animation Test Suite</h1>
+        <p>Test all powerup animations to ensure they display correctly with the fixed patterns.</p>
+        
+        <div class="mock-board" id="gameBoard"></div>
+        
+        <div class="test-section">
