@@ -134,7 +134,7 @@ input::placeholder {
     color: rgba(255, 213, 79, 0.6);
 }
 
-button {
+button:not(.main-menu-btn):not(.nav-button) {
     background: linear-gradient(45deg, #ff4081, #e91e63);
     border: none;
     color: white;
@@ -156,18 +156,18 @@ button {
     overflow: hidden;
 }
 
-button:hover {
+button:not(.main-menu-btn):not(.nav-button):hover {
     background: linear-gradient(45deg, #e91e63, #c2185b);
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(255, 64, 129, 0.5);
 }
 
-button:active {
+button:not(.main-menu-btn):not(.nav-button):active {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(255, 64, 129, 0.4);
 }
 
-button::before {
+button:not(.main-menu-btn):not(.nav-button)::before {
     content: '';
     position: absolute;
     top: 0;
@@ -178,7 +178,7 @@ button::before {
     transition: left 0.5s;
 }
 
-button:hover::before {
+button:not(.main-menu-btn):not(.nav-button):hover::before {
     left: 100%;
 }
 
@@ -228,47 +228,57 @@ button:hover::before {
     box-shadow: 0 15px 35px rgba(255, 213, 79, 0.3);
 }
 
-.main-menu-btn {
+.main-menu-btn, .nav-button {
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   box-shadow: none !important;
-  margin: 0 !important;
-  width: auto !important;
+  margin: 30px auto 0 !important;
+  width: 160px !important;
+  height: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  position: relative;
 }
 
-.main-menu-btn:hover {
+.main-menu-btn:hover, .nav-button:hover {
   background: transparent !important;
-  transform: translateY(-3px) scale(1.05);
-  filter: brightness(1.1);
-  box-shadow: 0 8px 25px rgba(255, 64, 129, 0.3) !important;
+  transform: scale(1.05);
+  box-shadow: none !important;
 }
 
-.main-menu-btn .button-image {
-  width: 160px;
+.main-menu-btn .button-image, .nav-button .button-image {
+  width: 140px;
   height: auto;
   display: block;
   border-radius: 10px;
-  transition: all 0.3s ease;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.main-menu-btn:active {
+.main-menu-btn .button-image:hover, .nav-button .button-image:hover {
+  filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.4)) brightness(1.1);
+}
+
+.main-menu-btn:active, .nav-button:active {
   background: transparent !important;
-  transform: translateY(-1px) scale(1.02);
+  transform: scale(0.95);
   box-shadow: none !important;
 }
 
-button:hover {
+button:not(.main-menu-btn):not(.nav-button):hover {
   background-color: #e91e63;
   box-shadow: 0 3px #880e4f;
   transform: translateY(-2px);
 }
 
-button:active {
+button:not(.main-menu-btn):not(.nav-button):active {
   transform: translateY(2px);
   box-shadow: 0 1px #880e4f;
 }

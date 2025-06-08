@@ -243,71 +243,63 @@ export class SwapPowerUp extends PowerUpBase {
     const cellA = boardElement.querySelector(`[data-row="${piece1.row}"][data-col="${piece1.col}"]`);
     const cellB = boardElement.querySelector(`[data-row="${piece2.row}"][data-col="${piece2.col}"]`);
     
-    if (!cellA || !cellB) return;
-
-    // Crear efectos visuales de intercambio
+    if (!cellA || !cellB) return;    // Crear efectos visuales de intercambio
     const swapEffectA = document.createElement('div');
     swapEffectA.className = 'swap-effect-a';
-    swapEffectA.textContent = '🔄';
     swapEffectA.style.cssText = `
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 2em;
-      color: #4CAF50;
-      animation: swapPulse 2s ease-out;
+      width: 50px;
+      height: 50px;      background-image: url('/images/powerupswapanimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: swapPulse 1.2s ease-out;
       pointer-events: none;
-      z-index: 1001;
-    `;
-
-    const swapEffectB = document.createElement('div');
+      z-index: 9999;
+    `;    const swapEffectB = document.createElement('div');
     swapEffectB.className = 'swap-effect-b';
-    swapEffectB.textContent = '🔄';
     swapEffectB.style.cssText = `
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 2em;
-      color: #2196F3;
-      animation: swapPulse 2s ease-out;
+      width: 50px;
+      height: 50px;
+      background-image: url('/images/powerupswapanimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: swapPulse 1.2s ease-out;
       pointer-events: none;
-      z-index: 1001;
+      z-index: 9999;
     `;
 
     // Agregar CSS de animación si no existe
     if (!document.querySelector('#swap-animation-style')) {
       const style = document.createElement('style');
       style.id = 'swap-animation-style';
-      style.textContent = `
-        @keyframes swapPulse {
+      style.textContent = `        @keyframes swapPulse {
           0% { 
-            transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+            transform: translate(-50%, -50%) scale(0.3);
             opacity: 1;
           }
-          25% { 
-            transform: translate(-50%, -50%) scale(1.2) rotate(90deg);
+          50% { 
+            transform: translate(-50%, -50%) scale(8);
             opacity: 0.8;
           }
-          50% { 
-            transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
-            opacity: 0.6;
-          }
-          75% { 
-            transform: translate(-50%, -50%) scale(1.2) rotate(270deg);
-            opacity: 0.4;
-          }
           100% { 
-            transform: translate(-50%, -50%) scale(2) rotate(360deg);
+            transform: translate(-50%, -50%) scale(12);
             opacity: 0;
           }
         }
       `;
       document.head.appendChild(style);
-    }
-
-    // Agregar efectos a las celdas
+    }    // Agregar efectos a las celdas
+    cellA.style.position = 'relative';
+    cellB.style.position = 'relative';
     cellA.appendChild(swapEffectA);
     cellB.appendChild(swapEffectB);
 
@@ -315,7 +307,7 @@ export class SwapPowerUp extends PowerUpBase {
     setTimeout(() => {
         if (swapEffectA.parentNode) swapEffectA.parentNode.removeChild(swapEffectA);
         if (swapEffectB.parentNode) swapEffectB.parentNode.removeChild(swapEffectB);
-    }, 2000);
+    }, 1200);
   }
 
   /**

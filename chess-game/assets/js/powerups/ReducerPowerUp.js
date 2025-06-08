@@ -135,12 +135,13 @@ export class ReducerPowerUp extends PowerUpBase {
       const reductionDesc = targetPiece.type === 'n' ? 
         'solo diagonales de 1 casilla' : 'máximo 1 casilla';
       gameContext.messageElement.textContent = `¡${playerColorName} reducen el ${pieceName} de ${opponentColorName}! Movimiento: ${reductionDesc} por 2 turnos del rival.`;
-    }
-
-    // Activar iluminación radial
+    }    // Activar iluminación radial
     this.triggerRadialIllumination(gameContext, row, col, 'reducer');
 
-    // Activar animación visual
+    // Activar animación visual de activación central
+    this.triggerReducerActivationAnimation(gameContext);
+
+    // Activar animación visual permanente en la celda
     this.triggerReducerAnimation(gameContext, row, col);
 
     // Registrar la activación como power-up activo
@@ -315,6 +316,83 @@ export class ReducerPowerUp extends PowerUpBase {
   }
 
   /**
+   * Activa una animación de activación central para el efecto de Reducer.
+   */
+  triggerReducerActivationAnimation(gameContext) {
+    const { boardElement } = gameContext;
+    if (!boardElement) return;
+
+    // Crear efecto de transformación central
+    const transformEffect = document.createElement('div');
+    transformEffect.className = 'reducer-activation-transform';
+    transformEffect.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      background-image: url('/images/reduceranimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: reducerActivationTransform 1.2s ease-out;
+      pointer-events: none;
+      z-index: 9999;
+    `;
+
+    // Agregar CSS de animación si no existe
+    if (!document.querySelector('#reducer-activation-style')) {
+      const style = document.createElement('style');
+      style.id = 'reducer-activation-style';
+      style.textContent = `        @keyframes reducerActivationTransform {
+          0% { 
+            transform: translate(-50%, -50%) scale(0.3);
+            opacity: 1;
+          }
+          50% { 
+            transform: translate(-50%, -50%) scale(15);
+            opacity: 0.8;
+          }
+          100% { 
+            transform: translate(-50%, -50%) scale(20);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes reducerActivationGlow {
+          0% { 
+            box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+          }
+          50% { 
+            box-shadow: 0 0 20px rgba(255, 165, 0, 1), 0 0 30px rgba(255, 165, 0, 0.7);
+          }
+          100% { 
+            box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Agregar efecto de resplandor al tablero
+    boardElement.style.animation = 'reducerActivationGlow 1.2s ease-out';
+    boardElement.style.position = 'relative';
+    
+    // Agregar la animación al contenedor principal
+    const gameContainer = boardElement.parentElement || document.body;
+    gameContainer.appendChild(transformEffect);
+
+    // Remover efectos después de la animación
+    setTimeout(() => {
+      if (transformEffect.parentNode) {
+        transformEffect.parentNode.removeChild(transformEffect);
+      }
+      boardElement.style.animation = '';
+    }, 1200);
+  }
+
+  /**
    * Activa una animación visual para el efecto de Reducer.
    */
   triggerReducerAnimation(gameContext, row, col) {
@@ -323,19 +401,19 @@ export class ReducerPowerUp extends PowerUpBase {
 
     // Buscar la celda objetivo
     const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    if (!targetCell) return;
-
-    // Crear elemento de reducer permanente
+    if (!targetCell) return;    // Crear elemento de reducer permanente
     const reducerEffect = document.createElement('div');
     reducerEffect.className = 'reducer-effect';
-    reducerEffect.textContent = '🔄';
     reducerEffect.style.cssText = `
       position: absolute;
       top: 2px;
       right: 2px;
-      font-size: 1.2em;
-      color: #FF8C00;
-      text-shadow: 0 0 3px rgba(255, 140, 0, 0.8);
+      width: 20px;
+      height: 20px;
+      background-image: url('/images/reduceranimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
       pointer-events: none;
       z-index: 999;
       animation: reducerPulse 2s infinite;

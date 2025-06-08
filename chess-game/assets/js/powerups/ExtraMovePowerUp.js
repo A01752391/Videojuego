@@ -96,43 +96,42 @@ export class ExtraMovePowerUp extends PowerUpBase {
 
   /**
    * Activa una animación visual para el efecto de Extra Move.
-   */
-  triggerExtraMoveAnimation(gameContext) {
+   */  triggerExtraMoveAnimation(gameContext) {
     const { boardElement } = gameContext;
-    if (!boardElement) return;
-
-    // Crear efecto de animación
+    if (!boardElement) return;    // Crear efecto de animación
     const extraMoveEffect = document.createElement('div');
     extraMoveEffect.className = 'extra-move-animation';
-    extraMoveEffect.textContent = '🚀⚡';
     extraMoveEffect.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 3em;
-      color: #FFD700;
-      animation: extraMoveEffect 2s ease-out;
+      width: 80px;
+      height: 80px;
+      background-image: url('/images/powerupextramoveanimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: extraMoveEffect 1.2s ease-out;
       pointer-events: none;
-      z-index: 1002;
+      z-index: 9999;
     `;
 
     // Agregar CSS de animación
     if (!document.querySelector('#extra-move-animation-style')) {
       const style = document.createElement('style');
       style.id = 'extra-move-animation-style';
-      style.textContent = `
-        @keyframes extraMoveEffect {
+      style.textContent = `        @keyframes extraMoveEffect {
           0% { 
-            transform: translate(-50%, -50%) scale(0.5);
+            transform: translate(-50%, -50%) scale(0.3);
             opacity: 1;
           }
           50% { 
-            transform: translate(-50%, -50%) scale(1.2);
+            transform: translate(-50%, -50%) scale(15);
             opacity: 0.8;
           }
           100% { 
-            transform: translate(-50%, -50%) scale(1.5);
+            transform: translate(-50%, -50%) scale(20);
             opacity: 0;
           }
         }
@@ -140,13 +139,15 @@ export class ExtraMovePowerUp extends PowerUpBase {
       document.head.appendChild(style);
     }
 
-    boardElement.appendChild(extraMoveEffect);
+    // Agregar la animación al contenedor principal para evitar z-index issues
+    const gameContainer = boardElement.parentElement || document.body;
+    gameContainer.appendChild(extraMoveEffect);
 
     // Remover la animación
     setTimeout(() => {
       if (extraMoveEffect.parentNode) {
         extraMoveEffect.parentNode.removeChild(extraMoveEffect);
       }
-    }, 2000);
+    }, 1200);
   }
 }

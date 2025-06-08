@@ -1,21 +1,57 @@
-import { getSymbol, getPieceImageClass } from './utils.js'; // Assuming getSymbol is in utils.js
-import { createPowerUpInstance } from './powerUpManager.js'; // For attemptActivatePowerUp
+import { getSymbol, getPieceImageClass } from './utils.js';
+import { createPowerUpInstance } from './powerUpManager.js';
 import { getPowerUpInfo } from './powerUpManager.js';
+import { ShieldPowerUp } from './powerups/ShieldPowerUp.js';
 
 /**
- * Creates the i        // Find buttons that should disappear (not in current powerup list)
-        existingBlackButtons.forEach(btn => {
-            const powerUpType = btn.getAttribute('data-powerup-type');
-            if (powerUpType && !currentBlackPowerUps.includes(powerUpType)) {
-                // Apply disappearing animation
-                btn.classList.add('powerup-disappearing');
-                setTimeout(() => {
-                    if (btn.parentNode) {
-                        btn.parentNode.removeChild(btn);
-                    }
-                }, 400); // Animation duration
-            }
-        });setup.
+ * Updates player section highlighting based on current turn
+ * @param {string} currentColor - The current player color ('w' for white, 'b' for black)
+ */
+function updatePlayerTurnHighlighting(currentColor) {
+    // Get both player sections
+    const playerSections = document.querySelectorAll('.player-section');
+    
+    if (playerSections.length !== 2) {
+        console.warn('Expected 2 player sections, found:', playerSections.length);
+        return;
+    }
+    
+    // Determine which section belongs to which player based on logo images
+    let whitePlayerSection = null;
+    let blackPlayerSection = null;
+    
+    playerSections.forEach(section => {
+        const logo = section.querySelector('.player-logo');
+        if (logo && logo.src.includes('whitelogo')) {
+            whitePlayerSection = section;
+        } else if (logo && logo.src.includes('blacklogo')) {
+            blackPlayerSection = section;
+        }
+    });
+    
+    if (!whitePlayerSection || !blackPlayerSection) {
+        console.error('Could not identify player sections by logo images');
+        return;
+    }
+    
+    // Remove existing turn classes from both sections
+    whitePlayerSection.classList.remove('active-turn', 'inactive-turn');
+    blackPlayerSection.classList.remove('active-turn', 'inactive-turn');
+    
+    // Apply appropriate classes based on current turn
+    if (currentColor === 'w') {
+        // White player's turn
+        whitePlayerSection.classList.add('active-turn');
+        blackPlayerSection.classList.add('inactive-turn');
+    } else {
+        // Black player's turn
+        blackPlayerSection.classList.add('active-turn');
+        whitePlayerSection.classList.add('inactive-turn');
+    }
+}
+
+/**
+ * Creates the initial 8x8 board setup.
  * @returns {Array<Array<object|null>>} The initial 8x8 board array.
  */
 export function initialBoard() {
@@ -106,12 +142,23 @@ export function renderBoard(gameContext) {
                         }
                     }
                 });
-            }
-
-            boardElement.appendChild(cell);
+            }            boardElement.appendChild(cell);
         }
     }
+
+    // Restore shield visual effects for all active shield power-ups
+    if (gameContext.activePowerUps) {
+        gameContext.activePowerUps.forEach(powerUp => {
+            if (powerUp.type === 'Shield' && powerUp.remainingDuration > 0) {
+                // Create a temporary ShieldPowerUp instance to restore visual
+                const shieldInstance = new ShieldPowerUp();
+                shieldInstance.triggerShieldAnimation(gameContext, powerUp.targetRow, powerUp.targetCol);
+            }
+        });
+    }
+
     renderPowerUpInventories(gameContext);
+    updatePlayerTurnHighlighting(currentColor); // Actualizar el resaltado de turno del jugador
 }
 
 /**
@@ -134,9 +181,7 @@ function renderPowerUpInventories(gameContext) {
         btn.setAttribute('data-powerup-type', powerUpType);
         
         // Get power up info
-        const powerUpInfo = getPowerUpInfo(powerUpType);
-
-        // Map powerup names to their corresponding images
+        const powerUpInfo = getPowerUpInfo(powerUpType);        // Map powerup names to their corresponding images
         const powerupImageMap = {
             'Shield': 'pwrshieldbutton.png',
             'Pawn Range': 'pwrpawnrangebutton.png',
@@ -164,9 +209,7 @@ function renderPowerUpInventories(gameContext) {
         desc.textContent = powerUpInfo.description;
         
         tooltip.appendChild(title);
-        tooltip.appendChild(desc);
-        
-        // Check if the powerup has a corresponding image
+        tooltip.appendChild(desc);        // Check if the powerup has a corresponding image
         if (powerupImageMap[powerUpType]) {            // Create image button
             btn.className = 'powerup-button image-powerup-button';
             const img = document.createElement('img');
@@ -183,25 +226,26 @@ function renderPowerUpInventories(gameContext) {
         // Add tooltip to the button
         btn.appendChild(tooltip);
         
-        btn.onclick = () => attemptActivatePowerUp(powerUpType, playerColor, gameContext);
-        
-        // Check if this is a newly added powerup for appearing animation
+        btn.onclick = () => attemptActivatePowerUp(powerUpType, playerColor, gameContext);        // Check if this is a newly added powerup for appearing animation
         const colorKey = playerColor === 'w' ? 'white' : 'black';
         if (gameContext.newlyAddedPowerUps && gameContext.newlyAddedPowerUps[colorKey] && 
             gameContext.newlyAddedPowerUps[colorKey].includes(powerUpType)) {
+            console.log(`Adding appearing animation to ${powerUpType} for ${colorKey}`);
             btn.classList.add('powerup-appearing');
             
-            // Add pulse effect for extra visual impact
+            // Remove from tracking after animation completes
             setTimeout(() => {
-                if (btn.parentNode) { // Ensure button still exists
-                    btn.classList.add('powerup-pulse');
-                    setTimeout(() => {
-                        if (btn.parentNode) {
-                            btn.classList.remove('powerup-pulse');
-                        }
-                    }, PULSE_DURATION);
+                const index = gameContext.newlyAddedPowerUps[colorKey].indexOf(powerUpType);
+                if (index > -1) {
+                    gameContext.newlyAddedPowerUps[colorKey].splice(index, 1);
                 }
-            }, PULSE_DELAY);
+                // Clean up empty arrays
+                if (gameContext.newlyAddedPowerUps[colorKey].length === 0) {
+                    delete gameContext.newlyAddedPowerUps[colorKey];
+                }
+            }, 350); // 300ms animation + 50ms buffer
+        } else {
+            console.log(`No appearing animation for ${powerUpType}. Tracking:`, gameContext.newlyAddedPowerUps);
         }
         
         return btn;

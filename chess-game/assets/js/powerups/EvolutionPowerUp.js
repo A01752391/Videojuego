@@ -117,52 +117,42 @@ export class EvolutionPowerUp extends PowerUpBase {
     if (!boardElement) return;
 
     const targetCell = boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    if (!targetCell) return;
-
-    // Crear efecto de transformación
+    if (!targetCell) return;    // Crear efecto de transformación
     const transformEffect = document.createElement('div');
     transformEffect.className = 'evolution-transform';
-    transformEffect.textContent = newPieceType === 'n' ? '♞' : '♗';
     transformEffect.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 4em;
-      color: #ffd700;
-      animation: evolutionTransform 3s ease-out;
+      width: 80px;
+      height: 80px;
+      background-image: url('/images/powerupevolutionanimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: evolutionTransform 1.2s ease-out;
       pointer-events: none;
-      z-index: 1001;
+      z-index: 9999;
     `;
 
     // Agregar CSS de animación si no existe
     if (!document.querySelector('#evolution-animation-style')) {
       const style = document.createElement('style');
       style.id = 'evolution-animation-style';
-      style.textContent = `
-        @keyframes evolutionTransform {
+      style.textContent = `        @keyframes evolutionTransform {
           0% { 
-            transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
+            transform: translate(-50%, -50%) scale(0.3);
             opacity: 1;
             color: #ffd700;
           }
-          25% { 
-            transform: translate(-50%, -50%) scale(1.5) rotate(90deg);
-            opacity: 0.9;
-            color: #ff6b6b;
-          }
           50% { 
-            transform: translate(-50%, -50%) scale(2) rotate(180deg);
+            transform: translate(-50%, -50%) scale(15);
             opacity: 0.8;
             color: #4ecdc4;
           }
-          75% { 
-            transform: translate(-50%, -50%) scale(1.8) rotate(270deg);
-            opacity: 0.9;
-            color: #45b7d1;
-          }
           100% { 
-            transform: translate(-50%, -50%) scale(1) rotate(360deg);
+            transform: translate(-50%, -50%) scale(20);
             opacity: 0;
             color: #96ceb4;
           }
@@ -181,20 +171,20 @@ export class EvolutionPowerUp extends PowerUpBase {
         }
       `;
       document.head.appendChild(style);
-    }
-
-    // Agregar efecto de resplandor a la casilla
-    targetCell.style.animation = 'evolutionGlow 3s ease-out';
+    }    // Agregar efecto de resplandor a la casilla
+    targetCell.style.animation = 'evolutionGlow 1.2s ease-out';
     targetCell.style.position = 'relative';
-    targetCell.appendChild(transformEffect);
+    
+    // Agregar la animación al contenedor principal para evitar z-index issues
+    const gameContainer = boardElement.parentElement || document.body;
+    gameContainer.appendChild(transformEffect);
 
     // Remover efectos después de la animación
     setTimeout(() => {
       if (transformEffect.parentNode) {
         transformEffect.parentNode.removeChild(transformEffect);
-      }
-      targetCell.style.animation = '';
-    }, 3000);
+      }      targetCell.style.animation = '';
+    }, 1200);
   }
 }
 

@@ -258,9 +258,7 @@ export class BlastPowerUp extends PowerUpBase {
    * @param {string} playerColor - Color del jugador.
    */
   grantNewPowerUp(gameContext, playerColor) {
-    console.log('Blast: Attempting to grant new power-up to', playerColor);
-    
-    if (gameContext.grantPowerUp && typeof gameContext.grantPowerUp === 'function') {
+    console.log('Blast: Attempting to grant new power-up to', playerColor);    if (gameContext.grantPowerUp && typeof gameContext.grantPowerUp === 'function') {
       try {
         // Usar el powerUpManager en lugar de array hardcodeado
         const randomType = getRandomPowerUpType();
@@ -289,8 +287,7 @@ export class BlastPowerUp extends PowerUpBase {
    * @param {object} gameContext - The current game context.
    * @param {number} row - Fila del objetivo.
    * @param {number} col - Columna del objetivo.
-   */
-  triggerBlastAnimation(gameContext, row, col) {
+   */  triggerBlastAnimation(gameContext, row, col) {
     console.log(`Blast: Triggering animation at (${row}, ${col})`);
     
     const { boardElement } = gameContext;
@@ -304,51 +301,49 @@ export class BlastPowerUp extends PowerUpBase {
     if (!targetCell) {
       console.warn(`Blast: Target cell not found at (${row}, ${col})`);
       return;
-    }
-
-    // Crear elemento de animación
+    }    // Crear elemento de animación
     const blastEffect = document.createElement('div');
     blastEffect.className = 'blast-animation';
-    blastEffect.textContent = '💥';
     blastEffect.style.cssText = `
-      position: absolute;
+      position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 2em;
-      color: #ff4444;
-      animation: blastEffect 0.8s ease-out;
+      width: 80px;
+      height: 80px;
+      background-image: url('/images/powerupblastanimation.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: blastEffect 1.5s ease-out;
       pointer-events: none;
-      z-index: 1000;
+      z-index: 9999;
     `;
 
     // Agregar CSS de animación si no existe
     if (!document.querySelector('#blast-animation-style')) {
       const style = document.createElement('style');
       style.id = 'blast-animation-style';
-      style.textContent = `
-        @keyframes blastEffect {
+      style.textContent = `        @keyframes blastEffect {
           0% { 
-            transform: translate(-50%, -50%) scale(0.5);
+            transform: translate(-50%, -50%) scale(0.3);
             opacity: 1;
           }
           50% { 
-            transform: translate(-50%, -50%) scale(1.5);
+            transform: translate(-50%, -50%) scale(15);
             opacity: 0.8;
           }
           100% { 
-            transform: translate(-50%, -50%) scale(2);
+            transform: translate(-50%, -50%) scale(20);
             opacity: 0;
           }
         }
       `;
       document.head.appendChild(style);
       console.log('Blast: Added animation styles');
-    }
-
-    // Agregar animación a la celda
-    targetCell.style.position = 'relative';
-    targetCell.appendChild(blastEffect);
+    }    // Agregar animación al contenedor principal para evitar z-index issues
+    const gameContainer = boardElement.parentElement || document.body;
+    gameContainer.appendChild(blastEffect);
 
     // Remover la animación después de completarse
     setTimeout(() => {
@@ -356,7 +351,7 @@ export class BlastPowerUp extends PowerUpBase {
         blastEffect.parentNode.removeChild(blastEffect);
         console.log('Blast: Animation removed');
       }
-    }, 800);
+    }, 1500);
 
     console.log(`Blast animation triggered at (${row}, ${col})`);
   }

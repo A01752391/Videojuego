@@ -90,9 +90,16 @@ export class PauseManager {
     }    restart() {
         this.resume(); // Close pause menu first
         
-        // Use the existing reset game functionality
-        if (this.gameContext.resetGame) {
-            this.gameContext.resetGame(this.gameContext);
+        // Use the same confirmation dialog as the main reset button
+        const shouldReset = confirm('¿Estás seguro de que quieres reiniciar el juego?');
+        if (shouldReset) {
+            // Use the existing reset game functionality from index.js
+            if (this.gameContext.resetGame) {
+                this.gameContext.resetGame(this.gameContext);
+                if (this.gameContext.renderBoard) {
+                    this.gameContext.renderBoard();
+                }
+            }
         }
     }
 
