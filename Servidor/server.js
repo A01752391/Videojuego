@@ -2800,11 +2800,11 @@ app.get("/api/pieces/complete", async (req, res) => {
             params.push(tipo_pieza);
         }
 
-        // Filtro por color
-        if (color) {
-            whereConditions.push('color = ?');
-            params.push(color);
-        }
+        // Filtro por color (NO en el WHERE, solo filtrar en JS si es necesario)
+        // if (color) {
+        //     whereConditions.push('color = ?');
+        //     params.push(color);
+        // }
 
         // Filtro por estado capturada
         if (capturada) {
@@ -2839,7 +2839,13 @@ app.get("/api/pieces/complete", async (req, res) => {
         
         const [rows] = await connection.execute(query, params);
 
-        const completePieces = rows.map(row => ({
+        // Si se pidió color, filtrar en JS
+        let filteredRows = rows;
+        if (color) {
+            filteredRows = rows.filter(row => row.color === color);
+        }
+
+        const completePieces = filteredRows.map(row => ({
             piezaId: row.id_pieza,
             tipo: row.tipo,
             color: row.color,
@@ -2969,7 +2975,6 @@ app.post("/api/pieces/complete", async (req, res) => {
         // Verificar que el jugador existe
         const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
         const [existingPlayer] = await connection.execute(checkPlayerQuery, [id_jugador]);
-
         if (existingPlayer.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -2981,7 +2986,6 @@ app.post("/api/pieces/complete", async (req, res) => {
         // Verificar que la partida existe
         const checkGameQuery = 'SELECT id_partida FROM Partida WHERE id_partida = ?';
         const [existingGame] = await connection.execute(checkGameQuery, [id_partida]);
-
         if (existingGame.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -2990,16 +2994,14 @@ app.post("/api/pieces/complete", async (req, res) => {
             });
         }
 
-        // Verificar reglas de ajedrez básicas
         // Solo puede haber un Rey por color por partida
         if (tipo === 'Rey') {
-            const checkKingQuery = 'SELECT id_pieza FROM Pieza WHERE tipo = ? AND color = ? AND id_partida = ?';
-            const [existingKing] = await connection.execute(checkKingQuery, [tipo, color, id_partida]);
-
+            const checkKingQuery = 'SELECT id_pieza FROM Pieza WHERE tipo = "Rey" AND id_jugador = ? AND id_partida = ?';
+            const [existingKing] = await connection.execute(checkKingQuery, [id_jugador, id_partida]);
             if (existingKing.length > 0) {
-                return res.status(409).json({
+                return res.status(400).json({
                     success: false,
-                    message: `Ya existe un ${tipo} ${color} en esta partida`,
+                    message: 'Ya existe un Rey para este jugador en esta partida',
                     error: 'KING_ALREADY_EXISTS'
                 });
             }
@@ -3008,7 +3010,6 @@ app.post("/api/pieces/complete", async (req, res) => {
         // Verificar que no hay otra pieza en la misma posición inicial en la misma partida
         const checkPositionQuery = 'SELECT id_pieza FROM Pieza WHERE posicion_inicial = ? AND id_partida = ?';
         const [existingPosition] = await connection.execute(checkPositionQuery, [posicion_inicial, id_partida]);
-
         if (existingPosition.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -3017,31 +3018,38 @@ app.post("/api/pieces/complete", async (req, res) => {
             });
         }
 
-        // Insertar nueva pieza en tabla Pieza
+        // Asegurarse de que solo los campos válidos se usen en el INSERT
+        // (Nunca pasar req.body completo, aunque venga con color u otros campos)
+        const piezaData = {
+            tipo,
+            posicion_inicial,
+            id_jugador,
+            id_partida,
+            capturada: capturada || false,
+            protegida: protegida || false
+        };
+
         const insertPieceQuery = `
-            INSERT INTO Pieza (tipo, color, posicion_inicial, id_jugador, id_partida, capturada, protegida) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Pieza (tipo, posicion_inicial, id_jugador, id_partida, capturada, protegida) 
+            VALUES (?, ?, ?, ?, ?, ?)
         `;
-        
         const [result] = await connection.execute(insertPieceQuery, [
-            tipo, 
-            color, 
-            posicion_inicial, 
-            id_jugador, 
-            id_partida, 
-            capturada || false, 
-            protegida || false
+            piezaData.tipo,
+            piezaData.posicion_inicial,
+            piezaData.id_jugador,
+            piezaData.id_partida,
+            piezaData.capturada,
+            piezaData.protegida
         ]);
 
         // Obtener la pieza completa recién creada desde la vista
         const newPieceQuery = 'SELECT * FROM vista_piezas_completa WHERE id_pieza = ?';
         const [newPieceData] = await connection.execute(newPieceQuery, [result.insertId]);
-
         const newPiece = newPieceData[0];
         const completePieceData = {
             piezaId: newPiece.id_pieza,
             tipo: newPiece.tipo,
-            color: newPiece.color,
+            color: newPiece.color, // Esto viene de la vista
             posicionInicial: newPiece.posicion_inicial,
             jugadorId: newPiece.id_jugador,
             partidaId: newPiece.id_partida,
@@ -3064,196 +3072,29 @@ app.post("/api/pieces/complete", async (req, res) => {
 
     } catch (error) {
         console.error('Error al crear pieza completa:', error);
-
-        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-            res.status(404).json({
-                success: false,
-                message: 'El jugador o partida especificado no existe',
-                error: 'FOREIGN_KEY_ERROR'
-            });
-        } else if (error.code === 'ER_DUP_ENTRY') {
-            res.status(409).json({
+        // Si el error es de MySQL y es por restricción única, posición ocupada, etc.
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
                 success: false,
                 message: 'Ya existe una pieza con esos datos',
                 error: 'DUPLICATE_ENTRY'
             });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: error.message
-            });
         }
-
-    } finally {
-        if (connection) {
-            try {
-                await connection.end();
-                console.log('Conexión a DB cerrada correctamente');
-            } catch (closeError) {
-                console.error('Error al cerrar conexión:', closeError);
-            }
-        }
-    }
-});
-
-// Update pieza completa
-
-// 3. UPDATE - Actualizar pieza completa
-app.patch("/api/pieces/complete/:id", async (req, res) => {
-    let connection = null;
-
-    try {
-        const piezaId = parseInt(req.params.id);
-        
-        if (isNaN(piezaId) || piezaId <= 0) {
+        // Si el error es por lógica de negocio, ya está controlado arriba (409)
+        // Si es otro error de MySQL, mostrar el mensaje real para depuración
+        if (error.sqlMessage) {
             return res.status(400).json({
                 success: false,
-                message: 'El ID de la pieza debe ser un número válido',
-                error: 'INVALID_PIECE_ID'
+                message: error.sqlMessage,
+                error: error.code || 'MYSQL_ERROR'
             });
         }
-
-        const { 
-            posicion_inicial, 
-            capturada, 
-            protegida 
-        } = req.body;
-
-        // Validar que al menos un campo esté presente
-        if (!posicion_inicial && capturada === undefined && protegida === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: 'No se proporcionaron campos para actualizar',
-                error: 'NO_FIELDS_TO_UPDATE'
-            });
-        }
-
-        // Validar formato de posición si se proporciona
-        if (posicion_inicial) {
-            const positionRegex = /^[A-H][1-8]$/i;
-            if (!positionRegex.test(posicion_inicial)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'La posición inicial debe tener formato válido (ej: A1, B2)',
-                    error: 'INVALID_POSITION_FORMAT'
-                });
-            }
-        }
-
-        connection = await connectToDB();
-
-        // Verificar que la pieza existe
-        const checkPieceQuery = 'SELECT id_pieza, id_partida, posicion_inicial FROM Pieza WHERE id_pieza = ?';
-        const [existingPiece] = await connection.execute(checkPieceQuery, [piezaId]);
-
-        if (existingPiece.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Pieza no encontrada',
-                error: 'PIECE_NOT_FOUND'
-            });
-        }
-
-        const currentPiece = existingPiece[0];
-
-        // Verificar que no hay otra pieza en la nueva posición si se está cambiando
-        if (posicion_inicial && posicion_inicial !== currentPiece.posicion_inicial) {
-            const checkPositionQuery = 'SELECT id_pieza FROM Pieza WHERE posicion_inicial = ? AND id_partida = ? AND id_pieza != ?';
-            const [existingPosition] = await connection.execute(checkPositionQuery, [posicion_inicial, currentPiece.id_partida, piezaId]);
-
-            if (existingPosition.length > 0) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'Ya existe otra pieza en esa posición en esta partida',
-                    error: 'POSITION_ALREADY_OCCUPIED'
-                });
-            }
-        }
-
-        // Construir query UPDATE dinámicamente
-        let updateFields = [];
-        let values = [];
-
-        if (posicion_inicial) {
-            updateFields.push('posicion_inicial = ?');
-            values.push(posicion_inicial);
-        }
-
-        if (capturada !== undefined) {
-            updateFields.push('capturada = ?');
-            values.push(capturada);
-        }
-
-        if (protegida !== undefined) {
-            updateFields.push('protegida = ?');
-            values.push(protegida);
-        }
-
-        values.push(piezaId);
-
-        // Ejecutar UPDATE en tabla Pieza
-        const updateQuery = `UPDATE Pieza SET ${updateFields.join(', ')} WHERE id_pieza = ?`;
-        
-        console.log('Update Query:', updateQuery);
-        console.log('Update Values:', values);
-        
-        const [updateResult] = await connection.execute(updateQuery, values);
-
-        if (updateResult.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'No se pudo actualizar la pieza',
-                error: 'UPDATE_FAILED'
-            });
-        }
-
-        // Obtener datos actualizados desde la vista
-        const statsQuery = 'SELECT * FROM vista_piezas_completa WHERE id_pieza = ?';
-        const [statsData] = await connection.execute(statsQuery, [piezaId]);
-
-        const updatedPiece = statsData[0];
-        const completePieceData = {
-            piezaId: updatedPiece.id_pieza,
-            tipo: updatedPiece.tipo,
-            color: updatedPiece.color,
-            posicionInicial: updatedPiece.posicion_inicial,
-            jugadorId: updatedPiece.id_jugador,
-            partidaId: updatedPiece.id_partida,
-            capturada: updatedPiece.capturada,
-            protegida: updatedPiece.protegida,
-            jugadorEmail: updatedPiece.jugador_email,
-            fechaInicioPartida: updatedPiece.fecha_inicio,
-            fechaFinPartida: updatedPiece.fecha_fin,
-            estado: updatedPiece.capturada ? 'Capturada' : 
-                   updatedPiece.protegida ? 'Protegida' : 'Activa',
-            estadoPartida: updatedPiece.fecha_fin ? 'Finalizada' : 'En progreso',
-            descripcionCompleta: `${updatedPiece.tipo} ${updatedPiece.color} en ${updatedPiece.posicion_inicial}`
-        };
-
-        res.status(200).json({
-            success: true,
-            message: 'Pieza completa actualizada exitosamente',
-            data: completePieceData
+        // Para cualquier otro error, responde con 500
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
         });
-
-    } catch (error) {
-        console.error('Error al actualizar pieza completa:', error);
-
-        if (error.code === 'ER_NO_SUCH_TABLE') {
-            res.status(404).json({
-                success: false,
-                message: 'La tabla Pieza no existe',
-                error: 'TABLE_NOT_FOUND'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: error.message
-            });
-        }
-
     } finally {
         if (connection) {
             try {
@@ -3265,8 +3106,7 @@ app.patch("/api/pieces/complete/:id", async (req, res) => {
         }
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-})
+});

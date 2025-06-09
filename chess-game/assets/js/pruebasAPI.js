@@ -308,6 +308,54 @@ async function loginUser(email, password) {
     }
 }
 
+// Registrar pieza completa en la base de datos (rellena vista_piezas_completa)
+async function registerPieceComplete(pieceData) {
+    try {
+        const response = await fetch(server + '/api/pieces/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pieceData)
+        });
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { message: 'Respuesta no es JSON', raw: await response.text() };
+            }
+            console.error('Respuesta del backend:', errorData);
+            throw new Error(errorData.message || 'Error registrando pieza');
+        }
+        const result = await response.json();
+        console.log('Pieza registrada exitosamente:', result);
+        return result;
+    } catch (error) {
+        console.error('Error registrando pieza:', error);
+        throw error;
+    }
+}
+
+// Registrar turno completo en la base de datos (rellena vista_partidas_completa y piezas)
+async function registerTurnComplete(turnData) {
+    try {
+        const response = await fetch(server + '/api/turns/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(turnData)
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error registrando turno');
+        }
+        const result = await response.json();
+        console.log('Turno registrado exitosamente:', result);
+        return result;
+    } catch (error) {
+        console.error('Error registrando turno:', error);
+        throw error;
+    }
+}
+
 async function main() {
     // For USERS
     // Sign-up
@@ -350,7 +398,9 @@ export {
     loginUser,
     setCurrentPlayer,
     getCurrentPlayerId,
-    currentGamePlayers
+    currentGamePlayers,
+    registerPieceComplete,
+    registerTurnComplete
 };
 
-main(); 
+main();
