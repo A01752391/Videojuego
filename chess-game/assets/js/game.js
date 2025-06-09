@@ -5,7 +5,7 @@ import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
-import { initializeGameIds, createNewRound, trackPowerupUsage } from './pruebasAPI.js';
+import { initializeGameIds, createNewRound, trackPowerupUsage, registerPieceComplete, registerTurnComplete } from './pruebasAPI.js';
 import { midgameBoards } from './boards/midgameBoards.js';
 import { isOnlyKingsRemaining } from './pieces.js'; // NUEVO IMPORT para regla de tablas
 
@@ -1055,6 +1055,38 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
         console.log('- White Player ID:', gameContext.playerIds['w']);
         console.log('- Black Player ID:', gameContext.playerIds['b']);
         
+        // Después de crear el tablero y los IDs de jugadores/partida
+        // Registrar todas las piezas en la base de datos
+        if (gameContext && gameContext.board && gameContext.playerIds && gameContext.currentGameId) {
+            const tipoMap = {
+                'k': 'Rey',
+                'q': 'Reina',
+                'r': 'Torre',
+                'b': 'Alfil',
+                'n': 'Caballo',
+                'p': 'Peon'
+            };
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = gameContext.board[r][c];
+                    if (piece) {
+                        const piezaData = {
+                            tipo: tipoMap[piece.type],
+                            color: piece.color === 'w' ? 'Blanco' : 'Negro',
+                            posicion_inicial: String.fromCharCode(97 + c) + (8 - r),
+                            id_jugador: gameContext.playerIds[piece.color],
+                            id_partida: gameContext.currentGameId
+                        };
+                        console.log('Registrando pieza:', piezaData);
+                        try {
+                            await registerPieceComplete(piezaData);
+                        } catch (error) {
+                            console.error('Error al registrar pieza:', error);
+                        }
+                    }
+                }
+            }
+        }
         // Resto de la inicialización del juego...
         setupGameContext(gameContext);
         
