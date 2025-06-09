@@ -396,6 +396,56 @@ function handleRoundEnd(winner, gameContext) {
           window.addEventListener('newGame', handleContinueGame);
         window.addEventListener('nextRound', handleContinueGame);
     }
+    // --- NUEVO: Actualizar estadísticas de ronda en la base de datos ---
+    // --- NUEVO: Calcular piezas perdidas por jugador ---
+    function calcularPiezasPerdidas(gameContext, color) {
+        // Suponiendo que tienes acceso al board inicial y board final de la ronda
+        // Si no, puedes llevar un contador en gameStats, ej: gameStats.white.lost
+        // Aquí un ejemplo simple si tienes acceso a las piezas capturadas del rival:
+        if (color === 'w') {
+            // Piezas perdidas por blancas = capturas hechas por negras
+            return gameContext.gameStats.black.captured || 0;
+        } else {
+            // Piezas perdidas por negras = capturas hechas por blancas
+            return gameContext.gameStats.white.captured || 0;
+        }
+    }
+
+    async function updateRoundStatsInDB() {
+        try {
+            const roundId = gameContext.currentRoundId;
+            const playerIds = gameContext.playerIds;
+            if (!roundId || !playerIds || !playerIds.w || !playerIds.b) return;
+
+            // White
+            await fetch(`/api/rounds/stats/${playerIds.w}/${roundId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    piezas_capturadas: gameContext.gameStats.white.captured,
+                    piezas_perdidas: calcularPiezasPerdidas(gameContext, 'w'),
+                    powerups_usados: gameContext.gameStats.white.powerupsUsed,
+                    turnos_tomados: gameContext.gameStats.white.turns
+                })
+            });
+
+            // Black
+            await fetch(`/api/rounds/stats/${playerIds.b}/${roundId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    piezas_capturadas: gameContext.gameStats.black.captured,
+                    piezas_perdidas: calcularPiezasPerdidas(gameContext, 'b'),
+                    powerups_usados: gameContext.gameStats.black.powerupsUsed,
+                    turnos_tomados: gameContext.gameStats.black.turns
+                })
+            });
+        } catch (err) {
+            console.error('Error actualizando estadísticas de ronda:', err);
+        }
+    }
+    updateRoundStatsInDB();
+    // --- FIN NUEVO ---
 }
 
 document.addEventListener('DOMContentLoaded', () => {
