@@ -1,0 +1,10 @@
+<audio id="bg-music" src="../Sonidos/musicaFondo.mp3" autoplay loop style="display:none"></audio>
+<script>
+  window.addEventListener('DOMContentLoaded', function() {
+    var audio = document.getElementById('bg-music');
+    if (audio) {
+      audio.volume = 0.25; // volumen bajo por defecto
+      audio.play().catch(()=>{});
+    }
+  });
+</script>

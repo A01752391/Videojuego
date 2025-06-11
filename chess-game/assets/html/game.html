@@ -7,6 +7,25 @@
   <link rel="stylesheet" href="../css/powerup-unlock-modal.css">
 </head>
 <body>
+  <!-- Música de fondo -->
+  <audio id="bg-music" src="../Sonidos/musicaFondo.mp3" autoplay loop style="display:none"></audio>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var audio = document.getElementById('bg-music');
+      if (audio) {
+        audio.volume = 0.25;
+        // Reintentar play en interacción de usuario si autoplay falla
+        function tryPlay() {
+          audio.play().catch(()=>{});
+          document.removeEventListener('click', tryPlay);
+        }
+        audio.play().catch(function() {
+          document.addEventListener('click', tryPlay);
+        });
+      }
+    });
+  </script>
+
   <!-- Game Start Form -->
   <div id="game-start-form" class="game-start-form">
     <div class="start-form-container">
