@@ -2,11 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="/assets/css/users.css" rel="stylesheet">
-    <script type="module" src="../js/usersAPI.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- For pretty popups-->
-    <title>PAWNED - Configuración de Usuarios</title>    <style>        body {
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <link href="/assets/css/users.css" rel="stylesheet">
+    <link href="../css/game-modal.css" rel="stylesheet">
+    <title>PAWNED - Configuración de Usuarios</title><style>        body {
             margin: 0;
             padding: 0;
             background-image: url('/images/mainbackground.png');
@@ -191,9 +189,7 @@
             .button-image {
                 width: 120px;
             }
-        }
-
-        @media (max-width: 480px) {
+        }        @media (max-width: 480px) {
             .container {
                 padding: 15px;
             }
@@ -264,11 +260,18 @@
             </form> 
         </div>
 
+        <div class="section users-info">
+            <h2 class="section-title">Usuarios registrados</h2>
+            <!-- Table with registered users -->
+        </div>
+
         <div class="navigation">
             <button id="usersMainMenuBtn" class="nav-button">
                 <img src="/images/Photoroom_20250604_174552.png" alt="Menú Principal" class="button-image">
-            </button>
-        </div>
+            </button>        </div>
     </div>
+
+    <script src="../js/game-modal.js"></script>
+    <script src="../js/usersAPI.js"></script>
 </body>
 </html>
