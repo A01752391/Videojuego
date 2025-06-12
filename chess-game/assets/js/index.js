@@ -324,9 +324,13 @@ function handleRoundEnd(winner, gameContext) {
         (async () => {
             try {
                 if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.w) {
-                    const { finalizeGame } = await import('./pruebasAPI.js');
+                    const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
                     await finalizeGame(gameContext.currentGameId, gameContext.playerIds.w, gameSeriesData.duration);
                     console.log('✅ Partida finalizada en BD - Ganador: Blancas');
+                    
+                    // Crear estadísticas de partida
+                    await createGameStats(gameContext.currentGameId);
+                    console.log('✅ Estadísticas de partida creadas en BD');
                 }
             } catch (error) {
                 console.error('❌ Error finalizando partida en BD:', error);
@@ -344,9 +348,13 @@ function handleRoundEnd(winner, gameContext) {
         (async () => {
             try {
                 if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.b) {
-                    const { finalizeGame } = await import('./pruebasAPI.js');
+                    const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
                     await finalizeGame(gameContext.currentGameId, gameContext.playerIds.b, gameSeriesData.duration);
                     console.log('✅ Partida finalizada en BD - Ganador: Negras');
+                    
+                    // Crear estadísticas de partida
+                    await createGameStats(gameContext.currentGameId);
+                    console.log('✅ Estadísticas de partida creadas en BD');
                 }
             } catch (error) {
                 console.error('❌ Error finalizando partida en BD:', error);
@@ -379,12 +387,23 @@ function handleRoundEnd(winner, gameContext) {
                 if (gameContext.currentGameId && gameContext.playerIds && gameSeriesData.winner && gameSeriesData.winner !== 'tie') {
                     const winnerId = gameContext.playerIds[gameSeriesData.winner];
                     if (winnerId) {
-                        const { finalizeGame } = await import('./pruebasAPI.js');
+                        const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
                         await finalizeGame(gameContext.currentGameId, winnerId, gameSeriesData.duration);
                         console.log(`✅ Partida finalizada en BD después de ronda 3 - Ganador: ${gameSeriesData.winner === 'w' ? 'Blancas' : 'Negras'}`);
+                        
+                        // Crear estadísticas de partida
+                        await createGameStats(gameContext.currentGameId);
+                        console.log('✅ Estadísticas de partida creadas en BD');
                     }
                 } else if (gameSeriesData.winner === 'tie') {
                     console.log('🤝 Partida empatada - no se actualiza ganador en BD');
+                    
+                    // Incluso en empate, crear estadísticas de partida (sin ganador)
+                    if (gameContext.currentGameId) {
+                        const { createGameStats } = await import('./pruebasAPI.js');
+                        await createGameStats(gameContext.currentGameId);
+                        console.log('✅ Estadísticas de partida creadas en BD (empate)');
+                    }
                 }
             } catch (error) {
                 console.error('❌ Error finalizando partida en BD:', error);

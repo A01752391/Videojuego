@@ -699,6 +699,50 @@ export async function finalizeGame(gameId, winnerId, durationMs) {
     }
 }
 
+// Función para crear estadísticas de partida (suma de estadísticas de todas las rondas)
+export async function createGameStats(gameId) {
+    try {
+        console.log('📊 Creando estadísticas de partida:', { gameId });
+        
+        const response = await fetch(`${server}/api/games/${gameId}/stats`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📥 Response status:', response.status);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error creando estadísticas de partida (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Estadísticas de partida creadas exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error creando estadísticas de partida:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
 // Exportar las funciones necesarias
 export {
     NewUser,

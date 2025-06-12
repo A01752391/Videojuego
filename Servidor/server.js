@@ -2213,6 +2213,141 @@ app.patch("/api/games/:id_partida", async (req, res) => {
     }
 });
 
+// Endpoint para crear estadísticas de partida (suma de todas las rondas)
+app.post("/api/games/:id_partida/stats", async (req, res) => {
+    let connection = null;
+
+    try {
+        const partidaId = parseInt(req.params.id_partida);
+
+        console.log('📊 POST /api/games/:id_partida/stats - Creando estadísticas de partida:', {
+            partidaId
+        });
+
+        // Validaciones básicas
+        if (isNaN(partidaId) || partidaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID de la partida debe ser un número válido',
+                error: 'INVALID_GAME_ID'
+            });
+        }
+
+        console.log('✅ Validaciones básicas pasadas, conectando a DB...');
+        connection = await connectToDB();
+
+        // Verificar que la partida existe
+        const checkGameQuery = 'SELECT * FROM Partida WHERE id_partida = ?';
+        const [gameData] = await connection.execute(checkGameQuery, [partidaId]);
+
+        if (gameData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partida no encontrada',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        const game = gameData[0];
+        console.log('🔍 Partida encontrada:', {
+            partidaId: game.id_partida,
+            jugador1: game.id_jugador1,
+            jugador2: game.id_jugador2
+        });
+
+        // Obtener estadísticas acumuladas por jugador para todas las rondas de esta partida
+        const getStatsQuery = `
+            SELECT 
+                er.id_jugador,
+                SUM(er.piezas_capturadas) as total_piezas_capturadas,
+                SUM(er.piezas_perdidas) as total_muertes,
+                SUM(er.powerups_usados) as total_powerups_usados,
+                SUM(er.turnos_tomados) as total_piezas_movidas
+            FROM Estadistica_ronda er
+            INNER JOIN Ronda r ON er.id_ronda = r.id_ronda
+            WHERE r.id_partida = ?
+            GROUP BY er.id_jugador
+        `;
+        
+        console.log('📤 Ejecutando query de estadísticas:', getStatsQuery, [partidaId]);
+        
+        const [statsData] = await connection.execute(getStatsQuery, [partidaId]);
+
+        if (statsData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se encontraron estadísticas de ronda para esta partida',
+                error: 'NO_ROUND_STATS_FOUND'
+            });
+        }
+
+        console.log('📊 Estadísticas obtenidas:', statsData);
+
+        // Insertar estadísticas de partida para cada jugador
+        const insertStatsQuery = `
+            INSERT INTO Estadistica_partida (id_partida, id_jugador, piezas_capturadas, muertes, powerups_usados, piezas_movidas)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            piezas_capturadas = VALUES(piezas_capturadas),
+            muertes = VALUES(muertes),
+            powerups_usados = VALUES(powerups_usados),
+            piezas_movidas = VALUES(piezas_movidas)
+        `;
+
+        const insertedStats = [];
+        
+        for (const playerStats of statsData) {
+            console.log(`📤 Insertando estadísticas para jugador ${playerStats.id_jugador}:`, playerStats);
+            
+            const [insertResult] = await connection.execute(insertStatsQuery, [
+                partidaId,
+                playerStats.id_jugador,
+                playerStats.total_piezas_capturadas || 0,
+                playerStats.total_muertes || 0,
+                playerStats.total_powerups_usados || 0,
+                playerStats.total_piezas_movidas || 0
+            ]);
+
+            insertedStats.push({
+                jugadorId: playerStats.id_jugador,
+                piezasCapturadas: playerStats.total_piezas_capturadas || 0,
+                muertes: playerStats.total_muertes || 0,
+                powerupsUsados: playerStats.total_powerups_usados || 0,
+                piezasMovidas: playerStats.total_piezas_movidas || 0
+            });
+        }
+
+        console.log('✅ Estadísticas de partida creadas exitosamente');
+
+        res.status(201).json({
+            success: true,
+            message: 'Estadísticas de partida creadas exitosamente',
+            data: {
+                partidaId: partidaId,
+                estadisticas: insertedStats
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error creando estadísticas de partida:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
 // ENDPOINTS PARA VISTA_PARTIDAS_COMPLETA
 
 // Obtener partidas completas 
