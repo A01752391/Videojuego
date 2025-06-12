@@ -599,6 +599,150 @@ export async function fullPowerupDiagnostic() {
     console.log('🔬 === FIN DEL DIAGNÓSTICO ===');
 }
 
+// NUEVO: Función para actualizar el ganador de una ronda
+export async function updateRoundWinner(roundId, winnerId) {
+    try {
+        console.log('🏆 Actualizando ganador de ronda:', { roundId, winnerId });
+        
+        const response = await fetch(`${server}/api/rounds/${roundId}/winner`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ganador_id: winnerId
+            })
+        });
+
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response ok:', response.ok);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error actualizando ganador de ronda (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Ganador de ronda actualizado exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error actualizando ganador de ronda:', error);
+        
+        // Verificar si es un error de red
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
+// Función para finalizar una partida actualizando ganador, fecha fin y duración
+export async function finalizeGame(gameId, winnerId, durationMs) {
+    try {
+        console.log('🏆 Finalizando partida:', { gameId, winnerId, durationMs });
+        
+        const durationSeconds = Math.round(durationMs / 1000);
+        
+        const response = await fetch(`${server}/api/games/${gameId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ganador_id: winnerId,
+                fecha_fin: new Date().toISOString(),
+                duracion: durationSeconds
+            })
+        });
+
+        console.log('📥 Response status:', response.status);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error finalizando partida (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Partida finalizada exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error finalizando partida:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
+// Función para crear estadísticas de partida (suma de estadísticas de todas las rondas)
+export async function createGameStats(gameId) {
+    try {
+        console.log('📊 Creando estadísticas de partida:', { gameId });
+        
+        const response = await fetch(`${server}/api/games/${gameId}/stats`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📥 Response status:', response.status);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error creando estadísticas de partida (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Estadísticas de partida creadas exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error creando estadísticas de partida:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
 // Exportar las funciones necesarias
 export {
     NewUser,

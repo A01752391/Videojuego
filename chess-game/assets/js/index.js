@@ -75,6 +75,19 @@ function createNextRoundButton(gameContext) {
     btn.appendChild(img);    btn.addEventListener('click', async () => {
         round++;
         btn.remove();
+        
+        // NUEVO: Crear nueva ronda en base de datos
+        try {
+            if (gameContext.currentGameId) {
+                const { createNewRound } = await import('./pruebasAPI.js');
+                const roundId = await createNewRound(gameContext.currentGameId, round);
+                gameContext.currentRoundId = roundId;
+                console.log(`✅ Nueva ronda ${round} creada en BD con ID: ${roundId}`);
+            }
+        } catch (error) {
+            console.error('❌ Error creando nueva ronda en BD:', error);
+        }
+        
         resetRound(gameContext); // Solo resetear la ronda
     });
     
@@ -306,6 +319,23 @@ function handleRoundEnd(winner, gameContext) {
         gameContext.gameOver = true;
         gameSeriesData.winner = 'w';
         gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.w) {
+                    const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
+                    await finalizeGame(gameContext.currentGameId, gameContext.playerIds.w, gameSeriesData.duration);
+                    console.log('✅ Partida finalizada en BD - Ganador: Blancas');
+                    
+                    // Crear estadísticas de partida
+                    await createGameStats(gameContext.currentGameId);
+                    console.log('✅ Estadísticas de partida creadas en BD');
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();
     } else if (winsBlack === 2) {
         if(gameContext.messageElement) {
             gameContext.messageElement.textContent = "¡Las Negras ganan la partida 2-" + winsWhite + "!";
@@ -313,6 +343,23 @@ function handleRoundEnd(winner, gameContext) {
         gameContext.gameOver = true;
         gameSeriesData.winner = 'b';
         gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.b) {
+                    const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
+                    await finalizeGame(gameContext.currentGameId, gameContext.playerIds.b, gameSeriesData.duration);
+                    console.log('✅ Partida finalizada en BD - Ganador: Negras');
+                    
+                    // Crear estadísticas de partida
+                    await createGameStats(gameContext.currentGameId);
+                    console.log('✅ Estadísticas de partida creadas en BD');
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();
     } else if (round === 3) {
         // Third round completed, determine winner
         if (winsWhite > winsBlack) {
@@ -332,7 +379,36 @@ function handleRoundEnd(winner, gameContext) {
             gameSeriesData.winner = 'tie';
         }
         gameContext.gameOver = true;
-        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;    }
+        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD después de ronda 3
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameSeriesData.winner && gameSeriesData.winner !== 'tie') {
+                    const winnerId = gameContext.playerIds[gameSeriesData.winner];
+                    if (winnerId) {
+                        const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
+                        await finalizeGame(gameContext.currentGameId, winnerId, gameSeriesData.duration);
+                        console.log(`✅ Partida finalizada en BD después de ronda 3 - Ganador: ${gameSeriesData.winner === 'w' ? 'Blancas' : 'Negras'}`);
+                        
+                        // Crear estadísticas de partida
+                        await createGameStats(gameContext.currentGameId);
+                        console.log('✅ Estadísticas de partida creadas en BD');
+                    }
+                } else if (gameSeriesData.winner === 'tie') {
+                    console.log('🤝 Partida empatada - no se actualiza ganador en BD');
+                    
+                    // Incluso en empate, crear estadísticas de partida (sin ganador)
+                    if (gameContext.currentGameId) {
+                        const { createGameStats } = await import('./pruebasAPI.js');
+                        await createGameStats(gameContext.currentGameId);
+                        console.log('✅ Estadísticas de partida creadas en BD (empate)');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();    }
       // If game ended, show game statistics modal directly
     if (gameEnded) {
         // Show game statistics modal immediately when game ends
@@ -370,9 +446,22 @@ function handleRoundEnd(winner, gameContext) {
         // Add event listener for new game from game stats modal
         window.addEventListener('newGame', handleGameStatsEvent);} else {
         // Game continues - add simple event listeners for next round
-        const handleContinueGame = (event) => {
+        const handleContinueGame = async (event) => {
             if (event.type === 'nextRound' && gameContext && !gameContext.gameOver) {
                 round++;
+                
+                // NUEVO: Crear nueva ronda en base de datos
+                try {
+                    if (gameContext.currentGameId) {
+                        const { createNewRound } = await import('./pruebasAPI.js');
+                        const roundId = await createNewRound(gameContext.currentGameId, round);
+                        gameContext.currentRoundId = roundId;
+                        console.log(`✅ Nueva ronda ${round} creada en BD con ID: ${roundId}`);
+                    }
+                } catch (error) {
+                    console.error('❌ Error creando nueva ronda en BD:', error);
+                }
+                
                 resetRound(gameContext); // Solo resetear la ronda, no el juego completo
             } else if (event.type === 'newGame' && gameContext) {
                 round = 1;
@@ -396,6 +485,37 @@ function handleRoundEnd(winner, gameContext) {
           window.addEventListener('newGame', handleContinueGame);
         window.addEventListener('nextRound', handleContinueGame);
     }
+
+    // NUEVO: Actualizar ganador en la base de datos
+    async function updateRoundWinnerInDB() {
+        try {
+            if (gameContext.currentRoundId && gameContext.playerIds && winner !== 'stalemate') {
+                const winnerId = gameContext.playerIds[winner];
+                if (winnerId) {
+                    // Importar la función de actualización
+                    const { updateRoundWinner } = await import('./pruebasAPI.js');
+                    await updateRoundWinner(gameContext.currentRoundId, winnerId);
+                    console.log('✅ Ganador de ronda actualizado en BD');
+                } else {
+                    console.warn('⚠️ No se encontró ID del jugador ganador para color:', winner);
+                }
+            } else {
+                console.warn('⚠️ No se puede actualizar ganador - datos faltantes:', {
+                    currentRoundId: gameContext.currentRoundId,
+                    playerIds: gameContext.playerIds,
+                    winner: winner
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando ganador de ronda en BD:', error);
+        }
+    }
+
+    // Llamar a la función para actualizar el ganador en BD
+    if (winner !== 'stalemate') {
+        updateRoundWinnerInDB();
+    }
+
     // --- NUEVO: Actualizar estadísticas de ronda en la base de datos ---
     // --- NUEVO: Calcular piezas perdidas por jugador ---
     function calcularPiezasPerdidas(gameContext, color) {
@@ -480,6 +600,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar mensaje de carga
             startButton.textContent = 'Iniciando partida...';
             startButton.disabled = true;
+            
+            // NUEVO: Reinicializar gameSeriesData para nueva partida
+            gameSeriesData = {
+                rounds: [],
+                startDate: new Date().toISOString(),
+                startTime: Date.now(),
+                duration: null
+            };
             
             // Inicializar el juego con los emails de los jugadores
             gameContext = await initGame(whitePlayerEmail, blackPlayerEmail);
