@@ -63,6 +63,18 @@ function calcularDistribucionColores(pieces) {
     return conteo;
 }
 
+// Utilidad para convertir milisegundos o segundos a HH:MM:SS
+function msOrSecToHHMMSS(input) {
+    let totalSeconds = Number(input);
+    if (isNaN(totalSeconds)) return null;
+    // Si es un número grande, probablemente son milisegundos
+    if (totalSeconds > 100000) totalSeconds = Math.floor(totalSeconds / 1000);
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map(v => String(v).padStart(2, '0')).join(':');
+}
+
 app.use('/css', express.static(path.join(process.cwd(), '../chess-game/assets/css')));
 app.use('/js', express.static(path.join(process.cwd(), '../chess-game/assets/js')));
 app.use('/images', express.static(path.join(process.cwd(), '../Imagenes')));
@@ -840,8 +852,10 @@ app.patch("/api/games/:id", async (req, res) => {
         }
 
         if (duracion) {
+            // Convertir a HH:MM:SS si es necesario
+            const duracionFormateada = msOrSecToHHMMSS(duracion);
             updateFields.push('duracion = ?');
-            values.push(duracion);
+            values.push(duracionFormateada);
         }
 
         if (fecha_fin !== undefined) {
@@ -2173,6 +2187,8 @@ app.patch("/api/games/:id_partida", async (req, res) => {
         // Obtener los datos actualizados
         const getUpdatedGameQuery = `
             SELECT p.*, j.email as ganador_email
+           
+
             FROM Partida p
             LEFT JOIN Jugador j ON p.ganador_id = j.id_jugador
             WHERE p.id_partida = ?
@@ -2650,18 +2666,14 @@ app.patch("/api/games/complete/:id", async (req, res) => {
         if (ganador_id !== undefined) {
             updateFields.push('ganador_id = ?');
             values.push(ganador_id);
-            
-            // Si se establece un ganador y no se especifica fecha_fin, usar timestamp actual
-            if (fecha_fin === undefined) {
-                updateFields.push('fecha_fin = CURRENT_TIMESTAMP');
-            }
         }
 
         if (duracion_final) {
+            // Convertir a HH:MM:SS si es necesario
+            const duracionFormateada = msOrSecToHHMMSS(duracion_final);
             updateFields.push('duracion = ?');
-            values.push(duracion_final);
+            values.push(duracionFormateada);
         }
-
         if (fecha_fin !== undefined) {
             updateFields.push('fecha_fin = ?');
             values.push(fecha_fin ? new Date(fecha_fin) : null);
@@ -2752,7 +2764,7 @@ app.patch("/api/games/complete/:id", async (req, res) => {
 app.get("/api/turns/complete", async (req, res) => {
     let connection = null;
 
-    try {
+   try {
         connection = await connectToDB();
 
         const id_turno = req.query.id_turno ? parseInt(req.query.id_turno) : null;
@@ -2769,21 +2781,20 @@ app.get("/api/turns/complete", async (req, res) => {
 
         // Filtro por ID de turno
         if (id_turno && !isNaN(id_turno)) {
-            whereConditions.push('id_movimiento = ?');
+            whereConditions.push('id_turno = ?');
             params.push(id_turno);
         }
 
-        // Filtro por ID de ronda - NOTA: La tabla Turno no tiene id_ronda, solo id_partida
-        // if (id_ronda && !isNaN(id_ronda)) {
-        //     whereConditions.push('id_ronda = ?');
-        //     params.push(id_ronda);
-        // }
+        // Filtro por ID de ronda
+        if (id_ronda && !isNaN(id_ronda)) {
+            whereConditions.push('id_ronda = ?');
+            params.push(id_ronda);
+        }
 
-        // Filtro por ID de jugador - NOTA: La tabla Turno no tiene id_jugador
-        // if (id_jugador && !isNaN(id_jugador)) {
-        //     whereConditions.push('id_jugador = ?');
-        //     params.push(id_jugador);
-        // }
+        // Filtro por ID de jugador
+        if (id_jugador && !isNaN(id_jugador)) {
+            params.push(id_jugador);
+        }
 
         // Filtro por tipo de pieza
         if (tipo_pieza) {
@@ -3622,6 +3633,40 @@ app.post("/api/pieces/complete", async (req, res) => {
                 console.error('Error al cerrar conexión:', closeError);
             }
         }
+    }
+});
+
+// ENDPOINT para actualizar Jugador_Partida (update-then-insert)
+app.post('/api/jugadorpartida/update', async (req, res) => {
+    let connection = null;
+    try {
+        const { id_jugador, id_partida, puntaje, turnos_jugados, color } = req.body;
+        if (!id_jugador || !id_partida || !color) {
+            return res.status(400).json({ success: false, message: 'Faltan campos requeridos' });
+        }
+        connection = await connectToDB();
+        // Intentar actualizar primero
+        const [updateResult] = await connection.execute(
+            `UPDATE Jugador_Partida SET puntaje=?, turnos_jugados=?, color=?
+             WHERE id_jugador=? AND id_partida=?`,
+            [puntaje, turnos_jugados, color, id_jugador, id_partida]
+        );
+        if (updateResult.affectedRows === 0) {
+            // Si no existía, insertar
+            await connection.execute(
+                `INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [id_jugador, id_partida, color, puntaje, turnos_jugados]
+            );
+            console.log('🟢 [jugadorpartida/update] INSERT realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
+        } else {
+            console.log('🟢 [jugadorpartida/update] UPDATE realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
+        }
+        res.status(200).json({ success: true, message: 'Jugador_Partida actualizado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error actualizando Jugador_Partida', error: error.message });
+    } finally {
+        if (connection) await connection.end();
     }
 });
 
