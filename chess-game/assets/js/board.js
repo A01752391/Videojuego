@@ -235,13 +235,19 @@ function renderPowerUpInventories(gameContext) {
             
             // Remove from tracking after animation completes
             setTimeout(() => {
-                const index = gameContext.newlyAddedPowerUps[colorKey].indexOf(powerUpType);
-                if (index > -1) {
-                    gameContext.newlyAddedPowerUps[colorKey].splice(index, 1);
-                }
-                // Clean up empty arrays
-                if (gameContext.newlyAddedPowerUps[colorKey].length === 0) {
-                    delete gameContext.newlyAddedPowerUps[colorKey];
+                // Verificar que el objeto y array aún existen
+                if (gameContext.newlyAddedPowerUps && 
+                    gameContext.newlyAddedPowerUps[colorKey] && 
+                    Array.isArray(gameContext.newlyAddedPowerUps[colorKey])) {
+                    
+                    const index = gameContext.newlyAddedPowerUps[colorKey].indexOf(powerUpType);
+                    if (index > -1) {
+                        gameContext.newlyAddedPowerUps[colorKey].splice(index, 1);
+                    }
+                    // Clean up empty arrays
+                    if (gameContext.newlyAddedPowerUps[colorKey].length === 0) {
+                        delete gameContext.newlyAddedPowerUps[colorKey];
+                    }
                 }
             }, 350); // 300ms animation + 50ms buffer
         } else {
@@ -408,24 +414,72 @@ function attemptActivatePowerUp(powerUpType, playerColor, gameContext) {
         const activationSuccessful = powerUpInstance.activate(gameContext, playerColor, null);
         if (activationSuccessful) {
             const inventory = playerColor === 'w' ? gameContext.powerUpsWhite : gameContext.powerUpsBlack;
-            const index = inventory.indexOf(powerUpType);
-            if (index > -1) {
-                // Find and animate the button before removing it
-                const containerSelector = playerColor === 'w' ? '#white-powerups-display' : '#black-powerups-display';
-                const container = document.querySelector(containerSelector);
-                if (container) {
-                    const button = container.querySelector(`[data-powerup-type="${powerUpType}"]`);
-                    if (button) {
-                        button.classList.add('powerup-disappearing');                        // Remove from inventory after animation starts
-                        setTimeout(() => {
-                            inventory.splice(index, 1);
-                            gameContext.renderBoard(); // Re-render after removal
-                        }, 600);
-                        return; // Early return to prevent immediate re-render
+            
+            // Verificar que el inventario existe y es un array antes de usar indexOf
+            if (inventory && Array.isArray(inventory)) {
+                const index = inventory.indexOf(powerUpType);
+                if (index > -1) {
+                    // NUEVO: Registrar uso del powerup en la base de datos (para powerups que no requieren target)
+                    if (gameContext.currentGameId && gameContext.currentRoundId && gameContext.playerIds) {
+                        // Importar función desde pruebasAPI.js
+                        import('./pruebasAPI.js').then(module => {
+                            const { trackPowerupUsage } = module;
+                            // Importar función de mapeo desde game.js
+                            import('./game.js').then(gameModule => {
+                                const { getPowerUpIdByName } = gameModule;
+                                
+                                const powerupData = {
+                                    id_powerup: getPowerUpIdByName(powerUpType),
+                                    id_jugador: gameContext.playerIds[playerColor],
+                                    id_partida: gameContext.currentGameId,
+                                    id_ronda: gameContext.currentRoundId,
+                                    color: playerColor
+                                };
+                                
+                                console.log('🎯 Registrando uso de powerup (no-target):', {
+                                    powerupName: powerUpType,
+                                    playerColor: playerColor,
+                                    powerupData,
+                                    mappedId: getPowerUpIdByName(powerUpType)
+                                });
+                                
+                                trackPowerupUsage(powerupData)
+                                    .then(result => {
+                                        console.log('✅ Powerup registrado exitosamente:', result);
+                                    })
+                                    .catch(error => {
+                                        console.error('❌ Error registrando uso de powerup:', error);
+                                    });
+                            });
+                        });
+                    } else {
+                        console.warn('⚠️ No se puede registrar powerup (no-target) - falta información de contexto:', {
+                            hasGameId: !!gameContext.currentGameId,
+                            hasRoundId: !!gameContext.currentRoundId,
+                            hasPlayerIds: !!gameContext.playerIds,
+                            playerIds: gameContext.playerIds
+                        });
                     }
+
+                    // Find and animate the button before removing it
+                    const containerSelector = playerColor === 'w' ? '#white-powerups-display' : '#black-powerups-display';
+                    const container = document.querySelector(containerSelector);
+                    if (container) {
+                        const button = container.querySelector(`[data-powerup-type="${powerUpType}"]`);
+                        if (button) {
+                            button.classList.add('powerup-disappearing');                        // Remove from inventory after animation starts
+                            setTimeout(() => {
+                                inventory.splice(index, 1);
+                                gameContext.renderBoard(); // Re-render after removal
+                            }, 600);
+                            return; // Early return to prevent immediate re-render
+                        }
+                    }
+                    // Fallback if button not found
+                    inventory.splice(index, 1);
                 }
-                // Fallback if button not found
-                inventory.splice(index, 1);
+            } else {
+                console.error('❌ Inventario no válido para jugador:', playerColor, inventory);
             }
         }
         gameContext.renderBoard(); // Re-render for any immediate effects and to update inventory display
