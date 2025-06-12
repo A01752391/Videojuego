@@ -69,7 +69,7 @@ CREATE TABLE Turno (
   posicion_origen CHAR(2),
   posicion_destino CHAR(2),
   posicion_inicial CHAR(2),
-  fue_captura DATETIME DEFAULT NULL,
+  fue_captura BOOLEAN DEFAULT FALSE,
   capturada BOOLEAN DEFAULT FALSE,
   protegida BOOLEAN DEFAULT FALSE,
   PRIMARY KEY (id_movimiento),
@@ -358,4 +358,4 @@ INSERT INTO Pieza (id_pieza, tipo, color, nombre, descripcion) VALUES
 (9, 'n', 'b', 'Caballo Negro', 'Se mueve en forma de L'),
 (10, 'b', 'b', 'Alfil Negro', 'Se mueve en diagonal'),
 (11, 'q', 'b', 'Reina Negra', 'La pieza más poderosa, combina torre y alfil'),
-(12, 'k', 'b', 'Rey Negro', 'La pieza más importante del juego'); 
+(12, 'k', 'b', 'Rey Negro', 'La pieza más importante del juego');

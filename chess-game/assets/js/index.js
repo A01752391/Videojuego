@@ -640,6 +640,22 @@ function handleRoundEnd(winner, gameContext) {
     // --- FIN NUEVO ---
 }
 
+// Registrar turno en la base de datos ---
+async function registrarTurnoEnBD(turno) {
+    try {
+        const response = await fetch('/api/turns', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(turno)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Error registrando turno');
+        console.log('Turno registrado en BD:', data);
+    } catch (err) {
+        console.error('Error registrando turno en BD:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const boardElement = document.getElementById('board');
     const messageElement = document.getElementById('message');

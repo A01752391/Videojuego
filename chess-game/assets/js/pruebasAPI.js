@@ -483,11 +483,12 @@ export async function updateJugadorPartida({ id_jugador, id_partida, puntaje, tu
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id_jugador, id_partida, puntaje, turnos_jugados, color })
         });
+
         if (!response.ok) {
-            let errorData = {};
-            try { errorData = await response.json(); } catch (e) { errorData = { message: await response.text() }; }
-            throw new Error(errorData.message || 'Error actualizando Jugador_Partida');
+            const errorText = await response.text();
+            throw new Error(errorText || 'Error actualizando Jugador_Partida');
         }
+
         const result = await response.json();
         return result;
     } catch (error) {
@@ -1080,5 +1081,28 @@ export {
     currentGamePlayers,
     registerTurnComplete
 };
+
+// NUEVO: Función para registrar un turno en la base de datos
+export async function registrarTurnoEnBD(turnData) {
+    try {
+        const response = await fetch(`${server}/api/turns`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(turnData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error registrando turno en la base de datos');
+        }
+
+        const result = await response.json();
+        console.log('✅ Turno registrado exitosamente:', result);
+        return result;
+    } catch (error) {
+        console.error('❌ Error registrando turno en BD:', error);
+        throw error;
+    }
+}
 
 main();
