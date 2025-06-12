@@ -327,6 +327,22 @@ GROUP BY p.id_pieza, p.tipo, p.nombre, p.descripcion;
 -- We used LEFT JOIN to include all piece types even if they haven't been used yet
 -- We count how many times each piece type has been used and captured
 
+-- Insert power ups
+INSERT INTO Powerup (nombre, descripcion)
+VALUES
+('Shield', 'Temporarily protects a piece from capture for one turn'),
+('Blast', 'Destroys a selected enemy piece instantly (just for pawn, knight and bishop)'),
+('Swap', 'Swap positions of any two of your pieces on the board. You will lose your turn by using it'),
+('Extra move', 'Grants an immediate second move within the same turn (different pieces)'),
+('Fence', 'Lock a tile for three turns'),
+('Horizontal portal', 'Allows a piece to move from one end of the board to the other one (just for rook and queen)'),
+('Cage', ' Immobilizes the piece for three turns'),
+('Evolution', 'Allows you to select a random tile, if a pawn falls there it transforms in a knight or bishop'),
+('Pawn range', 'Changes the range of movement of the pawn. Moves two tiles, instead of moving one tile'),
+('Reducer', 'Reduces the range of motion of a piece (just for knight, bishop and queen)'),
+('Crazy king', 'Change the range of movement of the kingto act as queen for three turns');
+COMMIT;
+
 --
 -- Datos iniciales para tabla Pieza (catálogo de tipos)
 --

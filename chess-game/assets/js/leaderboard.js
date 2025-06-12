@@ -16,13 +16,17 @@ class LeaderboardManager {
         this.errorState = document.getElementById('errorState');
         this.emptyState = document.getElementById('emptyState');
         this.leaderboardTable = document.getElementById('leaderboardTable');
-        this.statsOverview = document.getElementById('statsOverview');        // Controles
+        this.statsOverview = document.getElementById('statsOverview');
+        
+        // Controles
         this.refreshBtn = document.getElementById('refreshBtn');
         this.refreshIcon = document.getElementById('refreshIcon');
         this.retryBtn = document.getElementById('retryBtn');
-        this.backBtn = document.getElementById('backBtn');
+        this.backBtn = document.getElementById('backBtn'); // Puede no existir
         this.sortSelect = document.getElementById('sortBy');
-        this.lastUpdated = document.getElementById('lastUpdated');        // Elementos de búsqueda
+        this.lastUpdated = document.getElementById('lastUpdated');
+        
+        // Elementos de búsqueda
         this.playerSearch = document.getElementById('playerSearch');
         this.searchBtn = document.getElementById('searchBtn');
         this.clearSearchBtn = document.getElementById('clearSearch');
@@ -39,17 +43,27 @@ class LeaderboardManager {
 
         // Mensaje de error
         this.errorMessage = document.getElementById('errorMessage');
+
+        // Verificar elementos críticos
+        if (!this.loadingState || !this.errorState || !this.leaderboardTable) {
+            console.error('Elementos críticos del DOM no encontrados');
+        }
     }
 
-    setupEventListeners() {        // Botón de actualizar
-        this.refreshBtn.addEventListener('click', () => {
-            this.loadData();
-        });
+    setupEventListeners() {
+        // Botón de actualizar
+        if (this.refreshBtn) {
+            this.refreshBtn.addEventListener('click', () => {
+                this.loadData();
+            });
+        }
 
         // Botón de reintentar
-        this.retryBtn.addEventListener('click', () => {
-            this.loadData();
-        });
+        if (this.retryBtn) {
+            this.retryBtn.addEventListener('click', () => {
+                this.loadData();
+            });
+        }
 
         // Botón de main menu
         const mainMenuBtn = document.getElementById('leaderboardMainMenuBtn');
@@ -59,29 +73,47 @@ class LeaderboardManager {
             });
         }
 
-        // Botón de volver
-        this.backBtn.addEventListener('click', () => {
-            window.location.href = 'index.html';
-        });        // Selector de ordenamiento
-        this.sortSelect.addEventListener('change', (e) => {
-            this.sortData(e.target.value, 'desc');
-        });        // Búsqueda de jugadores
-        this.playerSearch.addEventListener('input', (e) => {
-            this.handleSearch(e.target.value);
-        });        // Búsqueda con Enter
-        this.playerSearch.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleSpecificSearch(e.target.value);
-            }
-        });// Botón de búsqueda con lupa
-        this.searchBtn.addEventListener('click', () => {
-            this.handleSpecificSearch(this.playerSearch.value);
-        });
+        // Botón de volver (si existe)
+        if (this.backBtn) {
+            this.backBtn.addEventListener('click', () => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // Selector de ordenamiento
+        if (this.sortSelect) {
+            this.sortSelect.addEventListener('change', (e) => {
+                this.sortData(e.target.value, 'desc');
+            });
+        }
+
+        // Búsqueda de jugadores
+        if (this.playerSearch) {
+            this.playerSearch.addEventListener('input', (e) => {
+                this.handleSearch(e.target.value);
+            });
+
+            // Búsqueda con Enter
+            this.playerSearch.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.handleSpecificSearch(e.target.value);
+                }
+            });
+        }
+
+        // Botón de búsqueda con lupa
+        if (this.searchBtn) {
+            this.searchBtn.addEventListener('click', () => {
+                this.handleSpecificSearch(this.playerSearch ? this.playerSearch.value : '');
+            });
+        }
 
         // Limpiar búsqueda
-        this.clearSearchBtn.addEventListener('click', () => {
-            this.clearSearch();
-        });
+        if (this.clearSearchBtn) {
+            this.clearSearchBtn.addEventListener('click', () => {
+                this.clearSearch();
+            });
+        }
 
         // Headers clickeables para ordenar
         document.addEventListener('click', (e) => {
@@ -95,34 +127,34 @@ class LeaderboardManager {
     }
 
     showState(state) {
-        // Ocultar todos los estados
-        this.loadingState.style.display = 'none';
-        this.errorState.style.display = 'none';
-        this.emptyState.style.display = 'none';
-        this.leaderboardTable.style.display = 'none';
-        this.statsOverview.style.display = 'none';
+        // Ocultar todos los estados (con verificaciones de null)
+        if (this.loadingState) this.loadingState.style.display = 'none';
+        if (this.errorState) this.errorState.style.display = 'none';
+        if (this.emptyState) this.emptyState.style.display = 'none';
+        if (this.leaderboardTable) this.leaderboardTable.style.display = 'none';
+        if (this.statsOverview) this.statsOverview.style.display = 'none';
 
         // Mostrar el estado solicitado
         switch (state) {
             case 'loading':
-                this.loadingState.style.display = 'block';
+                if (this.loadingState) this.loadingState.style.display = 'block';
                 break;
             case 'error':
-                this.errorState.style.display = 'block';
+                if (this.errorState) this.errorState.style.display = 'block';
                 break;
             case 'empty':
-                this.emptyState.style.display = 'block';
+                if (this.emptyState) this.emptyState.style.display = 'block';
                 break;
             case 'data':
-                this.leaderboardTable.style.display = 'block';
-                this.statsOverview.style.display = 'grid';
+                if (this.leaderboardTable) this.leaderboardTable.style.display = 'block';
+                if (this.statsOverview) this.statsOverview.style.display = 'grid';
                 break;
         }
     }
 
     async loadData() {
         this.showState('loading');
-        this.refreshIcon.classList.add('refresh-spinning');
+        if (this.refreshIcon) this.refreshIcon.classList.add('refresh-spinning');
 
         try {
             // Cargar estadísticas de jugadores
@@ -155,10 +187,10 @@ class LeaderboardManager {
 
             this.updateLastUpdatedTime();        } catch (error) {
             console.error('Error loading leaderboard data:', error);
-            this.errorMessage.textContent = error.message;
+            if (this.errorMessage) this.errorMessage.textContent = error.message;
             this.showState('error');
         } finally {
-            this.refreshIcon.classList.remove('refresh-spinning');
+            if (this.refreshIcon) this.refreshIcon.classList.remove('refresh-spinning');
         }
     }
 
@@ -230,27 +262,34 @@ class LeaderboardManager {
         this.clearSearchBtn.style.display = this.currentSearchTerm ? 'flex' : 'none';
         
         console.log('🎯 Search completed');
-    }clearSearch() {
+    }
+    
+    clearSearch() {
         this.currentSearchTerm = '';
-        this.playerSearch.value = '';
-        this.clearSearchBtn.style.display = 'none';
-        this.searchResults.textContent = '';
-        
-        // Restaurar estilos normales del contador de resultados
-        this.searchResults.style.color = '#ffd54f';
-        this.searchResults.style.fontWeight = '500';
+        if (this.playerSearch) this.playerSearch.value = '';
+        if (this.clearSearchBtn) this.clearSearchBtn.style.display = 'none';
+        if (this.searchResults) {
+            this.searchResults.textContent = '';
+            // Restaurar estilos normales del contador de resultados
+            this.searchResults.style.color = '#ffd54f';
+            this.searchResults.style.fontWeight = '500';
+        }
         
         // Restaurar todos los datos
         this.filteredData = [...this.playersData];
         this.sortFilteredData();
         this.renderStatsOverview();
         this.renderLeaderboardTable();
-    }handleSpecificSearch(searchTerm) {
-        // Agregar efecto visual al botón de búsqueda
-        this.searchBtn.style.transform = 'translateY(-50%) scale(0.9)';
-        setTimeout(() => {
-            this.searchBtn.style.transform = 'translateY(-50%) scale(1)';
-        }, 150);
+    }    handleSpecificSearch(searchTerm) {
+        // Agregar efecto visual al botón de búsqueda si existe
+        if (this.searchBtn) {
+            this.searchBtn.style.transform = 'translateY(-50%) scale(0.9)';
+            setTimeout(() => {
+                if (this.searchBtn) {
+                    this.searchBtn.style.transform = 'translateY(-50%) scale(1)';
+                }
+            }, 150);
+        }
         
         // Usar la misma lógica que handleSearch
         this.handleSearch(searchTerm);
@@ -386,7 +425,7 @@ class LeaderboardManager {
         this.sortFilteredData();
         this.renderStatsOverview();
         this.renderLeaderboardTable();
-    }renderStatsOverview() {
+    }    renderStatsOverview() {
         // Usar datos filtrados cuando hay una búsqueda activa
         const dataToUse = this.filteredData.length >= 0 && this.currentSearchTerm ? this.filteredData : this.playersData;
         
@@ -395,12 +434,18 @@ class LeaderboardManager {
         const totalPowerupsUsed = dataToUse.reduce((sum, player) => sum + this.safeParseNumber(player.powerupsUsados), 0);
         const totalCapturesCount = dataToUse.reduce((sum, player) => sum + this.safeParseNumber(player.piezasCapturadas), 0);
 
-        this.totalPlayers.textContent = this.formatNumber(totalPlayers);
-        this.totalGames.textContent = this.formatNumber(totalGamesPlayed);
-        this.totalPowerups.textContent = this.formatNumber(totalPowerupsUsed);
-        this.totalCaptures.textContent = this.formatNumber(totalCapturesCount);
-    }renderLeaderboardTable() {
-        this.leaderboardBody.innerHTML = '';        this.filteredData.forEach((player, index) => {
+        if (this.totalPlayers) this.totalPlayers.textContent = this.formatNumber(totalPlayers);
+        if (this.totalGames) this.totalGames.textContent = this.formatNumber(totalGamesPlayed);
+        if (this.totalPowerups) this.totalPowerups.textContent = this.formatNumber(totalPowerupsUsed);
+        if (this.totalCaptures) this.totalCaptures.textContent = this.formatNumber(totalCapturesCount);
+    }
+
+    renderLeaderboardTable() {
+        if (!this.leaderboardBody) return;
+        
+        this.leaderboardBody.innerHTML = '';
+
+        this.filteredData.forEach((player, index) => {
             const rank = index + 1;
             const victorias = this.safeParseNumber(player.victorias);
             const partidasJugadas = this.safeParseNumber(player.partidasJugadas);
@@ -457,7 +502,11 @@ class LeaderboardManager {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit'
-        });        this.lastUpdated.textContent = `Última actualización: ${timeString}`;
+        });
+        
+        if (this.lastUpdated) {
+            this.lastUpdated.textContent = `Última actualización: ${timeString}`;
+        }
     }
 }
 
