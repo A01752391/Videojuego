@@ -684,8 +684,11 @@ app.post("/api/games", async (req, res) => {
     try {
         const { id_jugador1, id_jugador2, ganador_id, duracion } = req.body;
 
-        // Validaciones básicas
+        console.log('📥 Incoming request to /api/games:', req.body);
+
+        // Validations
         if (!id_jugador1 || !id_jugador2) {
+            console.error('❌ Missing required fields: id_jugador1 or id_jugador2');
             return res.status(400).json({
                 success: false,
                 message: 'Los IDs de ambos jugadores son requeridos',
@@ -694,6 +697,7 @@ app.post("/api/games", async (req, res) => {
         }
 
         if (id_jugador1 === id_jugador2) {
+            console.error('❌ Players must be different:', { id_jugador1, id_jugador2 });
             return res.status(400).json({
                 success: false,
                 message: 'Los jugadores deben ser diferentes',
@@ -701,22 +705,15 @@ app.post("/api/games", async (req, res) => {
             });
         }
 
-        // Validar que ganador_id sea uno de los dos jugadores
-        if (ganador_id && ganador_id !== id_jugador1 && ganador_id !== id_jugador2) {
-            return res.status(400).json({
-                success: false,
-                message: 'El ganador debe ser uno de los jugadores de la partida',
-                error: 'INVALID_WINNER'
-            });
-        }
-
         connection = await connectToDB();
+        console.log('✅ Connected to the database');
 
-        // Verificar que ambos jugadores existen
-        const checkPlayersQuery = 'SELECT id_jugador FROM jugador WHERE id_jugador IN (?, ?)';
+        // Verify both players exist
+        const checkPlayersQuery = 'SELECT id_jugador FROM Jugador WHERE id_jugador IN (?, ?)';
         const [existingPlayers] = await connection.execute(checkPlayersQuery, [id_jugador1, id_jugador2]);
 
         if (existingPlayers.length !== 2) {
+            console.error('❌ One or both players do not exist:', { id_jugador1, id_jugador2 });
             return res.status(404).json({
                 success: false,
                 message: 'Uno o ambos jugadores no existen',
@@ -724,24 +721,31 @@ app.post("/api/games", async (req, res) => {
             });
         }
 
-        // Insertar nueva partida en tabla Partida
-        const insertQuery = `
-            INSERT INTO Partida (id_jugador1, id_jugador2, ganador_id, duracion, fecha_inicio, fecha_fin) 
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+        // Insert new game into Partida table
+        const insertGameQuery = `
+            INSERT INTO Partida (id_jugador1, id_jugador2, fecha_inicio, duracion) 
+            VALUES (?, ?, CURRENT_TIMESTAMP, ?)
         `;
-        
-        const fechaFin = ganador_id ? 'CURRENT_TIMESTAMP' : null;
-        const [result] = await connection.execute(insertQuery, [
-            id_jugador1, 
-            id_jugador2, 
-            ganador_id || null, 
-            duracion || null,
-            ganador_id ? new Date() : null
+        const [gameResult] = await connection.execute(insertGameQuery, [
+            id_jugador1,
+            id_jugador2,
+            duracion || null
         ]);
 
-        // Obtener la partida recién creada desde la vista
+        const partidaId = gameResult.insertId;
+        console.log('✅ New game created with ID:', partidaId);
+
+        // Populate Jugador_Partida table for both players
+        const insertJugadorPartidaQuery = `
+            INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
+            VALUES (?, ?, 'white', 0, 0), (?, ?, 'black', 0, 0)
+        `;
+        await connection.execute(insertJugadorPartidaQuery, [id_jugador1, partidaId, id_jugador2, partidaId]);
+        console.log('✅ Jugador_Partida table updated for both players');
+
+        // Fetch the newly created game from the view
         const newGameQuery = 'SELECT * FROM vista_resumen_partida WHERE id_partida = ?';
-        const [newGameData] = await connection.execute(newGameQuery, [result.insertId]);
+        const [newGameData] = await connection.execute(newGameQuery, [partidaId]);
 
         const newGame = newGameData[0];
         const gameData = {
@@ -756,6 +760,8 @@ app.post("/api/games", async (req, res) => {
             powerupsUsados: newGame.powerups_usados_total || 0
         };
 
+        console.log('✅ Game data fetched successfully:', gameData);
+
         res.status(201).json({
             success: true,
             message: 'Partida creada exitosamente',
@@ -763,7 +769,7 @@ app.post("/api/games", async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al crear partida:', error);
+        console.error('❌ Error in /api/games:', error);
 
         if (error.code === 'ER_NO_REFERENCED_ROW_2') {
             res.status(404).json({
@@ -789,9 +795,9 @@ app.post("/api/games", async (req, res) => {
         if (connection) {
             try {
                 await connection.end();
-                console.log('Conexión a DB cerrada correctamente');
+                console.log('✅ Database connection closed');
             } catch (closeError) {
-                console.error('Error al cerrar conexión:', closeError);
+                console.error('❌ Error closing database connection:', closeError);
             }
         }
     }
@@ -2165,7 +2171,7 @@ app.patch("/api/games/:id_partida", async (req, res) => {
         if (parseInt(ganador_id) !== game.id_jugador1 && parseInt(ganador_id) !== game.id_jugador2) {
             return res.status(400).json({
                 success: false,
-                message: 'El ganador debe ser uno de los jugadores de la partida',
+                               message: 'El ganador debe ser uno de los jugadores de la partida',
                 error: 'INVALID_WINNER_FOR_GAME'
             });
         }
@@ -2563,6 +2569,13 @@ app.post("/api/games/complete", async (req, res) => {
         ]);
 
         const partidaId = partidaResult.insertId;
+
+        // Poblar tabla Jugador_Partida para ambos jugadores
+        const insertJugadorPartidaQuery = `
+            INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
+            VALUES (?, ?, 'white', 0, 0), (?, ?, 'black', 0, 0)
+        `;
+        await connection.execute(insertJugadorPartidaQuery, [id_jugador1, partidaId, id_jugador2, partidaId]);
 
         // Obtener la partida completa recién creada desde la vista
         const newGameQuery = 'SELECT * FROM vista_partidas_completa WHERE id_partida = ?';
@@ -3130,7 +3143,6 @@ app.post("/api/turns", async (req, res) => {
             protegida
         } = req.body;
 
-        // Log incoming request for debugging
         console.log('📥 Incoming /api/turns request:', req.body);
 
         // Validate required fields
@@ -3140,17 +3152,6 @@ app.post("/api/turns", async (req, res) => {
                 success: false,
                 message: 'Todos los campos obligatorios son requeridos (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino)',
                 error: 'MISSING_REQUIRED_FIELDS'
-            });
-        }
-
-        // Validate position format (e.g., A1, B2)
-        const positionRegex = /^[A-H][1-8]$/i;
-        if (!positionRegex.test(posicion_origen) || !positionRegex.test(posicion_destino)) {
-            console.error('❌ Invalid position format:', { posicion_origen, posicion_destino });
-            return res.status(400).json({
-                success: false,
-                message: 'Las posiciones deben tener formato válido (ej: A1, B2)',
-                error: 'INVALID_POSITION_FORMAT'
             });
         }
 
@@ -3199,20 +3200,42 @@ app.post("/api/turns", async (req, res) => {
             turno_numero,
             posicion_origen,
             posicion_destino,
-            !!fue_captura, // Ensure boolean value
-            !!capturada,   // Ensure boolean value
-            !!protegida    // Ensure boolean value
+            !!fue_captura,
+            !!capturada,
+            !!protegida
         ]);
 
         console.log('✅ Turno registrado exitosamente');
+
+        // Update Jugador_Partida table
+        const puntosGanados = fue_captura ? 10 : 1; // Example: 10 points for a capture, 1 point otherwise
+        const updateJugadorPartidaQuery = `
+            UPDATE Jugador_Partida
+            SET puntaje = puntaje + ?, turnos_jugados = turnos_jugados + 1
+            WHERE id_jugador = ? AND id_partida = ?
+        `;
+        await connection.execute(updateJugadorPartidaQuery, [puntosGanados, id_jugador, id_partida]);
+
+        console.log('✅ Jugador_Partida actualizado: puntaje y turnos_jugados incrementados');
+
+        // If a piece was captured, update Estadistica_partida
+        if (fue_captura) {
+            const updateEstadisticaPartidaQuery = `
+                UPDATE Estadistica_partida
+                SET piezas_capturadas = piezas_capturadas + 1
+                WHERE id_jugador = ? AND id_partida = ?
+            `;
+            await connection.execute(updateEstadisticaPartidaQuery, [id_jugador, id_partida]);
+            console.log('✅ Estadistica_partida actualizado: piezas_capturadas incrementadas');
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Turno registrado exitosamente'
+            message: 'Turno registrado exitosamente y estadísticas actualizadas'
         });
     } catch (error) {
         console.error('❌ Error al registrar turno:', error);
 
-        // Handle specific database errors
         if (error.code === 'ER_NO_REFERENCED_ROW_2') {
             return res.status(400).json({
                 success: false,
