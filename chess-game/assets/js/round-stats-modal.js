@@ -606,9 +606,54 @@ class RoundStatsModal {
     /**
      * Displays player scores
      */
-    displayScores(roundData) {        // Basic scores
-        document.getElementById('modalWhiteScore').textContent = roundData.whiteScore || 0;
-        document.getElementById('modalBlackScore').textContent = roundData.blackScore || 0;
+    displayScores(roundData) {        
+        // CORREGIDO: Mostrar puntajes de ronda actual y acumulativos
+        const roundWhiteScore = roundData.whiteScore || 0;
+        const roundBlackScore = roundData.blackScore || 0;
+        const cumulativeWhiteScore = roundData.whiteCumulativeScore || roundWhiteScore;
+        const cumulativeBlackScore = roundData.blackCumulativeScore || roundBlackScore;
+
+        console.log('📊 Mostrando puntajes en modal de ronda:', {
+            roundWhite: roundWhiteScore,
+            roundBlack: roundBlackScore,
+            cumulativeWhite: cumulativeWhiteScore,
+            cumulativeBlack: cumulativeBlackScore
+        });
+
+        // Mostrar puntajes de la ronda actual
+        document.getElementById('modalWhiteScore').textContent = roundWhiteScore;
+        document.getElementById('modalBlackScore').textContent = roundBlackScore;
+
+        // NUEVO: Mostrar puntajes acumulativos como información adicional
+        const modalElement = document.querySelector('.round-stats-modal');
+        if (modalElement && (cumulativeWhiteScore !== roundWhiteScore || cumulativeBlackScore !== roundBlackScore)) {
+            // Solo mostrar puntajes acumulativos si son diferentes a los de la ronda
+            let cumulativeInfo = modalElement.querySelector('.cumulative-scores-info');
+            if (!cumulativeInfo) {
+                cumulativeInfo = document.createElement('div');
+                cumulativeInfo.className = 'cumulative-scores-info';
+                cumulativeInfo.style.cssText = `
+                    margin-top: 10px;
+                    padding: 8px;
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 6px;
+                    text-align: center;
+                    font-size: 0.9em;
+                    color: #ccc;
+                `;
+                
+                // Insertarlo después de las estadísticas principales
+                const scoresSection = modalElement.querySelector('.scores-section') || modalElement.querySelector('.modal-content');
+                if (scoresSection) {
+                    scoresSection.appendChild(cumulativeInfo);
+                }
+            }
+            
+            cumulativeInfo.innerHTML = `
+                <div style="margin-bottom: 4px;">📊 <strong>Puntajes Acumulativos:</strong></div>
+                <div>Blancas: ${cumulativeWhiteScore} | Negras: ${cumulativeBlackScore}</div>
+            `;
+        }
 
         // Get real detailed stats from gameStats
         const whiteStats = this.getRealStats(roundData.gameStats, 'white');

@@ -149,6 +149,12 @@ function resetRound(gameContext) {
 
     // CRÍTICO: Reset de estadísticas de ronda para ROUND STATS MODAL
     // Esto asegura que cada ronda empiece con estadísticas en 0
+    console.log('🔄 Reseteando estadísticas de ronda. Puntajes acumulativos se mantienen:', {
+        whiteTotal: gameContext.score1,
+        blackTotal: gameContext.score2,
+        round: round
+    });
+    
     gameContext.gameStats = {
         white: {
             turns: 0,
@@ -273,15 +279,20 @@ function handleRoundEnd(winner, gameContext) {
         roundScore: gameContext.gameStats?.black?.roundScore || 0
     };
 
+    // CORREGIDO: Datos consistentes para el modal de ronda
     const roundData = {
         roundNumber: round,
         winner: winner,
+        // Puntajes de la ronda actual solamente
         whiteScore: currentRoundWhiteStats.roundScore,
         blackScore: currentRoundBlackStats.roundScore,
+        // Puntajes acumulativos para referencia
+        whiteCumulativeScore: gameContext.score1 || 0,
+        blackCumulativeScore: gameContext.score2 || 0,
         winsWhite: winsWhite,
         winsBlack: winsBlack,
         stalemateReason: winner === 'stalemate' ? 'Tablas por ahogado o solo dos reyes' : null,
-        // Solo datos de la ronda actual
+        // Estadísticas detalladas de la ronda actual
         gameStats: {
             white: currentRoundWhiteStats,
             black: currentRoundBlackStats
@@ -290,7 +301,13 @@ function handleRoundEnd(winner, gameContext) {
         timestamp: new Date().toISOString()
     };
 
-
+    console.log('📊 Datos del modal de ronda:', {
+        round: round,
+        whiteRoundScore: currentRoundWhiteStats.roundScore,
+        blackRoundScore: currentRoundBlackStats.roundScore,
+        whiteCumulative: gameContext.score1,
+        blackCumulative: gameContext.score2
+    });
 
     // Prepare current round data for series (with cumulative scores)
     const currentRoundData = {
@@ -298,7 +315,13 @@ function handleRoundEnd(winner, gameContext) {
         winner: winner,
         whiteScore: gameContext.score1 || 0, // Cumulative score for series
         blackScore: gameContext.score2 || 0, // Cumulative score for series
-        gameStats: gameContext.gameStats || null,
+        // Incluir también los puntajes de solo esta ronda
+        whiteRoundScore: currentRoundWhiteStats.roundScore,
+        blackRoundScore: currentRoundBlackStats.roundScore,
+        gameStats: {
+            white: currentRoundWhiteStats,
+            black: currentRoundBlackStats
+        },
         timestamp: new Date().toISOString()
     };
       // Add round data to series ALWAYS (for both ending and non-ending rounds)
@@ -306,6 +329,62 @@ function handleRoundEnd(winner, gameContext) {
     
     // Check if game is over (best of 3)
     const gameEnded = winsWhite === 2 || winsBlack === 2 || round === 3;
+    
+    // NUEVO: Función para actualizar Jugador_Partida con puntajes acumulativos DESPUÉS DE CADA RONDA
+    async function updateJugadorPartidaAfterRound() {
+        try {
+            console.log('📊 Actualizando Jugador_Partida después de ronda:', round);
+            const { updateJugadorPartida } = await import('./pruebasAPI.js');
+            const gameId = gameContext.currentGameId;
+            const playerIds = gameContext.playerIds;
+            
+            if (!gameId || !playerIds || !playerIds.w || !playerIds.b) {
+                console.warn('⚠️ Datos faltantes para actualizar Jugador_Partida:', { gameId, playerIds });
+                return;
+            }
+
+            // Calcular turnos totales acumulados hasta esta ronda
+            const totalWhiteTurns = gameSeriesData.rounds.reduce((total, round) => {
+                return total + (round.gameStats?.white?.turns || 0);
+            }, 0);
+            
+            const totalBlackTurns = gameSeriesData.rounds.reduce((total, round) => {
+                return total + (round.gameStats?.black?.turns || 0);
+            }, 0);
+
+            console.log('📊 Estadísticas después de ronda:', {
+                round: round,
+                whiteCumulativeScore: gameContext.score1,
+                blackCumulativeScore: gameContext.score2,
+                totalWhiteTurns,
+                totalBlackTurns
+            });
+
+            // Actualizar Jugador_Partida con puntajes acumulativos después de la ronda
+            await updateJugadorPartida({
+                id_jugador: playerIds.w,
+                id_partida: gameId,
+                puntaje: gameContext.score1 || 0, // Puntaje ACUMULATIVO actualizado
+                turnos_jugados: totalWhiteTurns,
+                color: 'w'
+            });
+            
+            await updateJugadorPartida({
+                id_jugador: playerIds.b,
+                id_partida: gameId,
+                puntaje: gameContext.score2 || 0, // Puntaje ACUMULATIVO actualizado
+                turnos_jugados: totalBlackTurns,
+                color: 'b'
+            });
+            
+            console.log('✅ Jugador_Partida actualizado después de ronda', round);
+        } catch (err) {
+            console.error('❌ Error actualizando Jugador_Partida después de ronda:', err);
+        }
+    }
+    
+    // NUEVO: Actualizar Jugador_Partida después de cada ronda
+    updateJugadorPartidaAfterRound();
     
     // NUEVO: Función para actualizar Jugador_Partida con puntajes finales acumulativos
     async function updateJugadorPartidaFinalStats() {
@@ -474,6 +553,24 @@ function handleRoundEnd(winner, gameContext) {
         })();    }
       // If game ended, show game statistics modal directly
     if (gameEnded) {
+        // CORREGIDO: Preparar gameSeriesData con estadísticas finales correctas
+        gameSeriesData.finalStats = {
+            totalWhiteScore: gameContext.score1 || 0,
+            totalBlackScore: gameContext.score2 || 0,
+            totalRounds: gameSeriesData.rounds.length,
+            whiteWins: winsWhite,
+            blackWins: winsBlack
+        };
+        
+        console.log('📊 Datos del modal de partida completa:', {
+            gameSeriesData: gameSeriesData,
+            finalWhiteScore: gameContext.score1,
+            finalBlackScore: gameContext.score2,
+            totalRounds: gameSeriesData.rounds.length,
+            whiteWins: winsWhite,
+            blackWins: winsBlack
+        });
+        
         // Show game statistics modal immediately when game ends
         if (gameStatsModal) {
             setTimeout(() => {
@@ -875,7 +972,112 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 };
-                console.log('Debug functions available: window.gameContext, window.debugSwap');
+                
+                // NUEVO: Función de diagnóstico de puntajes
+                window.debugScore = {
+                    checkScores: () => {
+                        if (gameContext) {
+                            console.log('📊 DIAGNÓSTICO DE PUNTAJES:');
+                            console.log('🎯 Puntajes en el juego (correctos):');
+                            console.log('   - Blancas (gameContext.score1):', gameContext.score1);
+                            console.log('   - Negras (gameContext.score2):', gameContext.score2);
+                            console.log('');
+                            console.log('🎯 Puntajes por ronda actual:');
+                            console.log('   - Blancas (roundScore):', gameContext.gameStats?.white?.roundScore || 0);
+                            console.log('   - Negras (roundScore):', gameContext.gameStats?.black?.roundScore || 0);
+                            console.log('');
+                            console.log('🎯 Estadísticas de la ronda:');
+                            console.log('   - Ronda actual:', round);
+                            console.log('   - Victorias Blancas:', winsWhite);
+                            console.log('   - Victorias Negras:', winsBlack);
+                            console.log('');
+                            console.log('🎯 IDs de la partida:');
+                            console.log('   - Game ID:', gameContext.currentGameId);
+                            console.log('   - Round ID:', gameContext.currentRoundId);
+                            console.log('   - Player IDs:', gameContext.playerIds);
+                        } else {
+                            console.warn('gameContext no está disponible');
+                        }
+                    },
+                    
+                    checkPieceValues: () => {
+                        console.log('💎 VALORES DE LAS PIEZAS:');
+                        console.log('   - Peón (p): 2 puntos');
+                        console.log('   - Caballo (n): 4 puntos');
+                        console.log('   - Alfil (b): 4 puntos');
+                        console.log('   - Torre (r): 6 puntos');
+                        console.log('   - Reina (q): 9 puntos');
+                        console.log('   - Rey (k): 0 puntos (no se puede capturar)');
+                    },
+                    
+                    simulateCapture: (pieceType) => {
+                        let points = 0;
+                        switch (pieceType) {
+                            case 'p': points = 2; break;
+                            case 'n': case 'b': points = 4; break;
+                            case 'r': points = 6; break;
+                            case 'q': points = 9; break;
+                            default: points = 0;
+                        }
+                        console.log(`Capturar ${pieceType} otorgaría ${points} puntos`);
+                        return points;
+                    },
+                    
+                    // NUEVO: Diagnóstico de modales
+                    checkModalData: () => {
+                        console.log('🎭 DIAGNÓSTICO DE DATOS DE MODALES:');
+                        console.log('📊 gameSeriesData:', gameSeriesData);
+                        console.log('📊 Última ronda en gameSeriesData:');
+                        if (gameSeriesData.rounds && gameSeriesData.rounds.length > 0) {
+                            const lastRound = gameSeriesData.rounds[gameSeriesData.rounds.length - 1];
+                            console.log('   - Puntaje Blancas (acumulativo):', lastRound.whiteScore);
+                            console.log('   - Puntaje Negras (acumulativo):', lastRound.blackScore);
+                            console.log('   - Puntaje Blancas (solo ronda):', lastRound.whiteRoundScore);
+                            console.log('   - Puntaje Negras (solo ronda):', lastRound.blackRoundScore);
+                        }
+                        console.log('📊 finalStats (si existe):', gameSeriesData.finalStats);
+                    },
+                    
+                    testRoundModal: () => {
+                        if (gameContext && roundStatsModal) {
+                            console.log('🧪 Probando modal de ronda con datos actuales...');
+                            const testRoundData = {
+                                roundNumber: round,
+                                winner: 'w', // Ejemplo
+                                whiteScore: gameContext.gameStats?.white?.roundScore || 0,
+                                blackScore: gameContext.gameStats?.black?.roundScore || 0,
+                                whiteCumulativeScore: gameContext.score1 || 0,
+                                blackCumulativeScore: gameContext.score2 || 0,
+                                gameStats: gameContext.gameStats,
+                                timestamp: new Date().toISOString()
+                            };
+                            console.log('📊 Datos de prueba para modal de ronda:', testRoundData);
+                            roundStatsModal.show(testRoundData);
+                        } else {
+                            console.warn('Modal de ronda no disponible');
+                        }
+                    },
+                    
+                    testGameModal: () => {
+                        if (gameStatsModal) {
+                            console.log('🧪 Probando modal de partida con datos actuales...');
+                            const testGameData = { ...gameSeriesData };
+                            testGameData.finalStats = {
+                                totalWhiteScore: gameContext?.score1 || 0,
+                                totalBlackScore: gameContext?.score2 || 0,
+                                totalRounds: testGameData.rounds?.length || 0,
+                                whiteWins: winsWhite,
+                                blackWins: winsBlack
+                            };
+                            console.log('📊 Datos de prueba para modal de partida:', testGameData);
+                            gameStatsModal.show(testGameData);
+                        } else {
+                            console.warn('Modal de partida no disponible');
+                        }
+                    }
+                };
+                
+                console.log('Debug functions available: window.gameContext, window.debugSwap, window.debugScore');
             } else {
                 console.warn('gameContext not initialized yet');
             }
