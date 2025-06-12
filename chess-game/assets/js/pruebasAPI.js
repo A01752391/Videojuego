@@ -366,6 +366,10 @@ export async function initializeGameIds(gameContext, whitePlayerEmail, blackPlay
         console.log('Nueva partida creada con ID:', gameId);
         gameContext.currentGameId = gameId;
 
+        // NUEVO: Crear registros iniciales en Jugador_Partida
+        await createJugadorPartidaRecords(gameId, whitePlayerId, blackPlayerId);
+        console.log('✅ Registros iniciales Jugador_Partida creados');
+
         // Crear una nueva ronda
         const roundId = await createNewRound(gameId, 1);
         console.log('Nueva ronda creada con ID:', roundId);
@@ -500,6 +504,37 @@ export async function updateJugadorPartida({ id_jugador, id_partida, puntaje, tu
         return result;
     } catch (error) {
         console.error('Error actualizando Jugador_Partida:', error);
+        throw error;
+    }
+}
+
+// NUEVO: Crear registros iniciales en Jugador_Partida al inicio de una partida
+export async function createJugadorPartidaRecords(gameId, whitePlayerId, blackPlayerId) {
+    try {
+        console.log('🔄 Creando registros iniciales en Jugador_Partida...', { gameId, whitePlayerId, blackPlayerId });
+        
+        const response = await fetch(server + '/api/jugadorpartida/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_partida: gameId,
+                jugadores: [
+                    { id_jugador: whitePlayerId, color: 'w' },
+                    { id_jugador: blackPlayerId, color: 'b' }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error creando registros Jugador_Partida');
+        }
+
+        const result = await response.json();
+        console.log('✅ Registros Jugador_Partida creados exitosamente:', result);
+        return result;
+    } catch (error) {
+        console.error('❌ Error creando registros Jugador_Partida:', error);
         throw error;
     }
 }
