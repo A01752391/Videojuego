@@ -1,5 +1,27 @@
 const server = 'http://localhost:3000';
 
+// Función para verificar si el servidor está funcionando
+export async function checkServerStatus() {
+    try {
+        console.log('🔍 Verificando estado del servidor...');
+        const response = await fetch(`${server}/api/health`, { 
+            method: 'GET',
+            timeout: 5000
+        });
+        
+        if (response.ok) {
+            console.log('✅ Servidor respondiendo correctamente');
+            return true;
+        } else {
+            console.log('⚠️ Servidor responde pero con error:', response.status);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Servidor no responde:', error.message);
+        return false;
+    }
+}
+
 // Variable para almacenar los IDs de los jugadores de la partida actual
 let currentGamePlayers = {
     white: null,
@@ -22,13 +44,22 @@ function setCurrentPlayer(color, playerId) {
 
 // Función para obtener el ID del jugador por color
 function getCurrentPlayerId(color) {
+    console.log('🔍 getCurrentPlayerId llamada con color:', color);
+    console.log('🔍 currentGamePlayers estado:', currentGamePlayers);
+    
+    let playerId = null;
+    
     // Mapear colores cortos a largos si es necesario
-    if (color === 'w') {
-        return currentGamePlayers.white || currentGamePlayers.w;
-    } else if (color === 'b') {
-        return currentGamePlayers.black || currentGamePlayers.b;
+    if (color === 'w' || color === 'white') {
+        playerId = currentGamePlayers.white || currentGamePlayers.w;
+    } else if (color === 'b' || color === 'black') {
+        playerId = currentGamePlayers.black || currentGamePlayers.b;
+    } else {
+        playerId = currentGamePlayers[color];
     }
-    return currentGamePlayers[color];
+    
+    console.log('🔍 getCurrentPlayerId resultado:', playerId);
+    return playerId;
 }
 
 // Función para crear una nueva ronda
@@ -93,38 +124,81 @@ async function NewUser(){
 }
 
 export async function trackPowerupUsage(powerupData) {
+    console.log('🔍 trackPowerupUsage - Datos recibidos:', powerupData);
+    
     // Si no se proporciona el ID del jugador, intentar obtenerlo del estado actual
     if (!powerupData.id_jugador && powerupData.color) {
+        console.log('🔍 Intentando obtener ID del jugador para color:', powerupData.color);
         powerupData.id_jugador = getCurrentPlayerId(powerupData.color);
+        console.log('🔍 ID obtenido del color:', powerupData.id_jugador);
     }
 
-    // Validación de datos requeridos
-    if (!powerupData.id_powerup || !powerupData.id_jugador || !powerupData.id_partida || !powerupData.id_ronda) {
-        console.error('Datos incompletos para registrar powerup:', {
+    // Validación detallada de datos requeridos
+    const missingFields = [];
+    if (!powerupData.id_powerup) missingFields.push('id_powerup');
+    if (!powerupData.id_jugador) missingFields.push('id_jugador');
+    if (!powerupData.id_partida) missingFields.push('id_partida');
+    if (!powerupData.id_ronda) missingFields.push('id_ronda');
+
+    if (missingFields.length > 0) {
+        console.error('❌ Datos incompletos para registrar powerup:', {
+            missingFields,
             requiredFields: ['id_powerup', 'id_jugador', 'id_partida', 'id_ronda'],
-            receivedData: powerupData
+            receivedData: powerupData,
+            currentGamePlayers: currentGamePlayers
         });
-        return;
+        throw new Error(`Faltan campos requeridos: ${missingFields.join(', ')}`);
     }
+
+    console.log('✅ Datos validados, enviando request al servidor...');
 
     try {
+        const requestData = {
+            id_powerup: powerupData.id_powerup,
+            id_jugador: powerupData.id_jugador,
+            id_partida: powerupData.id_partida,
+            id_ronda: powerupData.id_ronda
+        };
+
+        console.log('📤 Request data:', requestData);
+        console.log('📤 Request URL:', `${server}/api/powerups/use`);
+
         const response = await fetch(server + '/api/powerups/use', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(powerupData)
+            body: JSON.stringify(requestData)
         });
 
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response ok:', response.ok);
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al registrar uso de powerup');
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error al registrar uso de powerup (${response.status})`);
         }
 
         const result = await response.json();
-        console.log('Powerup registrado exitosamente:', result);
+        console.log('✅ Powerup registrado exitosamente:', result);
         return result;
 
     } catch (error) {
-        console.error('Error registrando uso de powerup:', error);
+        console.error('❌ Error registrando uso de powerup:', error);
+        
+        // Verificar si es un error de red
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
         throw error;
     }
 }
@@ -390,6 +464,139 @@ async function main() {
             }
         });
     }
+}
+
+// Función de diagnóstico para testear el registro de powerups
+export async function testPowerupUsage() {
+    console.log('🧪 Iniciando test de registro de powerups...');
+    
+    // Verificar servidor
+    const serverOk = await checkServerStatus();
+    if (!serverOk) {
+        console.error('❌ Test fallido: Servidor no disponible');
+        return false;
+    }
+    
+    // Datos de prueba con IDs que sabemos que existen en la DB
+    const testData = {
+        id_powerup: 1, // Shield (ID 1 existe en la DB)
+        id_jugador: 1, // Jugador 1 existe en la DB (mauro@example.com)
+        id_partida: 1, // Partida 1 existe en la DB
+        id_ronda: 1    // Ronda 1 existe en la DB
+    };
+    
+    try {
+        console.log('🧪 Enviando datos de prueba:', testData);
+        const result = await trackPowerupUsage(testData);
+        console.log('✅ Test exitoso:', result);
+        return true;
+    } catch (error) {
+        console.error('❌ Test fallido:', error);
+        return false;
+    }
+}
+
+// Función para verificar los datos del contexto del juego actual
+export function debugGameContext(gameContext) {
+    console.log('🔍 DEBUG - Estado del gameContext:');
+    console.log('📊 currentGameId:', gameContext?.currentGameId);
+    console.log('📊 currentRoundId:', gameContext?.currentRoundId);
+    console.log('📊 playerIds:', gameContext?.playerIds);
+    console.log('📊 currentGamePlayers:', currentGamePlayers);
+    
+    // NUEVO: Verificar inventarios de powerups
+    console.log('📊 powerUpsWhite:', gameContext?.powerUpsWhite);
+    console.log('📊 powerUpsBlack:', gameContext?.powerUpsBlack);
+    console.log('📊 powerUpsWhite es array:', Array.isArray(gameContext?.powerUpsWhite));
+    console.log('📊 powerUpsBlack es array:', Array.isArray(gameContext?.powerUpsBlack));
+    
+    // Verificar si todos los datos necesarios están presentes
+    const hasGameId = !!gameContext?.currentGameId;
+    const hasRoundId = !!gameContext?.currentRoundId;
+    const hasPlayerIds = !!gameContext?.playerIds;
+    const hasValidInventories = Array.isArray(gameContext?.powerUpsWhite) && Array.isArray(gameContext?.powerUpsBlack);
+    
+    console.log('✅ Datos completos para registrar powerup:', 
+        hasGameId && hasRoundId && hasPlayerIds);
+    console.log('✅ Inventarios válidos:', hasValidInventories);
+    
+    if (!hasGameId) console.error('❌ Falta currentGameId');
+    if (!hasRoundId) console.error('❌ Falta currentRoundId');
+    if (!hasPlayerIds) console.error('❌ Falta playerIds');
+    if (!hasValidInventories) console.error('❌ Inventarios de powerups no son arrays válidos');
+    
+    return { hasGameId, hasRoundId, hasPlayerIds, hasValidInventories };
+}
+
+// Función para verificar directamente en la base de datos si se registró
+export async function checkPowerupRegistration(id_uso) {
+    try {
+        console.log('🔍 Verificando registro en DB para id_uso:', id_uso);
+        const response = await fetch(`${server}/api/powerups/usage/${id_uso}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Powerup encontrado en DB:', data);
+            return data;
+        } else {
+            console.log('❌ Powerup no encontrado en DB');
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Error verificando registro:', error);
+        return null;
+    }
+}
+
+// Función para obtener todos los powerups registrados (para debug)
+export async function getAllPowerupUsage() {
+    try {
+        console.log('📊 Obteniendo todos los powerups registrados...');
+        const response = await fetch(`${server}/api/powerups/usage`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Powerups registrados:', data);
+            return data;
+        } else {
+            console.error('❌ Error obteniendo powerups:', response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Error en la petición:', error);
+        return null;
+    }
+}
+
+// Función completa de diagnóstico
+export async function fullPowerupDiagnostic() {
+    console.log('🔬 === DIAGNÓSTICO COMPLETO DE POWERUPS ===');
+    
+    // 1. Verificar servidor
+    console.log('1️⃣ Verificando servidor...');
+    const serverOk = await checkServerStatus();
+    console.log(`   Servidor: ${serverOk ? '✅ OK' : '❌ ERROR'}`);
+    
+    // 2. Ver estado actual
+    console.log('2️⃣ Estado actual de currentGamePlayers:');
+    console.log('   ', currentGamePlayers);
+    
+    // 3. Testear con datos conocidos
+    console.log('3️⃣ Test con datos de prueba...');
+    const testResult = await testPowerupUsage();
+    console.log(`   Test: ${testResult ? '✅ EXITOSO' : '❌ FALLÓ'}`);
+    
+    // 4. Ver registros existentes
+    console.log('4️⃣ Powerups registrados actualmente en DB:');
+    const allUsage = await getAllPowerupUsage();
+    if (allUsage && allUsage.data) {
+        console.log(`   📊 Total registrados: ${allUsage.total}`);
+        allUsage.data.slice(0, 5).forEach((usage, i) => {
+            console.log(`   ${i+1}. ${usage.powerup_nombre} por ${usage.jugador_email} - ${usage.fecha_uso}`);
+        });
+    }
+    
+    console.log('🔬 === FIN DEL DIAGNÓSTICO ===');
 }
 
 // Exportar las funciones necesarias

@@ -1295,16 +1295,26 @@ app.post("/api/powerups/use", async (req, res) => {
     let connection = null;
 
     try {
+        console.log('🎯 POST /api/powerups/use - Datos recibidos:', req.body);
+        
         const { id_jugador, id_powerup, id_partida, id_ronda } = req.body;
 
         // Validaciones básicas
         if (!id_jugador || !id_powerup || !id_partida || !id_ronda) {
+            console.error('❌ Faltan campos requeridos:', {
+                id_jugador: !!id_jugador,
+                id_powerup: !!id_powerup,
+                id_partida: !!id_partida,
+                id_ronda: !!id_ronda
+            });
             return res.status(400).json({
                 success: false,
                 message: 'Todos los campos son requeridos (id_jugador, id_powerup, id_partida, id_ronda)',
                 error: 'MISSING_REQUIRED_FIELDS'
             });
         }
+
+        console.log('✅ Validaciones básicas pasadas, conectando a DB...');
 
         connection = await connectToDB();
 
@@ -1344,11 +1354,16 @@ app.post("/api/powerups/use", async (req, res) => {
             });
         }
 
+        console.log('✅ Todas las validaciones pasaron, insertando en Powerup_usado...');
+        
         // Registrar uso del powerup en tabla Powerup_usado
         const insertQuery = `
             INSERT INTO Powerup_usado (id_jugador, id_powerup, id_partida, id_ronda, fecha_uso) 
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         `;
+        
+        console.log('📤 Ejecutando query:', insertQuery);
+        console.log('📤 Con parámetros:', [id_jugador, id_powerup, id_partida, id_ronda]);
         
         const [result] = await connection.execute(insertQuery, [
             id_jugador, 
@@ -1356,6 +1371,8 @@ app.post("/api/powerups/use", async (req, res) => {
             id_partida, 
             id_ronda
         ]);
+        
+        console.log('✅ INSERT exitoso, ID generado:', result.insertId);
 
         // Obtener estadísticas actualizadas del powerup
         const statsQuery = 'SELECT * FROM vista_powerups_populares WHERE nombre = ?';
@@ -1402,6 +1419,92 @@ app.post("/api/powerups/use", async (req, res) => {
             } catch (closeError) {
                 console.error('Error al cerrar conexión:', closeError);
             }
+        }
+    }
+});
+
+// Endpoint para verificar si un powerup se registró correctamente (DEBUG)
+app.get("/api/powerups/usage/:id_uso", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_uso } = req.params;
+        console.log('🔍 Verificando powerup usage con ID:', id_uso);
+
+        connection = await connectToDB();
+
+        const query = `
+            SELECT pu.*, p.nombre as powerup_nombre, j.email as jugador_email 
+            FROM Powerup_usado pu
+            JOIN Powerup p ON pu.id_powerup = p.id_powerup
+            JOIN Jugador j ON pu.id_jugador = j.id_jugador
+            WHERE pu.id_uso = ?
+        `;
+
+        const [rows] = await connection.execute(query, [id_uso]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Registro de powerup no encontrado'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error verificando powerup usage:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// Endpoint para obtener todos los powerups usados (DEBUG)
+app.get("/api/powerups/usage", async (req, res) => {
+    let connection = null;
+
+    try {
+        console.log('📊 Obteniendo todos los powerups usados...');
+
+        connection = await connectToDB();
+
+        const query = `
+            SELECT pu.*, p.nombre as powerup_nombre, j.email as jugador_email 
+            FROM Powerup_usado pu
+            JOIN Powerup p ON pu.id_powerup = p.id_powerup
+            JOIN Jugador j ON pu.id_jugador = j.id_jugador
+            ORDER BY pu.fecha_uso DESC
+            LIMIT 50
+        `;
+
+        const [rows] = await connection.execute(query);
+
+        res.status(200).json({
+            success: true,
+            data: rows,
+            total: rows.length
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo powerups usados:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
         }
     }
 });

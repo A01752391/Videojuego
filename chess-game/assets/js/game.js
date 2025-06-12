@@ -18,22 +18,24 @@ const moveSound = new Audio('../Sonidos/moving-piece.mp3');
  * @returns {number} The database ID of the powerup
  */
 export function getPowerUpIdByName(powerupName) {
-    // Mapping de nombres de powerups a sus IDs en la base de datos
+    // Mapping de nombres de powerups a sus IDs CORRECTOS en la base de datos
+    // Basado en el orden de INSERT INTO Powerup en Dummy PAWNED.sql
     const powerupIdMap = {
-        'Fence': 1,
-        'Pawn Range': 2,
-        'Crazy King': 3,
-        'Horizontal Portal': 4,
-        'Blast': 5,
-        'Shield': 6,
-        'Cage': 7,
-        'Extra Move': 8,
-        'Evolution': 9,
-        'Reducer': 10,
-        'Swap': 11
+        'Shield': 1,           // ID 1: 'Shield'
+        'Blast': 2,            // ID 2: 'Blast' 
+        'Swap': 3,             // ID 3: 'Swap'
+        'Extra Move': 4,       // ID 4: 'Extra move'
+        'Fence': 5,            // ID 5: 'Fence'
+        'Horizontal Portal': 6, // ID 6: 'Horizontal portal'
+        'Cage': 7,             // ID 7: 'Cage'
+        'Evolution': 8,        // ID 8: 'Evolution'
+        'Pawn Range': 9,       // ID 9: 'Pawn range'
+        'Reducer': 10,         // ID 10: 'Reducer'
+        'Crazy King': 11       // ID 11: 'Crazy king'
     };
     
-    return powerupIdMap[powerupName] || 1; // Default a 1 si no se encuentra
+    console.log(`🔍 Mapeando powerup '${powerupName}' a ID: ${powerupIdMap[powerupName]}`);
+    return powerupIdMap[powerupName] || 1; // Default a Shield (ID 1) si no se encuentra
 }
 
 /**
@@ -145,9 +147,15 @@ export function handleClick(r, c, gameContext) {
                         const activationSuccessful = powerUp.activate(gameContext, currentColor, targetData);
                         if (activationSuccessful) {
                             const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
-                            const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
-                            if (index > -1) {
-                                inventory.splice(index, 1);
+                            
+                            // Verificar que el inventario existe y es un array antes de usar indexOf
+                            if (inventory && Array.isArray(inventory)) {
+                                const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
+                                if (index > -1) {
+                                    inventory.splice(index, 1);
+                                }
+                            } else {
+                                console.error('❌ Inventario no válido en Swap para jugador:', currentColor, inventory);
                             }
                             
                             // NUEVO: Registrar uso del powerup en la base de datos
@@ -197,9 +205,15 @@ export function handleClick(r, c, gameContext) {
                     const activationSuccessful = powerUp.activate(gameContext, currentColor, { row: r, col: c });
                     if (activationSuccessful) {
                         const inventory = currentColor === 'w' ? powerUpsWhite : powerUpsBlack;
-                        const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
-                        if (index > -1) {
-                            inventory.splice(index, 1);
+                        
+                        // Verificar que el inventario existe y es un array antes de usar indexOf
+                        if (inventory && Array.isArray(inventory)) {
+                            const index = inventory.indexOf(awaitingPowerUpTarget.powerUpType);
+                            if (index > -1) {
+                                inventory.splice(index, 1);
+                            }
+                        } else {
+                            console.error('❌ Inventario no válido para jugador:', currentColor, inventory);
                         }
                         // renderPowerUpInventories is called by renderBoard in board.js
                         
