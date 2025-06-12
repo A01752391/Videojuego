@@ -220,9 +220,7 @@ class RoundStatsModal {
         if (e.key === 'Escape') {
             this.hide();
         }
-    }
-
-    /**
+    }    /**
      * Shows the modal with round statistics
      */
     show(roundData) {
@@ -261,9 +259,7 @@ class RoundStatsModal {
         setTimeout(() => {
             this.resetModalState();
         }, 300);
-    }
-
-    /**
+    }    /**
      * Shows loading state
      */
     showLoadingState() {
@@ -271,9 +267,13 @@ class RoundStatsModal {
         document.getElementById('modalErrorState').style.display = 'none';
         document.getElementById('modalStatsContent').style.display = 'none';
         document.getElementById('modalActionButtons').style.display = 'none';
-    }
-
-    /**
+        
+        // Update loading message to indicate database fetch
+        const loadingElement = document.querySelector('#modalLoadingState p');
+        if (loadingElement) {
+            loadingElement.textContent = 'Cargando estadísticas desde la base de datos...';
+        }
+    }    /**
      * Shows error state
      */
     showErrorState(message = 'Error al procesar estadísticas') {
@@ -281,7 +281,21 @@ class RoundStatsModal {
         document.getElementById('modalErrorState').style.display = 'block';
         document.getElementById('modalStatsContent').style.display = 'none';
         document.getElementById('modalActionButtons').style.display = 'block';
-        document.getElementById('modalErrorMessage').textContent = message;
+        
+        const errorMessageElement = document.getElementById('modalErrorMessage');
+        if (errorMessageElement) {
+            errorMessageElement.textContent = message;
+        }
+    }
+
+    /**
+     * Shows a non-blocking warning and continues with fallback data
+     */
+    showDatabaseWarning(message) {
+        console.warn(`Database Warning: ${message}`);
+        
+        // Could add a small notification banner here if desired
+        // For now, just log the warning and continue with local data
     }
 
     /**
@@ -292,12 +306,10 @@ class RoundStatsModal {
         document.getElementById('modalErrorState').style.display = 'none';
         document.getElementById('modalStatsContent').style.display = 'block';
         document.getElementById('modalActionButtons').style.display = 'flex';
-    }
-
-    /**
+    }    /**
      * Processes and displays round statistics
      */
-    processAndDisplayStats(roundData) {
+    async processAndDisplayStats(roundData) {
         try {
             // Update round title
             document.getElementById('roundTitle').textContent = `Ronda ${roundData.round} Completada`;
@@ -305,11 +317,8 @@ class RoundStatsModal {
             // Display winner
             this.displayWinnerInfo(roundData);
 
-            // Display scores
-            this.displayScores(roundData);
-
-            // Calculate and display performance stats
-            this.displayPerformanceStats(roundData);
+            // Fetch and display database statistics
+            await this.fetchAndDisplayDatabaseStats(roundData);
 
             // Display series progress
             this.displaySeriesProgress(roundData);
@@ -325,8 +334,228 @@ class RoundStatsModal {
             this.showErrorState('Error al procesar las estadísticas de la ronda');
         }
     }    /**
+     * Fetches round statistics from database and displays them
+     */
+    async fetchAndDisplayDatabaseStats(roundData) {
+        try {
+            // Get current round and player information from context
+            const gameContext = this.getGameContext();
+            
+            // Try to fetch real statistics from the database
+            const dbStats = await this.fetchRoundStatsFromAPI(gameContext);
+            
+            if (dbStats && dbStats.length > 0) {
+                // Display real database statistics
+                this.displayDatabaseScores(roundData, dbStats);
+                this.displayDatabasePerformanceStats(roundData, dbStats);
+            } else {
+                // Fallback to local gameStats if available
+                console.warn('No database stats found, using local gameStats');
+                this.displayScores(roundData);
+                this.displayPerformanceStats(roundData);
+            }
+            
+        } catch (error) {
+            console.warn('Error fetching database stats, using local data:', error);
+            // Fallback to existing local data processing
+            this.displayScores(roundData);
+            this.displayPerformanceStats(roundData);
+        }
+    }
+
+    /**
+     * Fetches round statistics from the API
+     */
+    async fetchRoundStatsFromAPI(gameContext) {
+        const apiUrl = '/api/rounds/stats';
+        
+        // Build query parameters based on available context
+        const params = new URLSearchParams();
+        
+        // If we have player IDs, filter by them
+        if (gameContext.playerIds) {
+            if (gameContext.playerIds.w) {
+                params.append('id_jugador', gameContext.playerIds.w);
+            }
+            if (gameContext.playerIds.b) {
+                params.append('id_jugador', gameContext.playerIds.b);
+            }
+        }
+        
+        const fullUrl = params.toString() ? `${apiUrl}?${params}` : apiUrl;
+        
+        console.log('Fetching round stats from:', fullUrl);
+        
+        const response = await fetch(fullUrl);
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            console.log('Round stats fetched successfully:', result.data);
+            return result.data;
+        } else {
+            throw new Error('Invalid API response format');
+        }
+    }
+
+    /**
+     * Gets game context from various sources
+     */
+    getGameContext() {
+        // Try to get context from current round data
+        if (this.currentRoundData && this.currentRoundData.gameContext) {
+            return this.currentRoundData.gameContext;
+        }
+        
+        // Try to get from global variables or localStorage
+        const gameContext = {
+            currentRoundId: localStorage.getItem('currentRoundId'),
+            gameId: localStorage.getItem('currentGameId'),
+            playerIds: {
+                w: localStorage.getItem('whitePlayerId'),
+                b: localStorage.getItem('blackPlayerId')
+            }
+        };
+        
+        return gameContext;
+    }
+
+    /**
+     * Displays player scores using database statistics
+     */
+    displayDatabaseScores(roundData, dbStats) {
+        // Basic scores from roundData (these come from the game logic)
+        document.getElementById('modalWhiteScore').textContent = roundData.whiteScore || 0;
+        document.getElementById('modalBlackScore').textContent = roundData.blackScore || 0;
+
+        // Try to map database stats to players
+        const whiteStats = this.findPlayerStats(dbStats, 'white');
+        const blackStats = this.findPlayerStats(dbStats, 'black');
+
+        // Display detailed breakdowns from database
+        document.getElementById('modalWhiteCaptured').textContent = whiteStats.piezasCapturadas || 0;
+        document.getElementById('modalWhitePowerups').textContent = whiteStats.powerupsUsados || 0;
+        document.getElementById('modalWhiteTurns').textContent = whiteStats.turnosTomados || 0;
+
+        document.getElementById('modalBlackCaptured').textContent = blackStats.piezasCapturadas || 0;
+        document.getElementById('modalBlackPowerups').textContent = blackStats.powerupsUsados || 0;
+        document.getElementById('modalBlackTurns').textContent = blackStats.turnosTomados || 0;
+    }
+
+    /**
+     * Displays performance statistics using database data
+     */
+    displayDatabasePerformanceStats(roundData, dbStats) {
+        const whiteScore = roundData.whiteScore || 0;
+        const blackScore = roundData.blackScore || 0;
+        
+        // Get database stats for each player
+        const whiteStats = this.findPlayerStats(dbStats, 'white');
+        const blackStats = this.findPlayerStats(dbStats, 'black');
+
+        // Calculate ratios using database values
+        const whiteCaptureRatio = whiteStats.turnosTomados > 0 ? 
+            (whiteStats.piezasCapturadas / whiteStats.turnosTomados).toFixed(2) : '0.00';
+        const blackCaptureRatio = blackStats.turnosTomados > 0 ? 
+            (blackStats.piezasCapturadas / blackStats.turnosTomados).toFixed(2) : '0.00';
+        
+        const whitePointsPerCapture = whiteStats.piezasCapturadas > 0 ? 
+            (whiteScore / whiteStats.piezasCapturadas).toFixed(1) : '0.0';
+        const blackPointsPerCapture = blackStats.piezasCapturadas > 0 ? 
+            (blackScore / blackStats.piezasCapturadas).toFixed(1) : '0.0';
+        
+        const whitePowerupRatio = whiteStats.turnosTomados > 0 ? 
+            (whiteStats.powerupsUsados / whiteStats.turnosTomados).toFixed(2) : '0.00';
+        const blackPowerupRatio = blackStats.turnosTomados > 0 ? 
+            (blackStats.powerupsUsados / blackStats.turnosTomados).toFixed(2) : '0.00';
+
+        // PowerUp efficiency calculation
+        const whitePowerupEfficiency = whiteStats.powerupsUsados > 0 ? 
+            Math.min(100, Math.round((whiteScore / whiteStats.powerupsUsados) * 10)) : 0;
+        const blackPowerupEfficiency = blackStats.powerupsUsados > 0 ? 
+            Math.min(100, Math.round((blackScore / blackStats.powerupsUsados) * 10)) : 0;
+
+        // Update display
+        document.getElementById('modalWhiteCaptureRatio').textContent = whiteCaptureRatio;
+        document.getElementById('modalBlackCaptureRatio').textContent = blackCaptureRatio;
+        document.getElementById('modalWhitePointsPerCapture').textContent = whitePointsPerCapture;
+        document.getElementById('modalBlackPointsPerCapture').textContent = blackPointsPerCapture;
+        document.getElementById('modalWhitePowerupRatio').textContent = whitePowerupRatio;
+        document.getElementById('modalBlackPowerupRatio').textContent = blackPowerupRatio;
+        document.getElementById('modalWhitePowerupEfficiency').textContent = `${whitePowerupEfficiency}%`;
+        document.getElementById('modalBlackPowerupEfficiency').textContent = `${blackPowerupEfficiency}%`;
+
+        // Update comparison bar widths
+        this.updateComparisonBars(whiteCaptureRatio, blackCaptureRatio, 'modalWhiteCaptureBar', 'modalBlackCaptureBar');
+        this.updateComparisonBars(whitePointsPerCapture, blackPointsPerCapture, 'modalWhitePointsBar', 'modalBlackPointsBar');
+        this.updateComparisonBars(whitePowerupRatio, blackPowerupRatio, 'modalWhitePowerupBar', 'modalBlackPowerupBar');
+    }
+
+    /**
+     * Finds statistics for a specific player from database results
+     */
+    findPlayerStats(dbStats, playerColor) {
+        // Default empty stats
+        const defaultStats = {
+            piezasCapturadas: 0,
+            piezasPerdidas: 0,
+            powerupsUsados: 0,
+            turnosTomados: 0,
+            rondasJugadas: 0
+        };
+
+        if (!dbStats || !Array.isArray(dbStats) || dbStats.length === 0) {
+            return defaultStats;
+        }
+
+        // Try to get player context
+        const gameContext = this.getGameContext();
+        
+        if (gameContext.playerIds) {
+            const playerId = playerColor === 'white' ? gameContext.playerIds.w : gameContext.playerIds.b;
+            
+            // Find stats by player ID
+            const playerStats = dbStats.find(stat => stat.jugadorId === parseInt(playerId));
+            if (playerStats) {
+                return {
+                    piezasCapturadas: playerStats.piezasCapturadas || 0,
+                    piezasPerdidas: playerStats.piezasPerdidas || 0,
+                    powerupsUsados: playerStats.powerupsUsados || 0,
+                    turnosTomados: playerStats.turnosTomados || 0,
+                    rondasJugadas: playerStats.rondasJugadas || 0
+                };
+            }
+        }
+
+        // Fallback: if we have exactly 2 players, assign by index
+        if (dbStats.length === 2) {
+            const playerIndex = playerColor === 'white' ? 0 : 1;
+            const playerStats = dbStats[playerIndex];
+            return {
+                piezasCapturadas: playerStats.piezasCapturadas || 0,
+                piezasPerdidas: playerStats.piezasPerdidas || 0,
+                powerupsUsados: playerStats.powerupsUsados || 0,
+                turnosTomados: playerStats.turnosTomados || 0,
+                rondasJugadas: playerStats.rondasJugadas || 0
+            };
+        }
+
+        // Fallback: use first available stats or defaults
+        return dbStats.length > 0 ? {
+            piezasCapturadas: dbStats[0].piezasCapturadas || 0,
+            piezasPerdidas: dbStats[0].piezasPerdidas || 0,
+            powerupsUsados: dbStats[0].powerupsUsados || 0,
+            turnosTomados: dbStats[0].turnosTomados || 0,
+            rondasJugadas: dbStats[0].rondasJugadas || 0        } : defaultStats;
+    }
+
+    /**
      * Displays winner information
-     */    displayWinnerInfo(roundData) {
+     */displayWinnerInfo(roundData) {
         const whiteCard = document.getElementById('modalWhitePlayer');
         const blackCard = document.getElementById('modalBlackPlayer');
         
@@ -482,8 +711,9 @@ class RoundStatsModal {
             newGameBtn.style.display = 'none';
             continueBtn.style.display = 'none'; // Hide Continue button to avoid confusion
         }
-    }/**
-     * Gets real game statistics from gameStats
+    }    /**
+     * Gets real game statistics from gameStats (fallback method)
+     * This method is now used as a fallback when database data is not available
      */
     getRealStats(gameStats, color) {
         if (!gameStats || !gameStats[color]) {
@@ -500,7 +730,7 @@ class RoundStatsModal {
             captured: gameStats[color].captured || 0,
             powerups: gameStats[color].powerupsUsed || 0
         };
-    }    /**
+    }/**
      * Triggers next round action
      */    triggerNextRound() {
         // Dispatch custom event for next round

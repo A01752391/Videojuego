@@ -312,9 +312,7 @@ class GameStatsModal {
         setTimeout(() => {
             this.resetModalState();
         }, 300);
-    }
-
-    /**
+    }    /**
      * Shows loading state
      */
     showLoadingState() {
@@ -322,6 +320,12 @@ class GameStatsModal {
         document.getElementById('gameModalErrorState').style.display = 'none';
         document.getElementById('gameModalStatsContent').style.display = 'none';
         document.getElementById('gameModalActionButtons').style.display = 'none';
+        
+        // Update loading message to indicate database fetch
+        const loadingElement = document.querySelector('#gameModalLoadingState p');
+        if (loadingElement) {
+            loadingElement.textContent = 'Cargando estadísticas de la partida desde la base de datos...';
+        }
     }
 
     /**
@@ -351,17 +355,8 @@ class GameStatsModal {
             // Update game title
             document.getElementById('gameTitle').textContent = `Partida Completada`;
 
-            // Aggregate data from all rounds
-            const aggregatedData = this.aggregateRoundData(gameData);
-
-            // Display game summary
-            this.displayGameSummary(aggregatedData);
-
-            // Display aggregated scores
-            this.displayAggregatedScores(aggregatedData);
-
-            // Display performance stats
-            this.displayGamePerformanceStats(aggregatedData);
+            // Fetch and display database statistics
+            await this.fetchAndDisplayDatabaseStats(gameData);
 
             // Display powerup statistics using real game data
             this.displayPowerupAnalysis(gameData);
@@ -376,6 +371,294 @@ class GameStatsModal {
             console.error('Error processing game statistics:', error);
             this.showErrorState('Error al procesar las estadísticas de la partida');
         }
+    }
+
+    /**
+     * Fetches game statistics from database and displays them
+     */
+    async fetchAndDisplayDatabaseStats(gameData) {
+        try {
+            // Get current game and player information from context
+            const gameContext = this.getGameContext();
+            
+            // Try to fetch real statistics from the database
+            const dbStats = await this.fetchGameStatsFromAPI(gameContext);
+            
+            if (dbStats && dbStats.length > 0) {
+                // Aggregate database data from all rounds/games
+                const aggregatedData = this.aggregateGameDataFromDatabase(gameData, dbStats);
+                
+                // Display real database statistics
+                this.displayGameSummary(aggregatedData);
+                this.displayDatabaseScores(aggregatedData, dbStats);
+                this.displayDatabasePerformanceStats(aggregatedData, dbStats);
+            } else {
+                // Fallback to local gameData aggregation if available
+                console.warn('No database stats found, using local gameData');
+                const aggregatedData = this.aggregateRoundData(gameData);
+                this.displayGameSummary(aggregatedData);
+                this.displayAggregatedScores(aggregatedData);
+                this.displayGamePerformanceStats(aggregatedData);
+            }
+            
+        } catch (error) {
+            console.warn('Error fetching database stats, using local data:', error);
+            // Fallback to existing local data processing
+            const aggregatedData = this.aggregateRoundData(gameData);
+            this.displayGameSummary(aggregatedData);
+            this.displayAggregatedScores(aggregatedData);
+            this.displayGamePerformanceStats(aggregatedData);
+        }
+    }
+
+    /**
+     * Fetches game statistics from the API
+     */
+    async fetchGameStatsFromAPI(gameContext) {
+        const apiUrl = '/api/games/stats';
+        
+        // Build query parameters based on available context
+        const params = new URLSearchParams();
+        
+        // If we have player IDs, filter by them
+        if (gameContext.playerIds) {
+            if (gameContext.playerIds.w) {
+                params.append('id_jugador', gameContext.playerIds.w);
+            }
+            if (gameContext.playerIds.b) {
+                params.append('id_jugador', gameContext.playerIds.b);
+            }
+        }
+        
+        // If we have game ID, filter by it
+        if (gameContext.gameId) {
+            params.append('id_juego', gameContext.gameId);
+        }
+        
+        const fullUrl = params.toString() ? `${apiUrl}?${params}` : apiUrl;
+        
+        console.log('Fetching game stats from:', fullUrl);
+        
+        const response = await fetch(fullUrl);
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            console.log('Game stats fetched successfully:', result.data);
+            return result.data;
+        } else {
+            throw new Error('Invalid API response format');
+        }
+    }
+
+    /**
+     * Gets game context from various sources
+     */
+    getGameContext() {
+        // Priority: gameData.gameContext → currentGameData.gameContext → localStorage
+        
+        if (this.currentGameData && this.currentGameData.gameContext) {
+            return this.currentGameData.gameContext;
+        }
+        
+        // Try to get from localStorage as backup
+        try {
+            const savedContext = localStorage.getItem('gameContext');
+            if (savedContext) {
+                return JSON.parse(savedContext);
+            }
+        } catch (error) {
+            console.warn('Could not parse gameContext from localStorage:', error);
+        }
+        
+        // Return minimal context
+        return {
+            gameId: null,
+            playerIds: null,
+            currentRoundId: null
+        };
+    }
+
+    /**
+     * Aggregates game data from database statistics
+     */
+    aggregateGameDataFromDatabase(gameData, dbStats) {
+        const aggregated = {
+            totalRounds: gameData.rounds ? gameData.rounds.length : 0,
+            winner: gameData.winner,
+            duration: gameData.duration,
+            startDate: gameData.startDate,
+            white: {
+                totalScore: 0,
+                totalCaptured: 0,
+                totalPowerups: 0,
+                totalTurns: 0,
+                roundsWon: 0
+            },
+            black: {
+                totalScore: 0,
+                totalCaptured: 0,
+                totalPowerups: 0,
+                totalTurns: 0,
+                roundsWon: 0
+            }
+        };
+
+        // Get database stats for each player
+        const whiteStats = this.findPlayerStats(dbStats, 'white');
+        const blackStats = this.findPlayerStats(dbStats, 'black');
+
+        // Map database fields to aggregated data
+        aggregated.white.totalCaptured = whiteStats.piezasCapturadas || 0;
+        aggregated.white.totalPowerups = whiteStats.powerupsUsados || 0;
+        aggregated.white.totalTurns = whiteStats.turnosTomados || 0;
+        aggregated.white.roundsWon = whiteStats.rondasGanadas || 0;
+
+        aggregated.black.totalCaptured = blackStats.piezasCapturadas || 0;
+        aggregated.black.totalPowerups = blackStats.powerupsUsados || 0;
+        aggregated.black.totalTurns = blackStats.turnosTomados || 0;
+        aggregated.black.roundsWon = blackStats.rondasGanadas || 0;
+
+        // Calculate total scores from rounds if available
+        if (gameData.rounds) {
+            gameData.rounds.forEach(round => {
+                aggregated.white.totalScore += round.whiteScore || 0;
+                aggregated.black.totalScore += round.blackScore || 0;
+            });
+        }
+
+        return aggregated;
+    }
+
+    /**
+     * Displays aggregated scores using database statistics
+     */
+    displayDatabaseScores(aggregatedData, dbStats) {
+        // Display aggregated scores from both database and local round data
+        document.getElementById('gameWhiteScore').textContent = aggregatedData.white.totalScore;
+        document.getElementById('gameWhiteCaptured').textContent = aggregatedData.white.totalCaptured;
+        document.getElementById('gameWhitePowerups').textContent = aggregatedData.white.totalPowerups;
+        document.getElementById('gameWhiteTurns').textContent = aggregatedData.white.totalTurns;
+        document.getElementById('gameWhiteWins').textContent = aggregatedData.white.roundsWon;
+
+        document.getElementById('gameBlackScore').textContent = aggregatedData.black.totalScore;
+        document.getElementById('gameBlackCaptured').textContent = aggregatedData.black.totalCaptured;
+        document.getElementById('gameBlackPowerups').textContent = aggregatedData.black.totalPowerups;
+        document.getElementById('gameBlackTurns').textContent = aggregatedData.black.totalTurns;
+        document.getElementById('gameBlackWins').textContent = aggregatedData.black.roundsWon;
+
+        // Highlight overall winner's score card
+        const whiteCard = document.getElementById('gameWhitePlayer');
+        const blackCard = document.getElementById('gameBlackPlayer');
+        
+        whiteCard.classList.remove('winner');
+        blackCard.classList.remove('winner');
+        
+        if (aggregatedData.white.totalScore > aggregatedData.black.totalScore) {
+            whiteCard.classList.add('winner');
+        } else if (aggregatedData.black.totalScore > aggregatedData.white.totalScore) {
+            blackCard.classList.add('winner');
+        }
+    }
+
+    /**
+     * Displays game performance statistics using database data
+     */
+    displayDatabasePerformanceStats(aggregatedData, dbStats) {
+        const white = aggregatedData.white;
+        const black = aggregatedData.black;
+
+        // Calculate average ratios using database values
+        const whiteCaptureRatio = white.totalTurns > 0 ? (white.totalCaptured / white.totalTurns).toFixed(2) : '0.00';
+        const blackCaptureRatio = black.totalTurns > 0 ? (black.totalCaptured / black.totalTurns).toFixed(2) : '0.00';
+
+        const whitePointsPerCapture = white.totalCaptured > 0 ? (white.totalScore / white.totalCaptured).toFixed(1) : '0.0';
+        const blackPointsPerCapture = black.totalCaptured > 0 ? (black.totalScore / black.totalCaptured).toFixed(1) : '0.0';
+
+        const whitePowerupRatio = white.totalTurns > 0 ? (white.totalPowerups / white.totalTurns).toFixed(2) : '0.00';
+        const blackPowerupRatio = black.totalTurns > 0 ? (black.totalPowerups / black.totalTurns).toFixed(2) : '0.00';
+
+        // PowerUp effectiveness (score improvement per powerup used)
+        const whitePowerupEfficiency = white.totalPowerups > 0 ? Math.min(100, Math.round((white.totalScore / white.totalPowerups) * 2)) : 0;
+        const blackPowerupEfficiency = black.totalPowerups > 0 ? Math.min(100, Math.round((black.totalScore / black.totalPowerups) * 2)) : 0;
+
+        // Update display
+        document.getElementById('gameWhiteCaptureRatio').textContent = whiteCaptureRatio;
+        document.getElementById('gameBlackCaptureRatio').textContent = blackCaptureRatio;
+        document.getElementById('gameWhitePointsPerCapture').textContent = whitePointsPerCapture;
+        document.getElementById('gameBlackPointsPerCapture').textContent = blackPointsPerCapture;
+        document.getElementById('gameWhitePowerupRatio').textContent = whitePowerupRatio;
+        document.getElementById('gameBlackPowerupRatio').textContent = blackPowerupRatio;
+        document.getElementById('gameWhitePowerupEfficiency').textContent = `${whitePowerupEfficiency}%`;
+        document.getElementById('gameBlackPowerupEfficiency').textContent = `${blackPowerupEfficiency}%`;
+
+        // Update comparison bar widths
+        this.updateComparisonBars(whiteCaptureRatio, blackCaptureRatio, 'gameWhiteCaptureBar', 'gameBlackCaptureBar');
+        this.updateComparisonBars(whitePointsPerCapture, blackPointsPerCapture, 'gameWhitePointsBar', 'gameBlackPointsBar');
+        this.updateComparisonBars(whitePowerupRatio, blackPowerupRatio, 'gameWhitePowerupBar', 'gameBlackPowerupBar');
+    }
+
+    /**
+     * Finds statistics for a specific player from database results
+     */
+    findPlayerStats(dbStats, playerColor) {
+        // Default empty stats
+        const defaultStats = {
+            piezasCapturadas: 0,
+            piezasPerdidas: 0,
+            powerupsUsados: 0,
+            turnosTomados: 0,
+            rondasGanadas: 0
+        };
+
+        if (!dbStats || !Array.isArray(dbStats) || dbStats.length === 0) {
+            return defaultStats;
+        }
+
+        // Try to get player context
+        const gameContext = this.getGameContext();
+        
+        if (gameContext.playerIds) {
+            const playerId = playerColor === 'white' ? gameContext.playerIds.w : gameContext.playerIds.b;
+            
+            // Find stats by player ID
+            const playerStats = dbStats.find(stat => stat.jugadorId === parseInt(playerId));
+            if (playerStats) {
+                return {
+                    piezasCapturadas: playerStats.piezasCapturadas || 0,
+                    piezasPerdidas: playerStats.piezasPerdidas || 0,
+                    powerupsUsados: playerStats.powerupsUsados || 0,
+                    turnosTomados: playerStats.turnosTomados || 0,
+                    rondasGanadas: playerStats.rondasGanadas || 0
+                };
+            }
+        }
+
+        // Fallback: if we have exactly 2 players, assign by index
+        if (dbStats.length === 2) {
+            const playerIndex = playerColor === 'white' ? 0 : 1;
+            const playerStats = dbStats[playerIndex];
+            return {
+                piezasCapturadas: playerStats.piezasCapturadas || 0,
+                piezasPerdidas: playerStats.piezasPerdidas || 0,
+                powerupsUsados: playerStats.powerupsUsados || 0,
+                turnosTomados: playerStats.turnosTomados || 0,
+                rondasGanadas: playerStats.rondasGanadas || 0
+            };
+        }
+
+        // Fallback: use first available stats or defaults
+        return dbStats.length > 0 ? {
+            piezasCapturadas: dbStats[0].piezasCapturadas || 0,
+            piezasPerdidas: dbStats[0].piezasPerdidas || 0,
+            powerupsUsados: dbStats[0].powerupsUsados || 0,
+            turnosTomados: dbStats[0].turnosTomados || 0,
+            rondasGanadas: dbStats[0].rondasGanadas || 0
+        } : defaultStats;
     }
 
     /**
