@@ -217,6 +217,14 @@ export class BlastPowerUp extends PowerUpBase {
         const score1El = document.getElementById('score1');
         if (score1El) score1El.textContent = gameContext.score1;
         
+        // NUEVO: Agregar puntos al score individual de la ronda
+        if (gameContext.gameStats && gameContext.gameStats.white) {
+          gameContext.gameStats.white.roundScore += points;
+          gameContext.gameStats.white.captured += 1; // Blast cuenta como captura
+          console.log(`Blast: Added ${points} to white roundScore, now ${gameContext.gameStats.white.roundScore}`);
+          console.log(`Blast: White captured count now ${gameContext.gameStats.white.captured}`);
+        }
+        
         console.log(`Blast: White score now ${gameContext.score1}, threshold ${gameContext.nextThresholdWhite}`);
         
         // CORREGIDO: Usar while loop para otorgar múltiples PowerUps
@@ -234,6 +242,14 @@ export class BlastPowerUp extends PowerUpBase {
         gameContext.score2 += points;
         const score2El = document.getElementById('score2');
         if (score2El) score2El.textContent = gameContext.score2;
+        
+        // NUEVO: Agregar puntos al score individual de la ronda
+        if (gameContext.gameStats && gameContext.gameStats.black) {
+          gameContext.gameStats.black.roundScore += points;
+          gameContext.gameStats.black.captured += 1; // Blast cuenta como captura
+          console.log(`Blast: Added ${points} to black roundScore, now ${gameContext.gameStats.black.roundScore}`);
+          console.log(`Blast: Black captured count now ${gameContext.gameStats.black.captured}`);
+        }
         
         console.log(`Blast: Black score now ${gameContext.score2}, threshold ${gameContext.nextThresholdBlack}`);
         

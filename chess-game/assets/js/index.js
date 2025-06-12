@@ -1108,6 +1108,75 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             console.warn('Modal de partida no disponible');
                         }
+                    },
+                    
+                    // NUEVO: Función específica para probar Blast
+                    testBlastScoring: () => {
+                        if (gameContext) {
+                            console.log('💥 PRUEBA DE PUNTAJE BLAST:');
+                            console.log('📊 Estado ANTES de simular Blast:');
+                            console.log('   - Puntaje total blancas:', gameContext.score1);
+                            console.log('   - Puntaje total negras:', gameContext.score2);
+                            console.log('   - Round score blancas:', gameContext.gameStats?.white?.roundScore || 0);
+                            console.log('   - Round score negras:', gameContext.gameStats?.black?.roundScore || 0);
+                            console.log('   - Capturas blancas:', gameContext.gameStats?.white?.captured || 0);
+                            console.log('   - PowerUps usados blancas:', gameContext.gameStats?.white?.powerupsUsed || 0);
+                            
+                            // Simular un Blast que elimina un caballo (4 puntos)
+                            const simulatedPiece = { type: 'n', color: 'b' };
+                            console.log('💥 Simulando Blast de blancas eliminando caballo negro...');
+                            
+                            // Simular exactamente lo que haría Blast
+                            const points = 4; // Caballo = 4 puntos
+                            
+                            // Actualizar puntaje total
+                            gameContext.score1 += points;
+                            
+                            // Actualizar estadísticas de ronda (como lo hace Blast ahora)
+                            if (gameContext.gameStats && gameContext.gameStats.white) {
+                                gameContext.gameStats.white.roundScore += points;
+                                gameContext.gameStats.white.captured += 1; // Blast cuenta como captura
+                                gameContext.gameStats.white.powerupsUsed += 1; // Contabilizar uso de PowerUp
+                            }
+                            
+                            console.log('📊 Estado DESPUÉS de simular Blast:');
+                            console.log('   - Puntaje total blancas:', gameContext.score1, `(+${points})`);
+                            console.log('   - Round score blancas:', gameContext.gameStats?.white?.roundScore || 0, `(+${points})`);
+                            console.log('   - Capturas blancas:', gameContext.gameStats?.white?.captured || 0, '(+1)');
+                            console.log('   - PowerUps usados blancas:', gameContext.gameStats?.white?.powerupsUsed || 0, '(+1)');
+                            
+                            // Verificar actualización de pantalla
+                            const score1El = document.getElementById('score1');
+                            if (score1El) score1El.textContent = gameContext.score1;
+                            
+                            console.log('✅ Blast simulado correctamente. Estadísticas completas actualizadas.');
+                            console.log('💡 Tip: Usa window.debugScore.testRoundModal() para ver el resultado en el modal de ronda');
+                            
+                            return {
+                                pointsAdded: points,
+                                newTotalScore: gameContext.score1,
+                                newRoundScore: gameContext.gameStats?.white?.roundScore || 0,
+                                captured: gameContext.gameStats?.white?.captured || 0,
+                                powerupsUsed: gameContext.gameStats?.white?.powerupsUsed || 0,
+                                success: true
+                            };
+                        } else {
+                            console.warn('gameContext no está disponible');
+                            return { success: false, error: 'gameContext not available' };
+                        }
+                    },
+                    
+                    // NUEVO: Función para restablecer puntajes de prueba
+                    resetTestScores: () => {
+                        if (gameContext) {
+                            console.log('🔄 Restableciendo puntajes de prueba...');
+                            // Opcional: resetear solo roundScore manteniendo totales
+                            if (gameContext.gameStats) {
+                                gameContext.gameStats.white.roundScore = 0;
+                                gameContext.gameStats.black.roundScore = 0;
+                                console.log('✅ Round scores restablecidos a 0');
+                            }
+                        }
                     }
                 };
                 
