@@ -648,6 +648,57 @@ export async function updateRoundWinner(roundId, winnerId) {
     }
 }
 
+// Función para finalizar una partida actualizando ganador, fecha fin y duración
+export async function finalizeGame(gameId, winnerId, durationMs) {
+    try {
+        console.log('🏆 Finalizando partida:', { gameId, winnerId, durationMs });
+        
+        const durationSeconds = Math.round(durationMs / 1000);
+        
+        const response = await fetch(`${server}/api/games/${gameId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ganador_id: winnerId,
+                fecha_fin: new Date().toISOString(),
+                duracion: durationSeconds
+            })
+        });
+
+        console.log('📥 Response status:', response.status);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error finalizando partida (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Partida finalizada exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error finalizando partida:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
 // Exportar las funciones necesarias
 export {
     NewUser,

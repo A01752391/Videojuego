@@ -2078,6 +2078,141 @@ app.patch("/api/rounds/:id_ronda/winner", async (req, res) => {
     }
 });
 
+// Endpoint para finalizar una partida (actualizar ganador, fecha fin y duración)
+app.patch("/api/games/:id_partida", async (req, res) => {
+    let connection = null;
+
+    try {
+        const partidaId = parseInt(req.params.id_partida);
+        const { ganador_id, fecha_fin, duracion } = req.body;
+
+        console.log('🏆 PATCH /api/games/:id_partida - Finalizando partida:', {
+            partidaId,
+            ganador_id,
+            fecha_fin,
+            duracion
+        });
+
+        // Validaciones básicas
+        if (isNaN(partidaId) || partidaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID de la partida debe ser un número válido',
+                error: 'INVALID_GAME_ID'
+            });
+        }
+
+        if (!ganador_id || isNaN(parseInt(ganador_id)) || parseInt(ganador_id) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del ganador debe ser un número válido',
+                error: 'INVALID_WINNER_ID'
+            });
+        }
+
+        console.log('✅ Validaciones básicas pasadas, conectando a DB...');
+        connection = await connectToDB();
+
+        // Verificar que la partida existe
+        const checkGameQuery = 'SELECT * FROM Partida WHERE id_partida = ?';
+        const [gameData] = await connection.execute(checkGameQuery, [partidaId]);
+
+        if (gameData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partida no encontrada',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        const game = gameData[0];
+        console.log('🔍 Partida encontrada:', {
+            partidaId: game.id_partida,
+            jugador1: game.id_jugador1,
+            jugador2: game.id_jugador2,
+            ganadorActual: game.ganador_id
+        });
+
+        // Verificar que el ganador sea uno de los jugadores de la partida
+        if (parseInt(ganador_id) !== game.id_jugador1 && parseInt(ganador_id) !== game.id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ganador debe ser uno de los jugadores de la partida',
+                error: 'INVALID_WINNER_FOR_GAME'
+            });
+        }
+
+        // Actualizar la partida
+        const updateQuery = `
+            UPDATE Partida 
+            SET ganador_id = ?, fecha_fin = ?, duracion = ?
+            WHERE id_partida = ?
+        `;
+        
+        const fechaFinFormatted = fecha_fin ? new Date(fecha_fin).toISOString().slice(0, 19).replace('T', ' ') : new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
+        console.log('📤 Ejecutando update:', updateQuery, [ganador_id, fechaFinFormatted, duracion, partidaId]);
+        
+        const [updateResult] = await connection.execute(updateQuery, [
+            ganador_id, 
+            fechaFinFormatted,
+            duracion, 
+            partidaId
+        ]);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'No se pudo actualizar la partida',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        console.log('✅ Partida actualizada exitosamente');
+
+        // Obtener los datos actualizados
+        const getUpdatedGameQuery = `
+            SELECT p.*, j.email as ganador_email
+            FROM Partida p
+            LEFT JOIN Jugador j ON p.ganador_id = j.id_jugador
+            WHERE p.id_partida = ?
+        `;
+        const [updatedGameData] = await connection.execute(getUpdatedGameQuery, [partidaId]);
+        const updatedGame = updatedGameData[0];
+
+        res.status(200).json({
+            success: true,
+            message: 'Partida finalizada exitosamente',
+            data: {
+                partidaId: updatedGame.id_partida,
+                ganadorId: updatedGame.ganador_id,
+                ganadorEmail: updatedGame.ganador_email,
+                fechaInicio: updatedGame.fecha_inicio,
+                fechaFin: updatedGame.fecha_fin,
+                duracion: updatedGame.duracion
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error finalizando partida:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
 // ENDPOINTS PARA VISTA_PARTIDAS_COMPLETA
 
 // Obtener partidas completas 

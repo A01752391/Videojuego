@@ -319,6 +319,19 @@ function handleRoundEnd(winner, gameContext) {
         gameContext.gameOver = true;
         gameSeriesData.winner = 'w';
         gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.w) {
+                    const { finalizeGame } = await import('./pruebasAPI.js');
+                    await finalizeGame(gameContext.currentGameId, gameContext.playerIds.w, gameSeriesData.duration);
+                    console.log('✅ Partida finalizada en BD - Ganador: Blancas');
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();
     } else if (winsBlack === 2) {
         if(gameContext.messageElement) {
             gameContext.messageElement.textContent = "¡Las Negras ganan la partida 2-" + winsWhite + "!";
@@ -326,6 +339,19 @@ function handleRoundEnd(winner, gameContext) {
         gameContext.gameOver = true;
         gameSeriesData.winner = 'b';
         gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.b) {
+                    const { finalizeGame } = await import('./pruebasAPI.js');
+                    await finalizeGame(gameContext.currentGameId, gameContext.playerIds.b, gameSeriesData.duration);
+                    console.log('✅ Partida finalizada en BD - Ganador: Negras');
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();
     } else if (round === 3) {
         // Third round completed, determine winner
         if (winsWhite > winsBlack) {
@@ -345,7 +371,25 @@ function handleRoundEnd(winner, gameContext) {
             gameSeriesData.winner = 'tie';
         }
         gameContext.gameOver = true;
-        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;    }
+        gameSeriesData.duration = Date.now() - gameSeriesData.startTime;
+        
+        // NUEVO: Finalizar partida en BD después de ronda 3
+        (async () => {
+            try {
+                if (gameContext.currentGameId && gameContext.playerIds && gameSeriesData.winner && gameSeriesData.winner !== 'tie') {
+                    const winnerId = gameContext.playerIds[gameSeriesData.winner];
+                    if (winnerId) {
+                        const { finalizeGame } = await import('./pruebasAPI.js');
+                        await finalizeGame(gameContext.currentGameId, winnerId, gameSeriesData.duration);
+                        console.log(`✅ Partida finalizada en BD después de ronda 3 - Ganador: ${gameSeriesData.winner === 'w' ? 'Blancas' : 'Negras'}`);
+                    }
+                } else if (gameSeriesData.winner === 'tie') {
+                    console.log('🤝 Partida empatada - no se actualiza ganador en BD');
+                }
+            } catch (error) {
+                console.error('❌ Error finalizando partida en BD:', error);
+            }
+        })();    }
       // If game ended, show game statistics modal directly
     if (gameEnded) {
         // Show game statistics modal immediately when game ends
@@ -537,6 +581,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar mensaje de carga
             startButton.textContent = 'Iniciando partida...';
             startButton.disabled = true;
+            
+            // NUEVO: Reinicializar gameSeriesData para nueva partida
+            gameSeriesData = {
+                rounds: [],
+                startDate: new Date().toISOString(),
+                startTime: Date.now(),
+                duration: null
+            };
             
             // Inicializar el juego con los emails de los jugadores
             gameContext = await initGame(whitePlayerEmail, blackPlayerEmail);
