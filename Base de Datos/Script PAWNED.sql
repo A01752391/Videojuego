@@ -166,6 +166,23 @@ CREATE TABLE Estadistica_ronda (
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 'Jugador_Powerup_Desbloqueo' table
+-- Rastrea los desbloqueos persistentes de powerups por jugador
+-- Los powerups se desbloquean por puntos acumulados: Shield(100), Cage(200), Swap(400), Reducer(800)
+CREATE TABLE Jugador_Powerup_Desbloqueo (
+  id_desbloqueo MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_jugador SMALLINT UNSIGNED NOT NULL,
+  shield_desbloqueado BOOLEAN DEFAULT FALSE,   -- Desbloqueado a los 100 puntos
+  cage_desbloqueado BOOLEAN DEFAULT FALSE,     -- Desbloqueado a los 200 puntos
+  swap_desbloqueado BOOLEAN DEFAULT FALSE,     -- Desbloqueado a los 400 puntos
+  reducer_desbloqueado BOOLEAN DEFAULT FALSE,  -- Desbloqueado a los 800 puntos
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id_desbloqueo),
+  UNIQUE KEY uk_jugador (id_jugador),
+  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 
 --
@@ -174,7 +191,7 @@ CREATE TABLE Estadistica_ronda (
 
 
 --
--- View: General statistics for players
+-- View: General statistics for players (including powerup unlocks)
 --
 CREATE OR REPLACE VIEW vista_estadisticas_jugador AS
 SELECT 
@@ -186,13 +203,21 @@ SELECT
   SUM(jp.turnos_jugados) AS turnos_totales,
   SUM(ep.piezas_capturadas) AS piezas_capturadas_total,
   SUM(ep.muertes) AS muertes_total,
-  SUM(ep.powerups_usados) AS powerups_usados_total
+  SUM(ep.powerups_usados) AS powerups_usados_total,
+  -- Desbloqueos persistentes de powerups
+  COALESCE(jpd.shield_desbloqueado, FALSE) AS shield_desbloqueado,
+  COALESCE(jpd.cage_desbloqueado, FALSE) AS cage_desbloqueado,
+  COALESCE(jpd.swap_desbloqueado, FALSE) AS swap_desbloqueado,
+  COALESCE(jpd.reducer_desbloqueado, FALSE) AS reducer_desbloqueado,
+  jpd.fecha_actualizacion AS fecha_ultimo_desbloqueo
 FROM Jugador j
 LEFT JOIN Jugador_Partida jp USING (id_jugador)
 LEFT JOIN Estadistica_partida ep USING (id_jugador, id_partida)
-GROUP BY j.id_jugador;
+LEFT JOIN Jugador_Powerup_Desbloqueo jpd USING (id_jugador)
+GROUP BY j.id_jugador, j.email, j.victorias, jpd.shield_desbloqueado, jpd.cage_desbloqueado, jpd.swap_desbloqueado, jpd.reducer_desbloqueado, jpd.fecha_actualizacion;
 -- We used LEFT JOIN for ensuring that all players appear in the results.
 -- Even those who have not participated in any game (jp.* = NULL) or have no recorded statistics (ep.* = NULL)
+-- COALESCE ensures that NULL values for unlocks are shown as FALSE
 
 
 --

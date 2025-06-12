@@ -950,6 +950,87 @@ export async function checkTurnReferences(gameContext, currentColor, pieceType) 
     }
 }
 
+// NUEVO: Funciones para manejo de desbloqueos de powerups
+
+// Obtener desbloqueos de un jugador
+export async function getPlayerUnlocks(playerId) {
+    try {
+        console.log(`🔍 Obteniendo desbloqueos para jugador ID: ${playerId}`);
+        const response = await fetch(`${server}/api/players/${playerId}/unlocks`);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error obteniendo desbloqueos del jugador');
+        }
+        
+        const data = await response.json();
+        console.log('✅ Desbloqueos obtenidos:', data.data);
+        return data.data;
+    } catch (error) {
+        console.error(`❌ Error obteniendo desbloqueos para jugador ${playerId}:`, error);
+        throw error;
+    }
+}
+
+// Desbloquear un powerup específico para un jugador
+export async function unlockPowerupForPlayer(playerId, powerupName) {
+    try {
+        console.log(`🔓 Desbloqueando ${powerupName} para jugador ID: ${playerId}`);
+        const response = await fetch(`${server}/api/players/${playerId}/unlock/${powerupName.toLowerCase()}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error desbloqueando powerup');
+        }
+        
+        const data = await response.json();
+        console.log('✅ Powerup desbloqueado exitosamente:', data);
+        return data.data;
+    } catch (error) {
+        console.error(`❌ Error desbloqueando ${powerupName} para jugador ${playerId}:`, error);
+        throw error;
+    }
+}
+
+// Obtener estadísticas completas de un jugador (incluyendo desbloqueos)
+export async function getPlayerStats(playerId) {
+    try {
+        console.log(`📊 Obteniendo estadísticas completas para jugador ID: ${playerId}`);
+        const response = await fetch(`${server}/api/players/${playerId}/stats`);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error obteniendo estadísticas del jugador');
+        }
+        
+        const data = await response.json();
+        console.log('✅ Estadísticas obtenidas:', data.data);
+        return data.data;
+    } catch (error) {
+        console.error(`❌ Error obteniendo estadísticas para jugador ${playerId}:`, error);
+        throw error;
+    }
+}
+
+// Función eliminada - se usa la del sistema existente en game.js
+
+// Cargar desbloqueos de un jugador al iniciar el juego
+export async function loadPlayerUnlocksIntoGame(playerId, gameContext) {
+    try {
+        const unlocks = await getPlayerUnlocks(playerId);
+        console.log(`✅ Desbloqueos obtenidos para jugador ${playerId}:`, unlocks);
+        return unlocks;
+    } catch (error) {
+        console.error(`❌ Error cargando desbloqueos para jugador ${playerId}:`, error);
+        return null;
+    }
+}
+
 // Exportar las funciones necesarias
 export {
     NewUser,
