@@ -241,12 +241,12 @@ class GameStatsModal {
     /**
      * Attaches event listeners to modal elements
      */    attachEventListeners() {
-        // Close on background click
-        this.modal?.addEventListener('click', (e) => {
-            if (e.target === this.modal) {
-                this.hide();
-            }
-        });// Action buttons
+        // Close on background click - DISABLED to prevent accidental closing
+        // this.modal?.addEventListener('click', (e) => {
+        //     if (e.target === this.modal) {
+        //         this.hide();
+        //     }
+        // });// Action buttons
         document.getElementById('gameModalNewGameBtn')?.addEventListener('click', () => {
             this.hide();
             this.triggerNewGame();

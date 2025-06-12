@@ -26,14 +26,11 @@ class RoundStatsModal {
         const existingModal = document.getElementById('roundStatsModal');
         if (existingModal) {
             existingModal.remove();
-        }
-
-        // Create modal HTML
+        }        // Create modal HTML
         const modalHTML = `
             <div id="roundStatsModal" class="round-stats-modal">
                 <div class="modal-content">
-                    <button class="close-modal" id="closeModal">&times;</button>
-                      <div class="modal-header">
+                    <div class="modal-header">
                         <h1>ESTADÍSTICAS DE RONDA</h1>
                         <p id="roundTitle">Ronda 1 Completada</p>
                     </div>
@@ -184,18 +181,16 @@ class RoundStatsModal {
 
     /**
      * Attaches event listeners to modal elements
-     */
-    attachEventListeners() {
-        // Close modal events
-        document.getElementById('closeModal')?.addEventListener('click', this.hide);
+     */    attachEventListeners() {
+        // Close modal events (only the close button in the bottom)
         document.getElementById('modalCloseBtn')?.addEventListener('click', this.hide);
         
-        // Close on background click
-        this.modal?.addEventListener('click', (e) => {
-            if (e.target === this.modal) {
-                this.hide();
-            }
-        });
+        // Close on background click - DISABLED to prevent accidental closing
+        // this.modal?.addEventListener('click', (e) => {
+        //     if (e.target === this.modal) {
+        //         this.hide();
+        //     }
+        // });
 
         // Action buttons
         document.getElementById('modalNextRoundBtn')?.addEventListener('click', () => {
