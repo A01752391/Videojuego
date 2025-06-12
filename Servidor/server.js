@@ -3143,7 +3143,6 @@ app.post("/api/turns", async (req, res) => {
             protegida
         } = req.body;
 
-        // Log incoming request for debugging
         console.log('📥 Incoming /api/turns request:', req.body);
 
         // Validate required fields
@@ -3153,17 +3152,6 @@ app.post("/api/turns", async (req, res) => {
                 success: false,
                 message: 'Todos los campos obligatorios son requeridos (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino)',
                 error: 'MISSING_REQUIRED_FIELDS'
-            });
-        }
-
-        // Validate position format (e.g., A1, B2)
-        const positionRegex = /^[A-H][1-8]$/i;
-        if (!positionRegex.test(posicion_origen) || !positionRegex.test(posicion_destino)) {
-            console.error('❌ Invalid position format:', { posicion_origen, posicion_destino });
-            return res.status(400).json({
-                success: false,
-                message: 'Las posiciones deben tener formato válido (ej: A1, B2)',
-                error: 'INVALID_POSITION_FORMAT'
             });
         }
 
@@ -3212,20 +3200,42 @@ app.post("/api/turns", async (req, res) => {
             turno_numero,
             posicion_origen,
             posicion_destino,
-            !!fue_captura, // Ensure boolean value
-            !!capturada,   // Ensure boolean value
-            !!protegida    // Ensure boolean value
+            !!fue_captura,
+            !!capturada,
+            !!protegida
         ]);
 
         console.log('✅ Turno registrado exitosamente');
+
+        // Update Jugador_Partida table
+        const puntosGanados = fue_captura ? 10 : 1; // Example: 10 points for a capture, 1 point otherwise
+        const updateJugadorPartidaQuery = `
+            UPDATE Jugador_Partida
+            SET puntaje = puntaje + ?, turnos_jugados = turnos_jugados + 1
+            WHERE id_jugador = ? AND id_partida = ?
+        `;
+        await connection.execute(updateJugadorPartidaQuery, [puntosGanados, id_jugador, id_partida]);
+
+        console.log('✅ Jugador_Partida actualizado: puntaje y turnos_jugados incrementados');
+
+        // If a piece was captured, update Estadistica_partida
+        if (fue_captura) {
+            const updateEstadisticaPartidaQuery = `
+                UPDATE Estadistica_partida
+                SET piezas_capturadas = piezas_capturadas + 1
+                WHERE id_jugador = ? AND id_partida = ?
+            `;
+            await connection.execute(updateEstadisticaPartidaQuery, [id_jugador, id_partida]);
+            console.log('✅ Estadistica_partida actualizado: piezas_capturadas incrementadas');
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Turno registrado exitosamente'
+            message: 'Turno registrado exitosamente y estadísticas actualizadas'
         });
     } catch (error) {
         console.error('❌ Error al registrar turno:', error);
 
-        // Handle specific database errors
         if (error.code === 'ER_NO_REFERENCED_ROW_2') {
             return res.status(400).json({
                 success: false,
