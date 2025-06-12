@@ -1215,19 +1215,8 @@ export async function resetRound(gameContext) {
     // The actual board selection logic is handled by index.js
     let newBoard = getRandomBoard(midgameBoards.neutral);
 
-    // Create new round in database for round resets
-    try {
-        if (gameContext.currentGameId) {
-            const roundNumber = gameContext.currentRound || 1;
-            const roundId = await createNewRound(gameContext.currentGameId, roundNumber);
-            gameContext.currentRoundId = roundId;
-        }
-    } catch (error) {
-        console.error('Error creando nueva ronda:', error);
-        if(gameContext.messageElement) {
-            gameContext.messageElement.textContent = 'Error al crear nueva ronda. Algunas funciones pueden no estar disponibles.';
-        }
-    }
+    // REMOVIDO: La creación de nueva ronda ahora se maneja desde index.js
+    // para evitar duplicaciones y tener mejor control del flujo
 
     if (!newBoard && gameContext.standardInitialBoard) {
         console.error("Failed to load midgame board. Falling back to standard initial board.");

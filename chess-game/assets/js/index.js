@@ -75,6 +75,19 @@ function createNextRoundButton(gameContext) {
     btn.appendChild(img);    btn.addEventListener('click', async () => {
         round++;
         btn.remove();
+        
+        // NUEVO: Crear nueva ronda en base de datos
+        try {
+            if (gameContext.currentGameId) {
+                const { createNewRound } = await import('./pruebasAPI.js');
+                const roundId = await createNewRound(gameContext.currentGameId, round);
+                gameContext.currentRoundId = roundId;
+                console.log(`✅ Nueva ronda ${round} creada en BD con ID: ${roundId}`);
+            }
+        } catch (error) {
+            console.error('❌ Error creando nueva ronda en BD:', error);
+        }
+        
         resetRound(gameContext); // Solo resetear la ronda
     });
     
@@ -370,9 +383,22 @@ function handleRoundEnd(winner, gameContext) {
         // Add event listener for new game from game stats modal
         window.addEventListener('newGame', handleGameStatsEvent);} else {
         // Game continues - add simple event listeners for next round
-        const handleContinueGame = (event) => {
+        const handleContinueGame = async (event) => {
             if (event.type === 'nextRound' && gameContext && !gameContext.gameOver) {
                 round++;
+                
+                // NUEVO: Crear nueva ronda en base de datos
+                try {
+                    if (gameContext.currentGameId) {
+                        const { createNewRound } = await import('./pruebasAPI.js');
+                        const roundId = await createNewRound(gameContext.currentGameId, round);
+                        gameContext.currentRoundId = roundId;
+                        console.log(`✅ Nueva ronda ${round} creada en BD con ID: ${roundId}`);
+                    }
+                } catch (error) {
+                    console.error('❌ Error creando nueva ronda en BD:', error);
+                }
+                
                 resetRound(gameContext); // Solo resetear la ronda, no el juego completo
             } else if (event.type === 'newGame' && gameContext) {
                 round = 1;
