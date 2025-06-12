@@ -723,7 +723,8 @@ export async function finalizeGame(gameId, winnerId, durationMs) {
         if (durationMs < 100000) durationSeconds = durationMs; // Si ya viene en segundos
         // Siempre enviar fecha_fin como ISO string
         const fechaFin = new Date().toISOString();
-        const response = await fetch(`${server}/api/games/${gameId}`, {
+        // USAR EL ENDPOINT CORRECTO
+        const response = await fetch(`${server}/api/games/${gameId}_partida`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
@@ -750,11 +751,9 @@ export async function finalizeGame(gameId, winnerId, durationMs) {
         return data;
 
     } catch (error) {
-        
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
         }
-        
         throw error;
     }
 }
