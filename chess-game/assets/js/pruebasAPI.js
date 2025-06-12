@@ -599,6 +599,55 @@ export async function fullPowerupDiagnostic() {
     console.log('🔬 === FIN DEL DIAGNÓSTICO ===');
 }
 
+// NUEVO: Función para actualizar el ganador de una ronda
+export async function updateRoundWinner(roundId, winnerId) {
+    try {
+        console.log('🏆 Actualizando ganador de ronda:', { roundId, winnerId });
+        
+        const response = await fetch(`${server}/api/rounds/${roundId}/winner`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ganador_id: winnerId
+            })
+        });
+
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response ok:', response.ok);
+
+        if (!response.ok) {
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { 
+                    message: `HTTP ${response.status}: ${response.statusText}`,
+                    raw: await response.text() 
+                };
+            }
+            console.error('❌ Server error response:', errorData);
+            throw new Error(errorData.message || `Error actualizando ganador de ronda (${response.status})`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Ganador de ronda actualizado exitosamente:', data);
+        return data;
+
+    } catch (error) {
+        console.error('❌ Error actualizando ganador de ronda:', error);
+        
+        // Verificar si es un error de red
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+            throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
+        }
+        
+        throw error;
+    }
+}
+
 // Exportar las funciones necesarias
 export {
     NewUser,

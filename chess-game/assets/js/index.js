@@ -396,6 +396,37 @@ function handleRoundEnd(winner, gameContext) {
           window.addEventListener('newGame', handleContinueGame);
         window.addEventListener('nextRound', handleContinueGame);
     }
+
+    // NUEVO: Actualizar ganador en la base de datos
+    async function updateRoundWinnerInDB() {
+        try {
+            if (gameContext.currentRoundId && gameContext.playerIds && winner !== 'stalemate') {
+                const winnerId = gameContext.playerIds[winner];
+                if (winnerId) {
+                    // Importar la función de actualización
+                    const { updateRoundWinner } = await import('./pruebasAPI.js');
+                    await updateRoundWinner(gameContext.currentRoundId, winnerId);
+                    console.log('✅ Ganador de ronda actualizado en BD');
+                } else {
+                    console.warn('⚠️ No se encontró ID del jugador ganador para color:', winner);
+                }
+            } else {
+                console.warn('⚠️ No se puede actualizar ganador - datos faltantes:', {
+                    currentRoundId: gameContext.currentRoundId,
+                    playerIds: gameContext.playerIds,
+                    winner: winner
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando ganador de ronda en BD:', error);
+        }
+    }
+
+    // Llamar a la función para actualizar el ganador en BD
+    if (winner !== 'stalemate') {
+        updateRoundWinnerInDB();
+    }
+
     // --- NUEVO: Actualizar estadísticas de ronda en la base de datos ---
     // --- NUEVO: Calcular piezas perdidas por jugador ---
     function calcularPiezasPerdidas(gameContext, color) {

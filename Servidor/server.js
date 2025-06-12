@@ -1942,6 +1942,142 @@ app.patch("/api/rounds/stats/:id_jugador/:id_ronda", async (req, res) => {
     }
 });
 
+// NUEVO: Endpoint para actualizar el ganador de una ronda
+app.patch("/api/rounds/:id_ronda/winner", async (req, res) => {
+    let connection = null;
+
+    try {
+        const rondaId = parseInt(req.params.id_ronda);
+        const { ganador_id } = req.body;
+
+        console.log('🏆 PATCH /api/rounds/:id_ronda/winner - Datos recibidos:', {
+            rondaId,
+            ganador_id
+        });
+
+        // Validaciones básicas
+        if (isNaN(rondaId) || rondaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID de la ronda debe ser un número válido',
+                error: 'INVALID_ROUND_ID'
+            });
+        }
+
+        if (!ganador_id || isNaN(parseInt(ganador_id)) || parseInt(ganador_id) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del ganador debe ser un número válido',
+                error: 'INVALID_WINNER_ID'
+            });
+        }
+
+        console.log('✅ Validaciones básicas pasadas, conectando a DB...');
+        connection = await connectToDB();
+
+        // Verificar que la ronda existe y obtener información de la partida
+        const checkRoundQuery = `
+            SELECT r.*, p.id_jugador1, p.id_jugador2 
+            FROM Ronda r 
+            JOIN Partida p ON r.id_partida = p.id_partida 
+            WHERE r.id_ronda = ?
+        `;
+        const [roundData] = await connection.execute(checkRoundQuery, [rondaId]);
+
+        if (roundData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ronda no encontrada',
+                error: 'ROUND_NOT_FOUND'
+            });
+        }
+
+        const round = roundData[0];
+        console.log('🔍 Ronda encontrada:', {
+            rondaId: round.id_ronda,
+            partidaId: round.id_partida,
+            jugador1: round.id_jugador1,
+            jugador2: round.id_jugador2,
+            ganadorActual: round.ganador_id
+        });
+
+        // Verificar que el ganador sea uno de los jugadores de la partida
+        if (parseInt(ganador_id) !== round.id_jugador1 && parseInt(ganador_id) !== round.id_jugador2) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ganador debe ser uno de los jugadores de la partida',
+                error: 'INVALID_WINNER_FOR_GAME'
+            });
+        }
+
+        // Actualizar el ganador de la ronda
+        const updateQuery = 'UPDATE Ronda SET ganador_id = ? WHERE id_ronda = ?';
+        console.log('📤 Ejecutando update:', updateQuery, [ganador_id, rondaId]);
+        
+        const [updateResult] = await connection.execute(updateQuery, [ganador_id, rondaId]);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'No se pudo actualizar el ganador de la ronda',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        console.log('✅ Ronda actualizada exitosamente');
+
+        // Obtener los datos actualizados de la ronda
+        const getUpdatedRoundQuery = `
+            SELECT r.*, j.email as ganador_email
+            FROM Ronda r
+            LEFT JOIN Jugador j ON r.ganador_id = j.id_jugador
+            WHERE r.id_ronda = ?
+        `;
+        const [updatedRoundData] = await connection.execute(getUpdatedRoundQuery, [rondaId]);
+        const updatedRound = updatedRoundData[0];
+
+        res.status(200).json({
+            success: true,
+            message: 'Ganador de ronda actualizado exitosamente',
+            data: {
+                rondaId: updatedRound.id_ronda,
+                partidaId: updatedRound.id_partida,
+                ganadorId: updatedRound.ganador_id,
+                ganadorEmail: updatedRound.ganador_email,
+                numeroRonda: updatedRound.numero_ronda,
+                ventajaAplicada: !!updatedRound.ventaja_aplicada
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error actualizando ganador de ronda:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(404).json({
+                success: false,
+                message: 'Una o más referencias no existen (ronda, jugador)',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+                console.log('Conexión a DB cerrada correctamente');
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
 // ENDPOINTS PARA VISTA_PARTIDAS_COMPLETA
 
 // Obtener partidas completas 
