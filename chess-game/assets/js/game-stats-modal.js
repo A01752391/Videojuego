@@ -678,6 +678,8 @@ class GameStatsModal {
      * Aggregates data from all rounds in the game
      */
     aggregateRoundData(gameData) {
+        console.log('📊 Agregando datos de rondas para modal de partida:', gameData);
+        
         const aggregated = {
             totalRounds: gameData.rounds ? gameData.rounds.length : 0,
             winner: gameData.winner,
@@ -699,12 +701,28 @@ class GameStatsModal {
             }
         };
 
-        // Aggregate data from all rounds
+        // CORREGIDO: Usar puntajes finales acumulativos si están disponibles
+        if (gameData.finalStats) {
+            console.log('✅ Usando estadísticas finales acumulativas:', gameData.finalStats);
+            aggregated.white.totalScore = gameData.finalStats.totalWhiteScore || 0;
+            aggregated.black.totalScore = gameData.finalStats.totalBlackScore || 0;
+            aggregated.white.roundsWon = gameData.finalStats.whiteWins || 0;
+            aggregated.black.roundsWon = gameData.finalStats.blackWins || 0;
+        } else {
+            // Fallback: usar el último puntaje acumulativo de las rondas
+            console.log('⚠️ Usando fallback - último puntaje acumulativo de las rondas');
+            if (gameData.rounds && gameData.rounds.length > 0) {
+                const lastRound = gameData.rounds[gameData.rounds.length - 1];
+                aggregated.white.totalScore = lastRound.whiteScore || 0; // Este ES el acumulativo
+                aggregated.black.totalScore = lastRound.blackScore || 0; // Este ES el acumulativo
+            }
+        }
+
+        // Aggregate other data from all rounds (these still need to be summed)
         if (gameData.rounds) {
             gameData.rounds.forEach(round => {
                 // White player stats
                 if (round.gameStats && round.gameStats.white) {
-                    aggregated.white.totalScore += round.whiteScore || 0;
                     aggregated.white.totalCaptured += round.gameStats.white.captured || 0;
                     aggregated.white.totalPowerups += round.gameStats.white.powerupsUsed || 0;
                     aggregated.white.totalTurns += round.gameStats.white.turns || 0;
@@ -713,7 +731,6 @@ class GameStatsModal {
 
                 // Black player stats
                 if (round.gameStats && round.gameStats.black) {
-                    aggregated.black.totalScore += round.blackScore || 0;
                     aggregated.black.totalCaptured += round.gameStats.black.captured || 0;
                     aggregated.black.totalPowerups += round.gameStats.black.powerupsUsed || 0;
                     aggregated.black.totalTurns += round.gameStats.black.turns || 0;
@@ -722,6 +739,7 @@ class GameStatsModal {
             });
         }
 
+        console.log('📊 Datos agregados finales:', aggregated);
         return aggregated;
     }    /**
      * Displays game summary information
