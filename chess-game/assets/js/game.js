@@ -5,7 +5,7 @@ import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
-import { initializeGameIds, createNewRound, trackPowerupUsage, registerPieceComplete, registerTurnComplete } from './pruebasAPI.js';
+import { initializeGameIds, createNewRound, trackPowerupUsage, registerTurnComplete, debugTurnRegistration, checkTurnReferences } from './pruebasAPI.js';
 import { midgameBoards } from './boards/midgameBoards.js';
 import { isOnlyKingsRemaining } from './pieces.js'; // NUEVO IMPORT para regla de tablas
 
@@ -81,7 +81,7 @@ function playSound(soundFile) {
  * @param {number} c - The column clicked.
  * @param {object} gameContext - The current game context.
  */
-export function handleClick(r, c, gameContext) {
+export async function handleClick(r, c, gameContext) {
     let { board, currentColor, selected, messageElement, awaitingPowerUpTarget, powerUpsWhite, powerUpsBlack } = gameContext;
 
     if (gameContext.gameOver) return;
@@ -320,6 +320,63 @@ export function handleClick(r, c, gameContext) {
         board[r][c].hasMoved = true;
         board[fr][fc] = null;
 
+        // NUEVO: Registrar el turno en la base de datos
+        try {
+            console.log('🔄 PASO 1: Iniciando registro de turno...');
+            
+            // DIAGNÓSTICO BÁSICO: Solo verificar datos mínimos
+            console.log('🔄 PASO 2: Verificando datos básicos...');
+            console.log('   currentGameId:', gameContext?.currentGameId);
+            console.log('   currentRoundId:', gameContext?.currentRoundId);
+            console.log('   playerIds:', gameContext?.playerIds);
+            console.log('   currentColor:', currentColor);
+            
+            if (!gameContext?.currentGameId) {
+                throw new Error('Falta currentGameId');
+            }
+            if (!gameContext?.currentRoundId) {
+                throw new Error('Falta currentRoundId');
+            }
+            if (!gameContext?.playerIds?.[currentColor]) {
+                throw new Error(`Falta playerIds[${currentColor}]`);
+            }
+            
+            console.log('🔄 PASO 3: Datos básicos verificados, preparando datos del turno...');
+            
+            // Incrementar contador de turnos global si no existe
+            if (!gameContext.turnCounter) {
+                gameContext.turnCounter = 0;
+            }
+            gameContext.turnCounter++;
+
+            // NUEVO: Detectar posición inicial de la pieza
+            const posicionInicial = getInitialPosition(gameContext, pieceToMove.type, pieceToMove.color);
+
+            const turnData = {
+                id_ronda: gameContext.currentRoundId,
+                id_jugador: gameContext.playerIds[currentColor],
+                id_pieza: getPieceId(pieceToMove.type, pieceToMove.color),
+                numero_turno: gameContext.turnCounter,
+                posicion_desde: coordinateToAlgebraic(fr, fc),
+                posicion_hasta: coordinateToAlgebraic(r, c),
+                posicion_inicial: posicionInicial, // NUEVO: Posición inicial detectada automáticamente
+                fue_captura: !!capturedPiece,
+                tiempo_duracion: null // Opcional: se puede agregar tiempo después
+            };
+
+            console.log('🔄 PASO 4: Datos del turno preparados:', turnData);
+            console.log('🔄 PASO 5: Llamando a registerTurnComplete...');
+            
+            await registerTurnComplete(turnData);
+            console.log('✅ PASO 6: Turno registrado exitosamente');
+
+        } catch (error) {
+            console.error('❌ Error en PASO:', error.message);
+            console.error('❌ Error registrando turno en BD:', error);
+            console.error('❌ Stack trace:', error.stack);
+            // No interrumpir el juego por errores de BD
+        }
+
         // NUEVA VERIFICACIÓN: Detectar captura del rey como jaque mate automático
         if (capturedPiece && capturedPiece.type === 'k') {
             // El rey ha sido capturado - jaque mate automático
@@ -504,7 +561,7 @@ export function handleClick(r, c, gameContext) {
  * @param {object} gameContext - El contexto actual del juego
  * @returns {Array} Array de PowerUps desbloqueados en esta verificación con información del jugador
  */
-function checkAndUnlockPowerUps(playerColor, gameContext) {
+async function checkAndUnlockPowerUps(playerColor, gameContext) {
     const totalScore = gameContext.score1 + gameContext.score2; // Puntos acumulados entre ambos jugadores
     const newlyUnlocked = [];
     
@@ -520,6 +577,38 @@ function checkAndUnlockPowerUps(playerColor, gameContext) {
     for (const [powerUpType, threshold] of Object.entries(unlockThresholds)) {
         if (!gameContext.unlockedPowerUps[powerUpType] && totalScore >= threshold) {
             gameContext.unlockedPowerUps[powerUpType] = true;
+            
+            // NUEVO: Persistir desbloqueo en base de datos para ambos jugadores
+            try {
+                const { unlockPowerupForPlayer } = await import('./pruebasAPI.js');
+                const whitePlayerId = gameContext.playerIds?.w;
+                const blackPlayerId = gameContext.playerIds?.b;
+                
+                // Mapear nombres de powerups a nombres de BD
+                const powerupMapping = {
+                    'Shield': 'shield',
+                    'Cage': 'cage',
+                    'Swap': 'swap',
+                    'Reducer': 'reducer'
+                };
+                
+                const dbPowerupName = powerupMapping[powerUpType];
+                if (dbPowerupName && whitePlayerId && blackPlayerId) {
+                    // Desbloquear para ambos jugadores en paralelo
+                    await Promise.all([
+                        unlockPowerupForPlayer(whitePlayerId, dbPowerupName).catch(e => 
+                            console.error(`Error desbloqueando ${powerUpType} para jugador blanco:`, e)
+                        ),
+                        unlockPowerupForPlayer(blackPlayerId, dbPowerupName).catch(e => 
+                            console.error(`Error desbloqueando ${powerUpType} para jugador negro:`, e)
+                        )
+                    ]);
+                    console.log(`💾 ${powerUpType} persistido en BD para ambos jugadores`);
+                }
+            } catch (error) {
+                console.error(`❌ Error persistiendo desbloqueo de ${powerUpType}:`, error);
+                // No interrumpir el juego por errores de BD
+            }
             
             // Agregar información del jugador que desbloqueó el PowerUp
             newlyUnlocked.push({
@@ -848,13 +937,16 @@ function updateScoreWithPowerups(playerColor, gameContext, capturedPiece) {
             gameContext.messageElement.textContent = `¡Negras obtienen PowerUp${suffix}!`;
         }
     }    // NUEVO: Verificar desbloqueos de PowerUps después de actualizar puntuaciones
-    const unlockedPowerUps = checkAndUnlockPowerUps(playerColor, gameContext);
-    if (unlockedPowerUps.length > 0) {
-        // Mostrar notificaciones de desbloqueo (con delay para no interferir con otros mensajes)
-        setTimeout(() => {
-            showUnlockNotifications(unlockedPowerUps, gameContext);
-        }, 1500);
-    }
+    checkAndUnlockPowerUps(playerColor, gameContext).then(unlockedPowerUps => {
+        if (unlockedPowerUps.length > 0) {
+            // Mostrar notificaciones de desbloqueo (con delay para no interferir con otros mensajes)
+            setTimeout(() => {
+                showUnlockNotifications(unlockedPowerUps, gameContext);
+            }, 1500);
+        }
+    }).catch(error => {
+        console.error('❌ Error verificando desbloqueos:', error);
+    });
 }
 
 /**
@@ -911,198 +1003,212 @@ export function updateScore(player, gameContext) {
 }
 
 export async function initGame(whitePlayerEmail, blackPlayerEmail) {
-    const randomIndex = Math.floor(Math.random() * midgameBoards.neutral.length);
-    const initialBoard = JSON.parse(JSON.stringify(midgameBoards.neutral[randomIndex]));
-
-    const gameContext = {
-        board: initialBoard,
-        currentColor: 'w',
-        selected: null,
-        gameOver: false,
-        boardElement: document.getElementById('board'),
-        messageElement: document.getElementById('message'),
-        powerUpsWhite: [],
-        powerUpsBlack: [],
-        activePowerUps: [],
-        currentGameId: null,
-        currentRoundId: null,
-        // Inicializar contadores de puntos
-        score1: 0,
-        score2: 0,        // Inicializar umbrales de powerups
-        nextThresholdWhite: 5,
-        nextThresholdBlack: 5,        // NUEVO: Sistema de desbloqueo de PowerUps global por puntos acumulados
-        unlockedPowerUps: {
-            'Fence': true,
-            'Pawn Range': true,
-            'Evolution': true,
-            'Blast': true,
-            'Horizontal Portal': true,
-            'Extra Move': true,
-            'Crazy King': true,
-            // PowerUps que se desbloquean por puntos acumulados entre ambos jugadores
-            'Shield': false,    // Se desbloquea a los 100 puntos acumulados
-            'Cage': false,      // Se desbloquea a los 200 puntos acumulados
-            'Swap': false,      // Se desbloquea a los 400 puntos acumulados
-            'Reducer': false    // Se desbloquea a los 800 puntos acumulados
-        },
-          playerIds: {
-            'w': null,
-            'b': null
-        },
-        
-        // NUEVO: Sistema de tablas cuando solo quedan dos reyes
-        onlyKingsStalemate: {
-            detected: false,         // Se ha detectado que solo quedan dos reyes
-            turnCount: 0,            // Número de turnos transcurridos desde la detección
-            maxTurns: 2              // Máximo de turnos (1 ronda por jugador = 2 turnos)
-        },
-
-        // NUEVO: Inicializar estadísticas de la ronda
-        gameStats: {
-            white: {
-                turns: 0,
-                captured: 0,
-                powerupsUsed: 0,
-                roundScore: 0  // NUEVO: Score individual de la ronda
-            },
-            black: {
-                turns: 0,
-                captured: 0,
-                powerupsUsed: 0,
-                roundScore: 0  // NUEVO: Score individual de la ronda
-            }
-        },
-        getCurrentPlayerId: function(color) {
-            return this.playerIds[color];        },
-        
-        // Agregar función grantPowerUp
-        grantPowerUp: function(color, powerUpType) {
-            if (!powerUpType) return;
-            
-            const inventory = color === 'w' ? this.powerUpsWhite : this.powerUpsBlack;
-            const maxPowerUps = 5; // Límite de 5 powerups por jugador
-            
-            // Verificar si el inventario está lleno
-            if (inventory.length >= maxPowerUps) {
-                if (this.messageElement) {
-                    this.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} tienen el máximo de power-ups (${maxPowerUps}).`;
-                }
-                return;
-            }
-            
-            let selectedPowerUp = powerUpType;
-            let attempts = 0;
-            const maxAttempts = 10; // Limite para evitar loops infinitos
-            
-            // Si el PowerUp ya existe en el inventario, intentar encontrar uno alternativo
-            while (inventory.includes(selectedPowerUp) && attempts < maxAttempts) {
-                if (attempts === 0 && this.messageElement) {
-                    const powerUpInfo = getPowerUpInfo(powerUpType);
-                    const powerUpName = powerUpInfo ? powerUpInfo.name : powerUpType;
-                    this.messageElement.textContent = 
-                        `${color === 'w' ? 'Blancas' : 'Negras'} ya tienen ${powerUpName}. Buscando alternativa...`;
-                }                // Intentar seleccionar un PowerUp alternativo
-                selectedPowerUp = getRandomPowerUp(this);
-                attempts++;
-                
-                console.log(`Intento ${attempts}: PowerUp duplicado detectado (${powerUpType}), probando ${selectedPowerUp}`);
-            }
-            
-            // Si después de todos los intentos aún hay duplicado, no otorgar nada
-            if (inventory.includes(selectedPowerUp)) {
-                if (this.messageElement) {
-                    this.messageElement.textContent = 
-                        `${color === 'w' ? 'Blancas' : 'Negras'} tienen todos los PowerUps disponibles. No se otorga nada.`;
-                }
-                console.warn(`No se pudo encontrar PowerUp alternativo después de ${maxAttempts} intentos`);
-                return;
-            }
-              // Agregar el PowerUp al inventario
-            inventory.push(selectedPowerUp);
-              // Setup tracking for appearing animation
-            if (!this.newlyAddedPowerUps) {
-                this.newlyAddedPowerUps = {};
-            }
-            const colorKey = color === 'w' ? 'white' : 'black';
-            if (!this.newlyAddedPowerUps[colorKey]) {
-                this.newlyAddedPowerUps[colorKey] = [];
-            }
-            this.newlyAddedPowerUps[colorKey].push(selectedPowerUp);
-            console.log(`PowerUp tracking setup: ${selectedPowerUp} for ${colorKey}`, this.newlyAddedPowerUps);
-            
-            if (this.messageElement) {
-                const powerUpInfo = getPowerUpInfo(selectedPowerUp);
-                const powerUpName = powerUpInfo ? powerUpInfo.name : selectedPowerUp;
-                const rarity = getPowerUpRarity(selectedPowerUp);
-                
-                // Emojis para rareza
-                const rarityEmoji = {
-                    'Común': '⚪',
-                    'Raro': '🔵', 
-                    'Legendario': '🟡'
-                };
-                
-                // Mostrar mensaje diferente si se otorgó un PowerUp alternativo
-                const isAlternative = selectedPowerUp !== powerUpType;
-                const messagePrefix = isAlternative ? 
-                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen (alternativo) ` : 
-                    `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen `;
-                
-                this.messageElement.textContent = 
-                    `${messagePrefix}${rarityEmoji[rarity]} ${powerUpName} (${rarity})!`;
-                    
-                if (isAlternative) {
-                    console.log(`PowerUp alternativo otorgado: ${selectedPowerUp} en lugar de ${powerUpType}`);
-                }
-            }
-            this.renderBoard(); // Para actualizar la UI de powerups
-        }
-    };
-
     try {
-        // Inicializar IDs desde la base de datos
-        await initializeGameIds(gameContext, whitePlayerEmail, blackPlayerEmail);
+        console.log('Starting game initialization with players:', whitePlayerEmail, 'vs', blackPlayerEmail);
         
-        console.log('✅ Game IDs initialized successfully:');
-        console.log('- Game ID:', gameContext.currentGameId);
-        console.log('- Round ID:', gameContext.currentRoundId);
-        console.log('- White Player ID:', gameContext.playerIds['w']);
-        console.log('- Black Player ID:', gameContext.playerIds['b']);
-        
-        // Después de crear el tablero y los IDs de jugadores/partida
-        // Registrar todas las piezas en la base de datos
-        if (gameContext && gameContext.board && gameContext.playerIds && gameContext.currentGameId) {
-            const tipoMap = {
-                'k': 'Rey',
-                'q': 'Reina',
-                'r': 'Torre',
-                'b': 'Alfil',
-                'n': 'Caballo',
-                'p': 'Peon'
-            };
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = gameContext.board[r][c];
-                    if (piece) {
-                        const piezaData = {
-                            tipo: tipoMap[piece.type],
-                            color: piece.color === 'w' ? 'Blanco' : 'Negro',
-                            posicion_inicial: String.fromCharCode(97 + c) + (8 - r),
-                            id_jugador: gameContext.playerIds[piece.color],
-                            id_partida: gameContext.currentGameId
-                        };
-                        console.log('Registrando pieza:', piezaData);
-                        try {
-                            await registerPieceComplete(piezaData);
-                        } catch (error) {
-                            console.error('Error al registrar pieza:', error);
-                        }
+        if (!whitePlayerEmail || !blackPlayerEmail) {
+            throw new Error('Los emails de ambos jugadores son requeridos');
+        }
+
+        // Get a random neutral board
+        const gameContext = {
+            board: null,
+            initialBoard: null, // NUEVO: Almacenar tablero inicial para detectar posiciones
+            currentColor: 'w',
+            selected: null,
+            gameOver: false,
+            score1: 0,
+            score2: 0,
+            
+            // Power-up inventory variables
+            powerUpsWhite: [],
+            powerUpsBlack: [],
+            nextThresholdWhite: 5,
+            nextThresholdBlack: 5,
+            
+            // NUEVO: Sistema de desbloqueo de PowerUps global por puntos acumulados
+            unlockedPowerUps: {
+                'Fence': true,
+                'Pawn Range': true,
+                'Evolution': true,
+                'Blast': true,
+                'Horizontal Portal': true,
+                'Extra Move': true,
+                'Crazy King': true,
+                // PowerUps que se desbloquean por puntos acumulados entre ambos jugadores
+                'Shield': false,    // Se desbloquea a los 100 puntos acumulados
+                'Cage': false,      // Se desbloquea a los 200 puntos acumulados
+                'Swap': false,      // Se desbloquea a los 400 puntos acumulados
+                'Reducer': false    // Se desbloquea a los 800 puntos acumulados
+            },
+            
+            // Base variables
+            messageElement: document.getElementById('message'),
+            gameContainer: document.getElementById('game'),
+            
+            // NUEVO: Información de IDs para la base de datos
+            currentGameId: null,
+            currentRoundId: null,
+            playerIds: null,
+            turnCounter: 0, // NUEVO: Contador de turnos para la DB
+            
+            // Funciones que se setearán por index.js
+            renderBoard: null,
+            isValidMove: null,
+            isKingInCheck: null,
+            isCheckmate: null,
+            isStalemate: null,
+            standardInitialBoard: null,
+            
+            // Game stats for round stats modal
+            gameStats: {
+                white: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 },
+                black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
+            },
+            
+            // NUEVO: Estado para regla de tablas con solo dos reyes
+            onlyKingsStalemate: {
+                detected: false,
+                turnCount: 0,
+                maxTurns: 2
+            },
+            
+            // Power-ups activos
+            fencedTiles: [],
+            activePowerUps: [],
+            awaitingPowerUpTarget: null,
+            swapSelection: null,
+            pawnRangeActive: {},
+            crazyKingActive: {},
+            
+            // NUEVO: Función grantPowerUp
+            grantPowerUp: function(color, powerUpType) {
+                if (!powerUpType) return;
+                
+                const inventory = color === 'w' ? this.powerUpsWhite : this.powerUpsBlack;
+                const maxPowerUps = 5; // Límite de 5 powerups por jugador
+                
+                // Verificar si el inventario está lleno
+                if (inventory.length >= maxPowerUps) {
+                    if (this.messageElement) {
+                        this.messageElement.textContent = `${color === 'w' ? 'Blancas' : 'Negras'} tienen el máximo de power-ups (${maxPowerUps}).`;
+                    }
+                    return;
+                }
+                
+                let selectedPowerUp = powerUpType;
+                let attempts = 0;
+                const maxAttempts = 10; // Limite para evitar loops infinitos
+                
+                // Si el PowerUp ya existe en el inventario, intentar encontrar uno alternativo
+                while (inventory.includes(selectedPowerUp) && attempts < maxAttempts) {
+                    if (attempts === 0 && this.messageElement) {
+                        this.messageElement.textContent = 
+                            `${color === 'w' ? 'Blancas' : 'Negras'} ya tienen ${powerUpType}. Buscando alternativa...`;
+                    }
+                    // Intentar seleccionar un PowerUp alternativo
+                    selectedPowerUp = getRandomPowerUp(this);
+                    attempts++;
+                    
+                    console.log(`Intento ${attempts}: PowerUp duplicado detectado (${powerUpType}), probando ${selectedPowerUp}`);
+                }
+                
+                // Si después de todos los intentos aún hay duplicado, no otorgar nada
+                if (inventory.includes(selectedPowerUp)) {
+                    if (this.messageElement) {
+                        this.messageElement.textContent = 
+                            `${color === 'w' ? 'Blancas' : 'Negras'} tienen todos los PowerUps disponibles. No se otorga nada.`;
+                    }
+                    console.warn(`No se pudo encontrar PowerUp alternativo después de ${maxAttempts} intentos`);
+                    return;
+                }
+                
+                // Agregar el PowerUp al inventario
+                inventory.push(selectedPowerUp);
+                
+                // Setup tracking for appearing animation
+                if (!this.newlyAddedPowerUps) {
+                    this.newlyAddedPowerUps = {};
+                }
+                const colorKey = color === 'w' ? 'white' : 'black';
+                if (!this.newlyAddedPowerUps[colorKey]) {
+                    this.newlyAddedPowerUps[colorKey] = [];
+                }
+                this.newlyAddedPowerUps[colorKey].push(selectedPowerUp);
+                console.log(`PowerUp tracking setup: ${selectedPowerUp} for ${colorKey}`, this.newlyAddedPowerUps);
+                
+                if (this.messageElement) {
+                    const powerUpInfo = getPowerUpInfo(selectedPowerUp);
+                    const powerUpName = powerUpInfo ? powerUpInfo.name : selectedPowerUp;
+                    const rarity = getPowerUpRarity(selectedPowerUp);
+                    
+                    // Emojis para rareza
+                    const rarityEmoji = {
+                        'Común': '⚪',
+                        'Raro': '🔵', 
+                        'Legendario': '🟡'
+                    };
+                    
+                    // Mostrar mensaje diferente si se otorgó un PowerUp alternativo
+                    const isAlternative = selectedPowerUp !== powerUpType;
+                    const messagePrefix = isAlternative ? 
+                        `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen (alternativo) ` : 
+                        `¡${color === 'w' ? 'Blancas' : 'Negras'} obtienen `;
+                    
+                    this.messageElement.textContent = 
+                        `${messagePrefix}${rarityEmoji[rarity]} ${powerUpName} (${rarity})!`;
+                        
+                    if (isAlternative) {
+                        console.log(`PowerUp alternativo otorgado: ${selectedPowerUp} en lugar de ${powerUpType}`);
                     }
                 }
+                this.renderBoard(); // Para actualizar la UI de powerups
+            }
+        };
+
+        const newBoard = getRandomBoard(midgameBoards.neutral);
+        if (!newBoard) {
+            throw new Error('No se pudo cargar un tablero aleatorio');
+        }
+        gameContext.board = newBoard;
+        gameContext.initialBoard = JSON.parse(JSON.stringify(newBoard)); // NUEVO: Actualizar tablero inicial para el nuevo juego
+        
+        console.log('Random board loaded successfully');
+
+        // Initialize IDs for the database
+        await initializeGameIds(gameContext, whitePlayerEmail, blackPlayerEmail);
+
+        // NUEVO: Cargar desbloqueos persistentes de ambos jugadores desde BD
+        const whitePlayerId = gameContext.playerIds?.w;
+        const blackPlayerId = gameContext.playerIds?.b;
+        if (whitePlayerId && blackPlayerId) {
+            try {
+                // Importar la función de carga
+                const { loadPlayerUnlocksIntoGame } = await import('./pruebasAPI.js');
+                
+                // Obtener desbloqueos de ambos jugadores
+                const whiteUnlocks = await loadPlayerUnlocksIntoGame(whitePlayerId, gameContext);
+                const blackUnlocks = await loadPlayerUnlocksIntoGame(blackPlayerId, gameContext);
+                
+                // Combinar desbloqueos: Si cualquier jugador desbloqueó algo, está disponible para ambos
+                if (whiteUnlocks && blackUnlocks) {
+                    gameContext.unlockedPowerUps.Shield = whiteUnlocks.shieldUnlocked || blackUnlocks.shieldUnlocked;
+                    gameContext.unlockedPowerUps.Cage = whiteUnlocks.cageUnlocked || blackUnlocks.cageUnlocked;
+                    gameContext.unlockedPowerUps.Swap = whiteUnlocks.swapUnlocked || blackUnlocks.swapUnlocked;
+                    gameContext.unlockedPowerUps.Reducer = whiteUnlocks.reducerUnlocked || blackUnlocks.reducerUnlocked;
+                    
+                    console.log('✅ Desbloqueos combinados cargados:', gameContext.unlockedPowerUps);
+                }
+            } catch (error) {
+                console.error('❌ Error cargando desbloqueos de BD, usando valores por defecto:', error);
             }
         }
+
         // Resto de la inicialización del juego...
         setupGameContext(gameContext);
+        
+        // NUEVO: Inicializar contador de turnos para DB
+        gameContext.turnCounter = 0;
         
         // Inicializar displays de puntuación
         document.getElementById('score1').textContent = '0';
@@ -1158,6 +1264,7 @@ export async function resetGame(gameContext) {
         return;
     }
     gameContext.board = newBoard;
+    gameContext.initialBoard = JSON.parse(JSON.stringify(newBoard)); // NUEVO: Actualizar tablero inicial para el nuevo juego
 
     // Reset scores for a full game restart
     gameContext.score1 = 0;
@@ -1181,6 +1288,9 @@ export async function resetGame(gameContext) {
         white: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 },
         black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
     };
+    
+    // NUEVO: Reset contador de turnos para DB
+    gameContext.turnCounter = 0;
     
     // NUEVO: Reset del estado de tablas por solo dos reyes
     gameContext.onlyKingsStalemate = {
@@ -1226,7 +1336,8 @@ export async function resetRound(gameContext) {
         if(gameContext.messageElement) gameContext.messageElement.textContent = "Error al cargar el tablero!";
         return;
     }
-    gameContext.board = newBoard;    // Reset game state for new round (NO resetear scores ni power-ups)
+    gameContext.board = newBoard;
+    gameContext.initialBoard = JSON.parse(JSON.stringify(newBoard)); // NUEVO: Actualizar tablero inicial para la nueva ronda
     gameContext.currentColor = 'w';
     gameContext.selected = null;
     gameContext.gameOver = false;
@@ -1236,6 +1347,9 @@ export async function resetRound(gameContext) {
         white: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 },
         black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
     };
+    
+    // NUEVO: Reset contador de turnos para DB
+    gameContext.turnCounter = 0;
     
     // NUEVO: Reset del estado de tablas por solo dos reyes
     gameContext.onlyKingsStalemate = {
@@ -1259,4 +1373,54 @@ export async function resetRound(gameContext) {
     if (gameContext.renderBoard) {
         gameContext.renderBoard();
     }
+}
+
+// Función para convertir coordenadas de tablero a notación algebraica
+function coordinateToAlgebraic(row, col) {
+    const file = String.fromCharCode(97 + col); // a-h
+    const rank = 8 - row; // 8-1
+    return file + rank;
+}
+
+// Función para obtener ID de pieza por tipo y color
+function getPieceId(pieceType, pieceColor) {
+    // Nuevo mapeo basado en tipo + color
+    const pieceMap = {
+        'p_w': 1,  // Peón blanco
+        'r_w': 2,  // Torre blanca
+        'n_w': 3,  // Caballo blanco
+        'b_w': 4,  // Alfil blanco
+        'q_w': 5,  // Reina blanca
+        'k_w': 6,  // Rey blanco
+        'p_b': 7,  // Peón negro
+        'r_b': 8,  // Torre negra
+        'n_b': 9,  // Caballo negro
+        'b_b': 10, // Alfil negro
+        'q_b': 11, // Reina negra
+        'k_b': 12  // Rey negro
+    };
+    
+    const key = `${pieceType}_${pieceColor}`;
+    return pieceMap[key] || 1; // Default a peón blanco si no se encuentra
+}
+
+// NUEVA FUNCIÓN: Detectar posición inicial de una pieza
+function getInitialPosition(gameContext, pieceType, pieceColor) {
+    if (!gameContext.initialBoard) {
+        console.warn('No hay tablero inicial disponible para detectar posición');
+        return null;
+    }
+    
+    // Buscar la primera aparición de este tipo de pieza en el tablero inicial
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = gameContext.initialBoard[r][c];
+            if (piece && piece.type === pieceType && piece.color === pieceColor) {
+                return coordinateToAlgebraic(r, c);
+            }
+        }
+    }
+    
+    console.warn(`No se encontró posición inicial para pieza ${pieceType}_${pieceColor}`);
+    return null; // No se encontró la pieza en el tablero inicial
 }

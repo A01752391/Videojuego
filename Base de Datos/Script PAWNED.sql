@@ -48,36 +48,37 @@ CREATE TABLE Partida (
   FOREIGN KEY (ganador_id) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 'Pieza' table
+-- 'Pieza' table (ahora catálogo de tipos de piezas)
 CREATE TABLE Pieza (
-  id_pieza MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  id_partida MEDIUMINT UNSIGNED NOT NULL,
-  id_jugador SMALLINT UNSIGNED NOT NULL,
+  id_pieza TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tipo VARCHAR(10) NOT NULL,
-  capturada BOOLEAN DEFAULT FALSE,
-  protegida BOOLEAN DEFAULT FALSE,
-  posicion_inicial CHAR(2),
+  color CHAR(1) NOT NULL,
+  nombre VARCHAR(20) NOT NULL,
+  descripcion TEXT,
   PRIMARY KEY (id_pieza),
-  KEY idx_partida (id_partida),
-  KEY idx_jugador (id_jugador),
-  FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
-  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
+  UNIQUE KEY uk_tipo_color (tipo, color)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 'Turno' table
+-- 'Turno' table (ahora contiene la información específica de cada pieza en el juego)
 CREATE TABLE Turno (
   id_movimiento MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
   id_partida MEDIUMINT UNSIGNED NOT NULL,
-  id_pieza MEDIUMINT UNSIGNED NOT NULL,
+  id_pieza TINYINT UNSIGNED NOT NULL,
+  id_jugador SMALLINT UNSIGNED NOT NULL,
   turno_numero SMALLINT UNSIGNED,
   posicion_origen CHAR(2),
   posicion_destino CHAR(2),
-  fue_captura DATETIME DEFAULT CURRENT_TIMESTAMP,
+  posicion_inicial CHAR(2),
+  fue_captura DATETIME DEFAULT NULL,
+  capturada BOOLEAN DEFAULT FALSE,
+  protegida BOOLEAN DEFAULT FALSE,
   PRIMARY KEY (id_movimiento),
   KEY idx_partida (id_partida),
   KEY idx_pieza (id_pieza),
+  KEY idx_jugador (id_jugador),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
-  FOREIGN KEY (id_pieza) REFERENCES Pieza(id_pieza)
+  FOREIGN KEY (id_pieza) REFERENCES Pieza(id_pieza),
+  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 'Ronda' table
@@ -165,6 +166,23 @@ CREATE TABLE Estadistica_ronda (
   FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 'Jugador_Powerup_Desbloqueo' table
+-- Rastrea los desbloqueos persistentes de powerups por jugador
+-- Los powerups se desbloquean por puntos acumulados: Shield(100), Cage(200), Swap(400), Reducer(800)
+CREATE TABLE Jugador_Powerup_Desbloqueo (
+  id_desbloqueo MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  id_jugador SMALLINT UNSIGNED NOT NULL,
+  shield_desbloqueado BOOLEAN DEFAULT FALSE,   -- Desbloqueado a los 100 puntos
+  cage_desbloqueado BOOLEAN DEFAULT FALSE,     -- Desbloqueado a los 200 puntos
+  swap_desbloqueado BOOLEAN DEFAULT FALSE,     -- Desbloqueado a los 400 puntos
+  reducer_desbloqueado BOOLEAN DEFAULT FALSE,  -- Desbloqueado a los 800 puntos
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id_desbloqueo),
+  UNIQUE KEY uk_jugador (id_jugador),
+  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 
 --
@@ -173,7 +191,7 @@ CREATE TABLE Estadistica_ronda (
 
 
 --
--- View: General statistics for players
+-- View: General statistics for players (including powerup unlocks)
 --
 CREATE OR REPLACE VIEW vista_estadisticas_jugador AS
 SELECT 
@@ -185,13 +203,21 @@ SELECT
   SUM(jp.turnos_jugados) AS turnos_totales,
   SUM(ep.piezas_capturadas) AS piezas_capturadas_total,
   SUM(ep.muertes) AS muertes_total,
-  SUM(ep.powerups_usados) AS powerups_usados_total
+  SUM(ep.powerups_usados) AS powerups_usados_total,
+  -- Desbloqueos persistentes de powerups
+  COALESCE(jpd.shield_desbloqueado, FALSE) AS shield_desbloqueado,
+  COALESCE(jpd.cage_desbloqueado, FALSE) AS cage_desbloqueado,
+  COALESCE(jpd.swap_desbloqueado, FALSE) AS swap_desbloqueado,
+  COALESCE(jpd.reducer_desbloqueado, FALSE) AS reducer_desbloqueado,
+  jpd.fecha_actualizacion AS fecha_ultimo_desbloqueo
 FROM Jugador j
 LEFT JOIN Jugador_Partida jp USING (id_jugador)
 LEFT JOIN Estadistica_partida ep USING (id_jugador, id_partida)
-GROUP BY j.id_jugador;
+LEFT JOIN Jugador_Powerup_Desbloqueo jpd USING (id_jugador)
+GROUP BY j.id_jugador, j.email, j.victorias, jpd.shield_desbloqueado, jpd.cage_desbloqueado, jpd.swap_desbloqueado, jpd.reducer_desbloqueado, jpd.fecha_actualizacion;
 -- We used LEFT JOIN for ensuring that all players appear in the results.
 -- Even those who have not participated in any game (jp.* = NULL) or have no recorded statistics (ep.* = NULL)
+-- COALESCE ensures that NULL values for unlocks are shown as FALSE
 
 
 --
@@ -274,15 +300,14 @@ LEFT JOIN Jugador jg ON p.ganador_id = jg.id_jugador;
 CREATE OR REPLACE VIEW vista_turnos_completa AS
 SELECT 
   t.*,
-  pz.tipo AS tipo_pieza,
-  pz.posicion_inicial,
-  pz.capturada,
-  pz.protegida
+  p.tipo AS tipo_pieza,
+  p.nombre AS nombre_pieza,
+  j.email AS jugador_email
 FROM Turno t
-LEFT JOIN Pieza pz USING (id_pieza);
+LEFT JOIN Pieza p USING (id_pieza)
+LEFT JOIN Jugador j USING (id_jugador);
 -- We used LEFT JOIN so all rows in the left table (Turn) are included in the result.
--- Only the matching rows of the right table (Piece) are included.
--- When there is no match, the Piece columns will have NULL values.
+-- Now we join with the piece catalog and player information.
 
 
 --
@@ -290,11 +315,31 @@ LEFT JOIN Pieza pz USING (id_pieza);
 --
 CREATE OR REPLACE VIEW vista_piezas_completa AS
 SELECT 
-  p.*,
-  j.email AS jugador_email,
-  pa.fecha_inicio,
-  pa.fecha_fin
+  p.id_pieza,
+  p.tipo,
+  p.nombre,
+  p.descripcion,
+  COUNT(t.id_movimiento) AS veces_usada,
+  COUNT(CASE WHEN t.capturada = TRUE THEN 1 END) AS veces_capturada
 FROM Pieza p
-LEFT JOIN Jugador j USING (id_jugador)
-LEFT JOIN Partida pa USING (id_partida);
--- We used LEFT JOIN to include all the pieces even if they have no player or associated game (improbable case but still) 
+LEFT JOIN Turno t USING (id_pieza)
+GROUP BY p.id_pieza, p.tipo, p.nombre, p.descripcion;
+-- We used LEFT JOIN to include all piece types even if they haven't been used yet
+-- We count how many times each piece type has been used and captured
+
+--
+-- Datos iniciales para tabla Pieza (catálogo de tipos)
+--
+INSERT INTO Pieza (id_pieza, tipo, color, nombre, descripcion) VALUES
+(1, 'p', 'w', 'Peón Blanco', 'Pieza básica que se mueve hacia adelante'),
+(2, 'r', 'w', 'Torre Blanca', 'Se mueve en línea recta horizontal y vertical'),
+(3, 'n', 'w', 'Caballo Blanco', 'Se mueve en forma de L'),
+(4, 'b', 'w', 'Alfil Blanco', 'Se mueve en diagonal'),
+(5, 'q', 'w', 'Reina Blanca', 'La pieza más poderosa, combina torre y alfil'),
+(6, 'k', 'w', 'Rey Blanco', 'La pieza más importante del juego'),
+(7, 'p', 'b', 'Peón Negro', 'Pieza básica que se mueve hacia adelante'),
+(8, 'r', 'b', 'Torre Negra', 'Se mueve en línea recta horizontal y vertical'),
+(9, 'n', 'b', 'Caballo Negro', 'Se mueve en forma de L'),
+(10, 'b', 'b', 'Alfil Negro', 'Se mueve en diagonal'),
+(11, 'q', 'b', 'Reina Negra', 'La pieza más poderosa, combina torre y alfil'),
+(12, 'k', 'b', 'Rey Negro', 'La pieza más importante del juego'); 

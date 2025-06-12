@@ -1,13 +1,26 @@
 const server = 'http://localhost:3000';
 
-//To show results
+//To show results using the new GameModal system
 async function showResult(message, isError) {
-    await Swal.fire({
-        icon: isError ? 'error' : 'success',
-        title: isError ? 'Error' : 'Éxito',
-        text: message,
-        confirmButtonColor: '#ff4081',
-    });
+    const title = isError ? 'Error' : 'Éxito';
+    if (isError) {
+        return GameModal.error(title, message);
+    } else {
+        return GameModal.success(title, message);
+    }
+}
+
+// Helper function to clear form
+function clearForm(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.reset();
+    }
+}
+
+// Helper function to show confirmation
+function showConfirmation(title, message) {
+    return GameModal.confirm(title, message);
 }
 
 async function NewUser(){
@@ -32,11 +45,12 @@ async function NewUser(){
             const errorData = await response.json();
             showResult(errorData.message, true);
             throw new Error(errorData.message || 'Error añadiendo usuario');
-        }
-
-        const result = await response.json();
-        showResult(result.message, false)
+        }        const result = await response.json();
+        showResult(result.message, false);
         console.log(result.message || 'Usuario creado exitosamente');
+        
+        // Clear form on success
+        clearForm('formaSignUpUser');
 
     } catch (error) {
         showResult(error.message, true);
@@ -76,10 +90,11 @@ async function UpdateUser() {
         if (!response.ok) {
             showResult(result.message, true);
             throw new Error(result.message || 'Error al actualizar usuario');
-        }
-
-        console.log('Usuario actualizado exitosamente:', result);
-        showResult(result.message, false)
+        }        console.log('Usuario actualizado exitosamente:', result);
+        showResult(result.message, false);
+        
+        // Clear form on success
+        clearForm('formaUpdateUser');
         
         if (newEmail) {
             document.getElementById('currentEmail').value = newEmail;
