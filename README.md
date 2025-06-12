@@ -1,6 +1,6 @@
 # 🏆 PAWNED - Ajedrez en esteroides
 
-![Logo del Juego](./Imagenes/logo.png)
+![Logo del Juego](./Imagenes/Logo.PNG)
 *Logo del juego PAWNED*
 
 ---
@@ -111,6 +111,122 @@ El juego mantiene la esencia táctica del ajedrez tradicional mientras introduce
 - **Vistas Especializadas**: Consultas optimizadas para diferentes aspectos del juego
 - **Estadísticas en Tiempo Real**: Cálculos automáticos de rendimiento
 - **Integridad de Datos**: Validación completa de toda la información del juego
+
+---
+
+## 📋 Documentación de API
+
+### 👤 VISTA_ESTADISTICAS_JUGADOR
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/playerstats` | Obtener estadísticas de jugadores | `?email_jugador=email` (opcional) |
+| `POST` | `/api/playerstats` | Registrar nuevo jugador | `body: {email, password}` |
+| `POST` | `/api/playerstats/login` | Iniciar sesión | `body: {email, password}` |
+| `PATCH` | `/api/playerstats/:email` | Actualizar datos de jugador | `body: {oldPassword, newEmail?, newPassword?}` |
+
+### 🎮 VISTA_RESUMEN_PARTIDA
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/games` | Obtener resumen de partidas | `?id_partida=id&jugador_email=email` (opcionales) |
+| `POST` | `/api/games` | Crear nueva partida | `body: {id_jugador1, id_jugador2, ganador_id?, duracion?}` |
+| `PATCH` | `/api/games/:id` | Actualizar partida | `body: {ganador_id?, duracion?, fecha_fin?}` |
+| `PATCH` | `/api/games/:id_partida` | Finalizar partida | `body: {ganador_id, fecha_fin?, duracion?}` |
+| `POST` | `/api/games/:id_partida/stats` | Crear estadísticas de partida | Sin parámetros adicionales |
+
+### ⚡ VISTA_POWERUPS_POPULARES
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/powerups` | Obtener powerups populares | `?nombre_powerup=name&min_usos=number` (opcionales) |
+| `POST` | `/api/powerups` | Crear nuevo powerup | `body: {nombre, descripcion?}` |
+| `PATCH` | `/api/powerups/:id` | Actualizar powerup | `body: {nombre?, descripcion?}` |
+| `POST` | `/api/powerups/use` | Registrar uso de powerup | `body: {id_jugador, id_powerup, id_partida, id_ronda}` |
+| `GET` | `/api/powerups/usage/:id_uso` | Verificar uso específico (DEBUG) | Sin parámetros adicionales |
+| `GET` | `/api/powerups/usage` | Obtener todos los usos (DEBUG) | Sin parámetros adicionales |
+
+### 🔄 VISTA_ESTADISTICAS_RONDA
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/rounds/stats` | Obtener estadísticas de ronda | `?id_jugador=id&email_jugador=email&min_rondas=number` (opcionales) |
+| `POST` | `/api/rounds` | Crear nueva ronda | `body: {id_partida, ganador_id?, numero_ronda, ventaja_aplicada?}` |
+| `PATCH` | `/api/rounds/stats/:id_jugador/:id_ronda` | Actualizar estadísticas de ronda | `body: {piezas_capturadas?, piezas_perdidas?, powerups_usados?, turnos_tomados?}` |
+| `PATCH` | `/api/rounds/:id_ronda/winner` | Actualizar ganador de ronda | `body: {ganador_id}` |
+
+### 🏁 VISTA_PARTIDAS_COMPLETA
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/games/complete` | Obtener partidas completas | `?id_partida=id&jugador_email=email&estado_partida=estado&fecha_desde=date&fecha_hasta=date` (opcionales) |
+| `POST` | `/api/games/complete` | Crear partida completa | `body: {id_jugador1, id_jugador2, duracion_estimada?}` |
+| `PATCH` | `/api/games/complete/:id` | Actualizar partida completa | `body: {ganador_id?, duracion_final?, fecha_fin?}` |
+
+### 🎯 VISTA_TURNOS_COMPLETA
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/turns/complete` | Obtener turnos completos | `?id_turno=id&id_ronda=id&id_jugador=id&tipo_pieza=tipo&posicion_desde=pos&posicion_hasta=pos&fue_captura=bool` (opcionales) |
+| `POST` | `/api/turns/complete` | Crear nuevo turno | `body: {id_ronda, id_jugador, id_pieza, numero_turno, posicion_desde, posicion_hasta, fue_captura?, tiempo_duracion?}` |
+| `PATCH` | `/api/turns/complete/:id` | Actualizar turno | `body: {posicion_desde?, posicion_hasta?, fue_captura?, tiempo_duracion?}` |
+
+### ♟️ VISTA_PIEZAS_COMPLETA
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/api/pieces/complete` | Obtener piezas completas | `?id_pieza=id&id_jugador=id&id_partida=id&jugador_email=email&tipo_pieza=tipo&color=color&capturada=bool&protegida=bool` (opcionales) |
+| `POST` | `/api/pieces/complete` | Crear nueva pieza | `body: {tipo, color, posicion_inicial, id_jugador, id_partida, capturada?, protegida?}` |
+
+### 📊 Códigos de Respuesta HTTP
+
+| Código | Descripción |
+|--------|-------------|
+| `200` | Operación exitosa |
+| `201` | Recurso creado exitosamente |
+| `400` | Solicitud incorrecta (datos inválidos) |
+| `401` | No autorizado (credenciales inválidas) |
+| `404` | Recurso no encontrado |
+| `409` | Conflicto (recurso ya existe) |
+| `500` | Error interno del servidor |
+| `503` | Servicio no disponible (error de DB) |
+
+### 📝 Ejemplos de Uso
+
+#### Registrar nuevo jugador
+```bash
+POST /api/playerstats
+Content-Type: application/json
+
+{
+  "email": "jugador@email.com",
+  "password": "mipassword123"
+}
+```
+
+#### Crear nueva partida
+```bash
+POST /api/games
+Content-Type: application/json
+
+{
+  "id_jugador1": 1,
+  "id_jugador2": 2
+}
+```
+
+#### Usar powerup
+```bash
+POST /api/powerups/use
+Content-Type: application/json
+
+{
+  "id_jugador": 1,
+  "id_powerup": 3,
+  "id_partida": 5,
+  "id_ronda": 2
+}
+```
 
 ---
 
