@@ -3012,13 +3012,14 @@ app.post("/api/turns/complete", async (req, res) => {
 
         // Insertar nuevo turno en tabla Turno
         const insertTurnQuery = `
-            INSERT INTO Turno (id_partida, id_pieza, turno_numero, posicion_origen, posicion_destino, fue_captura) 
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO Turno (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino, fue_captura) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
         
         const [result] = await connection.execute(insertTurnQuery, [
             id_partida,
             id_pieza, 
+            id_jugador,
             numero_turno, 
             posicion_desde, 
             posicion_hasta, 
@@ -3170,12 +3171,12 @@ app.patch("/api/turns/complete/:id", async (req, res) => {
         let values = [];
 
         if (posicion_desde) {
-            updateFields.push('posicion_desde = ?');
+            updateFields.push('posicion_origen = ?');
             values.push(posicion_desde);
         }
 
         if (posicion_hasta) {
-            updateFields.push('posicion_hasta = ?');
+            updateFields.push('posicion_destino = ?');
             values.push(posicion_hasta);
         }
 

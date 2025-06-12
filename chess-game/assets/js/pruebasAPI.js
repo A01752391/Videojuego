@@ -400,33 +400,6 @@ async function loginUser(email, password) {
     }
 }
 
-// Registrar pieza completa en la base de datos (rellena vista_piezas_completa)
-async function registerPieceComplete(pieceData) {
-    try {
-        const response = await fetch(server + '/api/pieces/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pieceData)
-        });
-        if (!response.ok) {
-            let errorData = {};
-            try {
-                errorData = await response.json();
-            } catch (e) {
-                errorData = { message: 'Respuesta no es JSON', raw: await response.text() };
-            }
-            console.error('Respuesta del backend:', errorData);
-            throw new Error(errorData.message || 'Error registrando pieza');
-        }
-        const result = await response.json();
-        console.log('Pieza registrada exitosamente:', result);
-        return result;
-    } catch (error) {
-        console.error('Error registrando pieza:', error);
-        throw error;
-    }
-}
-
 // Registrar turno completo en la base de datos (rellena vista_partidas_completa y piezas)
 async function registerTurnComplete(turnData) {
     console.log('🔄 registerTurnComplete PASO A: Iniciando con datos:', turnData);
@@ -821,15 +794,24 @@ function coordinateToAlgebraicAPI(row, col) {
 
 // Función auxiliar para obtener ID de pieza por tipo y color
 function getPieceIdAPI(pieceType, pieceColor) {
+    // Nuevo mapeo basado en tipo + color
     const pieceMap = {
-        'p': pieceColor === 'w' ? 1 : 7,  // Peón blanco: 1, Peón negro: 7
-        'r': pieceColor === 'w' ? 2 : 8,  // Torre blanca: 2, Torre negra: 8
-        'n': pieceColor === 'w' ? 3 : 9,  // Caballo blanco: 3, Caballo negro: 9
-        'b': pieceColor === 'w' ? 4 : 10, // Alfil blanco: 4, Alfil negro: 10
-        'q': pieceColor === 'w' ? 5 : 11, // Reina blanca: 5, Reina negra: 11
-        'k': pieceColor === 'w' ? 6 : 12  // Rey blanco: 6, Rey negro: 12
+        'p_w': 1,  // Peón blanco
+        'r_w': 2,  // Torre blanca
+        'n_w': 3,  // Caballo blanco
+        'b_w': 4,  // Alfil blanco
+        'q_w': 5,  // Reina blanca
+        'k_w': 6,  // Rey blanco
+        'p_b': 7,  // Peón negro
+        'r_b': 8,  // Torre negra
+        'n_b': 9,  // Caballo negro
+        'b_b': 10, // Alfil negro
+        'q_b': 11, // Reina negra
+        'k_b': 12  // Rey negro
     };
-    return pieceMap[pieceType];
+    
+    const key = `${pieceType}_${pieceColor}`;
+    return pieceMap[key] || 1; // Default a peón blanco si no se encuentra
 }
 
 // NUEVO: Función para diagnosticar el estado del gameContext antes de registrar turnos
@@ -975,7 +957,6 @@ export {
     setCurrentPlayer,
     getCurrentPlayerId,
     currentGamePlayers,
-    registerPieceComplete,
     registerTurnComplete
 };
 

@@ -5,7 +5,7 @@ import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
-import { initializeGameIds, createNewRound, trackPowerupUsage, registerPieceComplete, registerTurnComplete, debugTurnRegistration, checkTurnReferences } from './pruebasAPI.js';
+import { initializeGameIds, createNewRound, trackPowerupUsage, registerTurnComplete, debugTurnRegistration, checkTurnReferences } from './pruebasAPI.js';
 import { midgameBoards } from './boards/midgameBoards.js';
 import { isOnlyKingsRemaining } from './pieces.js'; // NUEVO IMPORT para regla de tablas
 
@@ -1122,38 +1122,9 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
         console.log('- White Player ID:', gameContext.playerIds['w']);
         console.log('- Black Player ID:', gameContext.playerIds['b']);
         
-        // Después de crear el tablero y los IDs de jugadores/partida
-        // Registrar todas las piezas en la base de datos
-        if (gameContext && gameContext.board && gameContext.playerIds && gameContext.currentGameId) {
-            const tipoMap = {
-                'k': 'Rey',
-                'q': 'Reina',
-                'r': 'Torre',
-                'b': 'Alfil',
-                'n': 'Caballo',
-                'p': 'Peon'
-            };
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = gameContext.board[r][c];
-                    if (piece) {
-                        const piezaData = {
-                            tipo: tipoMap[piece.type],
-                            color: piece.color === 'w' ? 'Blanco' : 'Negro',
-                            posicion_inicial: String.fromCharCode(97 + c) + (8 - r),
-                            id_jugador: gameContext.playerIds[piece.color],
-                            id_partida: gameContext.currentGameId
-                        };
-                        console.log('Registrando pieza:', piezaData);
-                        try {
-                            await registerPieceComplete(piezaData);
-                        } catch (error) {
-                            console.error('Error al registrar pieza:', error);
-                        }
-                    }
-                }
-            }
-        }
+        // Con la nueva estructura normalizada, ya no necesitamos registrar piezas individuales
+        // Las piezas se registran automáticamente cuando se mueven (en los turnos)
+        
         // Resto de la inicialización del juego...
         setupGameContext(gameContext);
         
@@ -1332,14 +1303,22 @@ function coordinateToAlgebraic(row, col) {
 
 // Función para obtener ID de pieza por tipo y color
 function getPieceId(pieceType, pieceColor) {
-    // Mapeo de tipos de pieza a IDs según la base de datos
+    // Nuevo mapeo basado en tipo + color
     const pieceMap = {
-        'p': pieceColor === 'w' ? 1 : 7,  // Peón blanco: 1, Peón negro: 7
-        'r': pieceColor === 'w' ? 2 : 8,  // Torre blanca: 2, Torre negra: 8
-        'n': pieceColor === 'w' ? 3 : 9,  // Caballo blanco: 3, Caballo negro: 9
-        'b': pieceColor === 'w' ? 4 : 10, // Alfil blanco: 4, Alfil negro: 10
-        'q': pieceColor === 'w' ? 5 : 11, // Reina blanca: 5, Reina negra: 11
-        'k': pieceColor === 'w' ? 6 : 12  // Rey blanco: 6, Rey negro: 12
+        'p_w': 1,  // Peón blanco
+        'r_w': 2,  // Torre blanca
+        'n_w': 3,  // Caballo blanco
+        'b_w': 4,  // Alfil blanco
+        'q_w': 5,  // Reina blanca
+        'k_w': 6,  // Rey blanco
+        'p_b': 7,  // Peón negro
+        'r_b': 8,  // Torre negra
+        'n_b': 9,  // Caballo negro
+        'b_b': 10, // Alfil negro
+        'q_b': 11, // Reina negra
+        'k_b': 12  // Rey negro
     };
-    return pieceMap[pieceType];
+    
+    const key = `${pieceType}_${pieceColor}`;
+    return pieceMap[key] || 1; // Default a peón blanco si no se encuentra
 }
