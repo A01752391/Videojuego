@@ -415,24 +415,37 @@ class GameStatsModal {
      * Fetches game statistics from the API
      */
     async fetchGameStatsFromAPI(gameContext) {
-        const apiUrl = '/api/games/stats';
+        // Usar el endpoint correcto para estadísticas de partidas
+        const apiUrl = '/api/games';
         
         // Build query parameters based on available context
         const params = new URLSearchParams();
         
-        // If we have player IDs, filter by them
-        if (gameContext.playerIds) {
-            if (gameContext.playerIds.w) {
-                params.append('id_jugador', gameContext.playerIds.w);
-            }
-            if (gameContext.playerIds.b) {
-                params.append('id_jugador', gameContext.playerIds.b);
-            }
+        // Prioridad 1: Si tenemos game ID, es lo más específico
+        if (gameContext.currentGameId) {
+            params.append('id_partida', gameContext.currentGameId);
+            console.log('Using game ID filter:', gameContext.currentGameId);
         }
-        
-        // If we have game ID, filter by it
-        if (gameContext.gameId) {
-            params.append('id_juego', gameContext.gameId);
+        // Prioridad 2: Si no tenemos game ID pero sí player IDs, obtener email
+        else if (gameContext.playerIds && (gameContext.playerIds.w || gameContext.playerIds.b)) {
+            try {
+                const playersResponse = await fetch('/api/playerstats');
+                if (playersResponse.ok) {
+                    const playersData = await playersResponse.json();
+                    if (playersData.success && playersData.data) {
+                        // Buscar cualquier jugador para filtrar sus partidas
+                        const playerId = gameContext.playerIds.w || gameContext.playerIds.b;
+                        const player = playersData.data.find(p => p.jugadorId === parseInt(playerId));
+                        
+                        if (player) {
+                            params.append('jugador_email', player.email);
+                            console.log('Using player email filter:', player.email);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('No se pudo obtener email del jugador:', error);
+            }
         }
         
         const fullUrl = params.toString() ? `${apiUrl}?${params}` : apiUrl;
@@ -459,28 +472,28 @@ class GameStatsModal {
      * Gets game context from various sources
      */
     getGameContext() {
-        // Priority: gameData.gameContext → currentGameData.gameContext → localStorage
-        
+        // Try to get context from current game data
         if (this.currentGameData && this.currentGameData.gameContext) {
             return this.currentGameData.gameContext;
         }
         
-        // Try to get from localStorage as backup
-        try {
-            const savedContext = localStorage.getItem('gameContext');
-            if (savedContext) {
-                return JSON.parse(savedContext);
-            }
-        } catch (error) {
-            console.warn('Could not parse gameContext from localStorage:', error);
+        // Try to get from global window variables first
+        if (window.gameContext) {
+            return window.gameContext;
         }
         
-        // Return minimal context
-        return {
-            gameId: null,
-            playerIds: null,
-            currentRoundId: null
+        // Try to get from localStorage as fallback
+        const gameContext = {
+            currentGameId: localStorage.getItem('currentGameId'),
+            currentRoundId: localStorage.getItem('currentRoundId'),
+            playerIds: {
+                w: localStorage.getItem('whitePlayerId'),
+                b: localStorage.getItem('blackPlayerId')
+            }
         };
+        
+        console.log('Game context retrieved for game stats:', gameContext);
+        return gameContext;
     }
 
     /**
