@@ -294,6 +294,8 @@ export async function getCurrentRoundId(gameId) {
 // Función para crear una nueva partida
 export async function createNewGame(whitePlayerId, blackPlayerId) {
     try {
+        console.log('📤 Sending request to create a new game:', { whitePlayerId, blackPlayerId });
+
         const response = await fetch(`${server}/api/games`, {
             method: 'POST',
             headers: {
@@ -305,18 +307,23 @@ export async function createNewGame(whitePlayerId, blackPlayerId) {
             })
         });
 
+        console.log('📥 Response status:', response.status);
+
         if (!response.ok) {
             const errorData = await response.json();
+            console.error('❌ Error response from server:', errorData);
             throw new Error(errorData.message || 'Error creando nueva partida');
         }
 
         const data = await response.json();
+        console.log('✅ New game created successfully:', data);
+
         if (data.success && data.data && data.data.partidaId) {
             return data.data.partidaId;
         }
         throw new Error('ID de partida no encontrado en la respuesta');
     } catch (error) {
-        console.error('Error creando nueva partida:', error);
+        console.error('❌ Error creating new game:', error);
         throw error;
     }
 }
