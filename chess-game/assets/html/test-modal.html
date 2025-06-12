@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Statistics Modals - Database Integration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/modal-styles.css">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .modal-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-family: 'Fredoka', sans-serif;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .test-button:hover {
+            background: #45a049;
+        }
+        
+        .test-button.secondary {
+            background: #2196F3;
+        }
+        
+        .test-button.secondary:hover {
+            background: #1976D2;
+        }
+
+        .test-button.tertiary {
+            background: #FF9800;
+        }
+        
+        .test-button.tertiary:hover {
+            background: #F57C00;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .status {
+            font-weight: bold;
+            color: #FFD700;
+        }
+    </style>
+</head>
+<body>    <div class="test-container">
+        <h1>🧪 Statistics Modals - Database Integration Test</h1>
+        
+        <div class="info-box">
+            <h3>✅ Implementation Status</h3>
+            <p><span class="status">Database Integration:</span> Complete for both modals</p>
+            <p><span class="status">API Endpoints:</span> /api/rounds/stats & /api/games/stats (GET)</p>
+            <p><span class="status">Fallback System:</span> Local gameStats if database unavailable</p>
+            <p><span class="status">Error Handling:</span> Graceful degradation implemented</p>
+        </div>
+        
+        <div class="info-box">
+            <h3>🔄 How it Works</h3>
+            <ul>
+                <li>Round Modal fetches data from <code>/api/rounds/stats</code> API endpoint</li>
+                <li>Game Modal fetches data from <code>/api/games/stats</code> API endpoint</li>
+                <li>Uses player IDs and game ID to filter database results</li>
+                <li>Maps database statistics to white/black players</li>
+                <li>Falls back to local <code>gameStats</code> if database is unavailable</li>
+                <li>Displays performance metrics calculated from real database data</li>
+            </ul>
+        </div>
+        
+        <div class="modal-section">
+            <h2>Round Statistics Modal Tests</h2>
+            
+            <button class="test-button" onclick="testRoundModalWithMockData()">
+                🎯 Test Round Modal with Mock Database Data
+            </button>
+            
+            <button class="test-button secondary" onclick="testRoundModalWithLocalData()">
+                🔧 Test Round Modal with Local Fallback Data
+            </button>
+            
+            <button class="test-button secondary" onclick="testRoundAPIEndpoint()">
+                🌐 Test Round API Endpoint Directly
+            </button>
+        </div>
+
+        <div class="modal-section">
+            <h2>Game Statistics Modal Tests</h2>
+            
+            <button class="test-button tertiary" onclick="testGameModalWithMockData()">
+                🎯 Test Game Modal with Mock Database Data
+            </button>
+            
+            <button class="test-button tertiary" onclick="testGameModalWithLocalData()">
+                🔧 Test Game Modal with Local Fallback Data
+            </button>
+            
+            <button class="test-button tertiary" onclick="testGameAPIEndpoint()">
+                🌐 Test Game API Endpoint Directly
+            </button>
+        </div>
+        
+        <div id="test-results" class="info-box" style="display: none;">
+            <h3>Test Results</h3>
+            <pre id="results-content"></pre>
+        </div>
+    </div>
+
+    <!-- Include the modal scripts -->
+    <script src="../js/round-stats-modal.js"></script>
+    
+    <script>
+        // Initialize the modal
+        const roundStatsModal = new RoundStatsModal();
+        
+        // Test functions
+        function testModalWithMockData() {
+            // Simulate player IDs being available
+            localStorage.setItem('whitePlayerId', '1');
+            localStorage.setItem('blackPlayerId', '2');
+            localStorage.setItem('currentGameId', '123');
+            localStorage.setItem('currentRoundId', '456');
+            
+            const mockRoundData = {
+                round: 1,
+                winner: 'w',
+                whiteScore: 45,
+                blackScore: 32,
+                winsWhite: 1,
+                winsBlack: 0,
+                gameStats: {
+                    white: {
+                        turns: 25,
+                        captured: 8,
+                        powerupsUsed: 3
+                    },
+                    black: {
+                        turns: 23,
+                        captured: 6,
+                        powerupsUsed: 2
+                    }
+                },
+                gameContext: {
+                    currentRoundId: '456',
+                    gameId: '123',
+                    playerIds: {
+                        w: '1',
+                        b: '2'
+                    }
+                }
+            };
+            
+            console.log('🧪 Testing modal with mock data...', mockRoundData);
+            roundStatsModal.show(mockRoundData);
+        }
+        
+        function testModalWithLocalData() {
+            // Clear localStorage to force fallback
+            localStorage.removeItem('whitePlayerId');
+            localStorage.removeItem('blackPlayerId');
+            localStorage.removeItem('currentGameId');
+            localStorage.removeItem('currentRoundId');
+            
+            const localRoundData = {
+                round: 2,
+                winner: 'b',
+                whiteScore: 38,
+                blackScore: 42,
+                winsWhite: 1,
+                winsBlack: 1,
+                gameStats: {
+                    white: {
+                        turns: 28,
+                        captured: 7,
+                        powerupsUsed: 4
+                    },
+                    black: {
+                        turns: 26,
+                        captured: 9,
+                        powerupsUsed: 3
+                    }
+                }
+            };
+            
+            console.log('🔧 Testing modal with local fallback data...', localRoundData);
+            roundStatsModal.show(localRoundData);
+        }
+        
+        async function testAPIEndpoint() {
+            const resultsDiv = document.getElementById('test-results');
+            const resultsContent = document.getElementById('results-content');
+            
+            try {
+                resultsDiv.style.display = 'block';
+                resultsContent.textContent = 'Testing API endpoint...';
+                
+                const response = await fetch('/api/rounds/stats');
+                const data = await response.json();
+                
+                const result = {
+                    status: response.status,
+                    success: data.success,
+                    dataLength: data.data ? data.data.length : 0,
+                    sample: data.data ? data.data[0] : null
+                };
+                
+                resultsContent.textContent = JSON.stringify(result, null, 2);
+                console.log('🌐 API test result:', result);
+                
+            } catch (error) {
+                const errorResult = {
+                    error: error.message,
+                    note: 'This is expected if the server is not running'
+                };
+                resultsContent.textContent = JSON.stringify(errorResult, null, 2);
+                console.error('❌ API test failed (expected if server not running):', error);
+            }
+        }
+        
+        // Add some helpful console logging
+        console.log('🚀 Round Stats Modal Test Page Loaded');
+        console.log('📊 Database integration implemented with fallback to local data');
+        console.log('🔧 Use the test buttons to verify functionality');
+    </script>
+</body>
+</html>
