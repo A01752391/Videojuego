@@ -1069,7 +1069,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                 whiteWins: winsWhite,
                                 blackWins: winsBlack
                             };
-                            console.log('📊 Datos de prueba para modal de partida:', testGameData);
+                            
+                            console.log('📊 DIAGNÓSTICO COMPLETO DE MODAL DE PARTIDA:');
+                            console.log('   🎯 Puntajes reales del juego:');
+                            console.log('      - Blancas:', gameContext?.score1 || 0);
+                            console.log('      - Negras:', gameContext?.score2 || 0);
+                            console.log('   🎯 finalStats que se envían:');
+                            console.log('      - Blancas:', testGameData.finalStats.totalWhiteScore);
+                            console.log('      - Negras:', testGameData.finalStats.totalBlackScore);
+                            console.log('   🎯 Datos de rondas:');
+                            testGameData.rounds?.forEach((round, i) => {
+                                console.log(`      Ronda ${i + 1}:`, {
+                                    winner: round.winner,
+                                    whiteScore: round.whiteScore,
+                                    blackScore: round.blackScore,
+                                    whiteRoundScore: round.whiteRoundScore,
+                                    blackRoundScore: round.blackRoundScore
+                                });
+                            });
+                            
+                            console.log('📊 Datos completos de prueba:', testGameData);
                             gameStatsModal.show(testGameData);
                         } else {
                             console.warn('Modal de partida no disponible');
