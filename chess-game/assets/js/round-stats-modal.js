@@ -367,20 +367,31 @@ class RoundStatsModal {
      * Fetches round statistics from the API
      */
     async fetchRoundStatsFromAPI(gameContext) {
+        // Usar el endpoint correcto que existe en el servidor
         const apiUrl = '/api/rounds/stats';
         
         // Build query parameters based on available context
         const params = new URLSearchParams();
         
-        // If we have player IDs, filter by them
-        if (gameContext.playerIds) {
+        // Prioridad 1: Filtrar por IDs de jugadores si están disponibles
+        if (gameContext.playerIds && (gameContext.playerIds.w || gameContext.playerIds.b)) {
+            // Agregar ambos jugadores como filtros separados si están disponibles
             if (gameContext.playerIds.w) {
                 params.append('id_jugador', gameContext.playerIds.w);
+                console.log('Adding white player filter:', gameContext.playerIds.w);
             }
             if (gameContext.playerIds.b) {
-                params.append('id_jugador', gameContext.playerIds.b);
+                // Para obtener estadísticas de ambos jugadores, hacer 2 llamadas separadas
+                // Por ahora, usar solo un jugador para simplicidad
+                if (!gameContext.playerIds.w) {
+                    params.append('id_jugador', gameContext.playerIds.b);
+                    console.log('Adding black player filter:', gameContext.playerIds.b);
+                }
             }
         }
+        
+        // Nota: El endpoint /api/rounds/stats no acepta filtro por id_partida o id_ronda
+        // Se basa en estadísticas agregadas por jugador a través de todas las rondas
         
         const fullUrl = params.toString() ? `${apiUrl}?${params}` : apiUrl;
         
@@ -411,16 +422,22 @@ class RoundStatsModal {
             return this.currentRoundData.gameContext;
         }
         
-        // Try to get from global variables or localStorage
+        // Try to get from global window variables first
+        if (window.gameContext) {
+            return window.gameContext;
+        }
+        
+        // Try to get from localStorage as fallback
         const gameContext = {
+            currentGameId: localStorage.getItem('currentGameId'),
             currentRoundId: localStorage.getItem('currentRoundId'),
-            gameId: localStorage.getItem('currentGameId'),
             playerIds: {
                 w: localStorage.getItem('whitePlayerId'),
                 b: localStorage.getItem('blackPlayerId')
             }
         };
         
+        console.log('Game context retrieved:', gameContext);
         return gameContext;
     }
 

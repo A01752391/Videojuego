@@ -227,6 +227,13 @@ app.post("/api/playerstats", async (req, res) => {
 
         const [result] = await connection.execute(insertQuery, [email, password]);
 
+        // Crear registro inicial de desbloqueos para el nuevo jugador
+        const insertUnlocksQuery = `
+            INSERT INTO Jugador_Powerup_Desbloqueo (id_jugador, shield_desbloqueado, cage_desbloqueado, swap_desbloqueado, reducer_desbloqueado)
+            VALUES (?, FALSE, FALSE, FALSE, FALSE)
+        `;
+        await connection.execute(insertUnlocksQuery, [result.insertId]);
+
         // Obtener estadisticas y datos del nuevo usuario
         const newPlayerQuery = 'SELECT * FROM vista_estadisticas_jugador WHERE id_jugador = ?';
         const [newPlayerData] = await connection.execute(newPlayerQuery, [result.insertId]);
