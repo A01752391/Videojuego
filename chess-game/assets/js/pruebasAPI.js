@@ -430,6 +430,30 @@ async function registerTurnComplete(turnData) {
     }
 }
 
+//  Actualizar Jugador_Partida (puntaje y turnos_jugados)
+export async function updateJugadorPartida({ id_jugador, id_partida, puntaje, turnos_jugados, color }) {
+    if (!id_jugador || !id_partida || !color) {
+        throw new Error('Faltan campos requeridos para Jugador_Partida (id_jugador, id_partida, color)');
+    }
+    try {
+        const response = await fetch(server + '/api/jugadorpartida/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_jugador, id_partida, puntaje, turnos_jugados, color })
+        });
+        if (!response.ok) {
+            let errorData = {};
+            try { errorData = await response.json(); } catch (e) { errorData = { message: await response.text() }; }
+            throw new Error(errorData.message || 'Error actualizando Jugador_Partida');
+        }
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Error actualizando Jugador_Partida:', error);
+        throw error;
+    }
+}
+
 async function main() {
     // For USERS
     // Sign-up
@@ -651,10 +675,12 @@ export async function updateRoundWinner(roundId, winnerId) {
 // Función para finalizar una partida actualizando ganador, fecha fin y duración
 export async function finalizeGame(gameId, winnerId, durationMs) {
     try {
-        console.log('🏆 Finalizando partida:', { gameId, winnerId, durationMs });
-        
-        const durationSeconds = Math.round(durationMs / 1000);
-        
+        console.log('Finalizando partida:', { gameId, winnerId, durationMs });
+        // Convertir duración a milisegundos si es necesario
+        let durationSeconds = Math.round(durationMs / 1000);
+        if (durationMs < 100000) durationSeconds = durationMs; // Si ya viene en segundos
+        // Siempre enviar fecha_fin como ISO string
+        const fechaFin = new Date().toISOString();
         const response = await fetch(`${server}/api/games/${gameId}`, {
             method: 'PATCH',
             headers: {
@@ -662,13 +688,10 @@ export async function finalizeGame(gameId, winnerId, durationMs) {
             },
             body: JSON.stringify({
                 ganador_id: winnerId,
-                fecha_fin: new Date().toISOString(),
+                fecha_fin: fechaFin,
                 duracion: durationSeconds
             })
         });
-
-        console.log('📥 Response status:', response.status);
-
         if (!response.ok) {
             let errorData = {};
             try {
@@ -679,19 +702,14 @@ export async function finalizeGame(gameId, winnerId, durationMs) {
                     raw: await response.text() 
                 };
             }
-            console.error('❌ Server error response:', errorData);
             throw new Error(errorData.message || `Error finalizando partida (${response.status})`);
         }
-
         const data = await response.json();
-        console.log('✅ Partida finalizada exitosamente:', data);
         return data;
 
     } catch (error) {
-        console.error('❌ Error finalizando partida:', error);
         
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            console.error('❌ Posible error de conexión con el servidor');
             throw new Error('No se pudo conectar con el servidor. Verifica que esté ejecutándose en ' + server);
         }
         

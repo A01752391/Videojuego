@@ -63,6 +63,18 @@ function calcularDistribucionColores(pieces) {
     return conteo;
 }
 
+// Utilidad para convertir milisegundos o segundos a HH:MM:SS
+function msOrSecToHHMMSS(input) {
+    let totalSeconds = Number(input);
+    if (isNaN(totalSeconds)) return null;
+    // Si es un número grande, probablemente son milisegundos
+    if (totalSeconds > 100000) totalSeconds = Math.floor(totalSeconds / 1000);
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map(v => String(v).padStart(2, '0')).join(':');
+}
+
 app.use('/css', express.static(path.join(process.cwd(), '../chess-game/assets/css')));
 app.use('/js', express.static(path.join(process.cwd(), '../chess-game/assets/js')));
 app.use('/images', express.static(path.join(process.cwd(), '../Imagenes')));
@@ -840,8 +852,10 @@ app.patch("/api/games/:id", async (req, res) => {
         }
 
         if (duracion) {
+            // Convertir a HH:MM:SS si es necesario
+            const duracionFormateada = msOrSecToHHMMSS(duracion);
             updateFields.push('duracion = ?');
-            values.push(duracion);
+            values.push(duracionFormateada);
         }
 
         if (fecha_fin !== undefined) {
@@ -1931,6 +1945,7 @@ app.patch("/api/rounds/stats/:id_jugador/:id_ronda", async (req, res) => {
         }
 
     } finally {
+        // Cerrar conexión
         if (connection) {
             try {
                 await connection.end();
@@ -2173,6 +2188,8 @@ app.patch("/api/games/:id_partida", async (req, res) => {
         // Obtener los datos actualizados
         const getUpdatedGameQuery = `
             SELECT p.*, j.email as ganador_email
+           
+
             FROM Partida p
             LEFT JOIN Jugador j ON p.ganador_id = j.id_jugador
             WHERE p.id_partida = ?
@@ -2650,16 +2667,13 @@ app.patch("/api/games/complete/:id", async (req, res) => {
         if (ganador_id !== undefined) {
             updateFields.push('ganador_id = ?');
             values.push(ganador_id);
-            
-            // Si se establece un ganador y no se especifica fecha_fin, usar timestamp actual
-            if (fecha_fin === undefined) {
-                updateFields.push('fecha_fin = CURRENT_TIMESTAMP');
-            }
         }
 
         if (duracion_final) {
+            // Convertir a HH:MM:SS si es necesario
+            const duracionFormateada = msOrSecToHHMMSS(duracion_final);
             updateFields.push('duracion = ?');
-            values.push(duracion_final);
+            values.push(duracionFormateada);
         }
 
         if (fecha_fin !== undefined) {
@@ -2781,7 +2795,6 @@ app.get("/api/turns/complete", async (req, res) => {
 
         // Filtro por ID de jugador
         if (id_jugador && !isNaN(id_jugador)) {
-            whereConditions.push('id_jugador = ?');
             params.push(id_jugador);
         }
 
@@ -2985,540 +2998,10 @@ app.post("/api/turns/complete", async (req, res) => {
             });
         }
 
-        // Verificar que no existe ya un turno con ese número en la ronda
-        const checkTurnQuery = 'SELECT id_turno FROM Turno WHERE id_ronda = ? AND numero_turno = ?';
-        const [existingTurn] = await connection.execute(checkTurnQuery, [id_ronda, numero_turno]);
-
-        if (existingTurn.length > 0) {
-            return res.status(409).json({
-                success: false,
-                message: 'Ya existe un turno con ese número en esta ronda',
-                error: 'TURN_ALREADY_EXISTS'
-            });
-        }
-
-        // Insertar nuevo turno en tabla Turno
-        const insertTurnQuery = `
-            INSERT INTO Turno (id_ronda, id_jugador, id_pieza, numero_turno, posicion_desde, posicion_hasta, fue_captura, tiempo_duracion) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        const [result] = await connection.execute(insertTurnQuery, [
-            id_ronda, 
-            id_jugador, 
-            id_pieza, 
-            numero_turno, 
-            posicion_desde, 
-            posicion_hasta, 
-            fue_captura || false, 
-            tiempo_duracion || null
-        ]);
-
-        // Obtener el turno completo recién creado desde la vista
-        const newTurnQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
-        const [newTurnData] = await connection.execute(newTurnQuery, [result.insertId]);
-
-        const newTurn = newTurnData[0];
-        const completeTurnData = {
-            turnoId: newTurn.id_turno,
-            rondaId: newTurn.id_ronda,
-            jugadorId: newTurn.id_jugador,
-            piezaId: newTurn.id_pieza,
-            numeroTurno: newTurn.numero_turno,
-            posicionDesde: newTurn.posicion_desde,
-            posicionHasta: newTurn.posicion_hasta,
-            fueCaptura: newTurn.fue_captura,
-            tiempoDuracion: newTurn.tiempo_duracion,
-            tipoPieza: newTurn.tipo_pieza,
-            posicionInicialPieza: newTurn.posicion_inicial,
-            piezaCapturada: newTurn.capturada,
-            piezaProtegida: newTurn.protegida,
-            movimiento: `${newTurn.posicion_desde} → ${newTurn.posicion_hasta}`,
-            tipoMovimiento: newTurn.fue_captura ? 'Captura' : 'Movimiento'
-        };
-
-        res.status(201).json({
-            success: true,
-            message: 'Turno completo creado exitosamente',
-            data: completeTurnData
-        });
-
-    } catch (error) {
-        console.error('Error al crear turno completo:', error);
-
-        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-            res.status(404).json({
-                success: false,
-                message: 'Una o más referencias no existen (ronda, jugador, pieza)',
-                error: 'FOREIGN_KEY_ERROR'
-            });
-        } else if (error.code === 'ER_DUP_ENTRY') {
-            res.status(409).json({
-                success: false,
-                message: 'Ya existe un turno con esos datos',
-                error: 'DUPLICATE_ENTRY'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: error.message
-            });
-        }
-
-    } finally {
-        if (connection) {
-            try {
-                await connection.end();
-                console.log('Conexión a DB cerrada correctamente');
-            } catch (closeError) {
-                console.error('Error al cerrar conexión:', closeError);
-            }
-        }
-    }
-});
-
-// Update turno completo
-
-app.patch("/api/turns/complete/:id", async (req, res) => {
-    let connection = null;
-
-    try {
-        const turnoId = parseInt(req.params.id);
-        
-        if (isNaN(turnoId) || turnoId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'El ID del turno debe ser un número válido',
-                error: 'INVALID_TURN_ID'
-            });
-        }
-
-        const { 
-            posicion_desde, 
-            posicion_hasta, 
-            fue_captura, 
-            tiempo_duracion 
-        } = req.body;
-
-        // Validar que al menos un campo esté presente
-        if (!posicion_desde && !posicion_hasta && fue_captura === undefined && !tiempo_duracion) {
-            return res.status(400).json({
-                success: false,
-                message: 'No se proporcionaron campos para actualizar',
-                error: 'NO_FIELDS_TO_UPDATE'
-            });
-        }
-
-        // Validar formato de posiciones si se proporcionan
-        const positionRegex = /^[A-H][1-8]$/i;
-        if (posicion_desde && !positionRegex.test(posicion_desde)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La posición desde debe tener formato válido (ej: A1, B2)',
-                error: 'INVALID_POSITION_FROM_FORMAT'
-            });
-        }
-
-        if (posicion_hasta && !positionRegex.test(posicion_hasta)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La posición hasta debe tener formato válido (ej: A1, B2)',
-                error: 'INVALID_POSITION_TO_FORMAT'
-            });
-        }
-
-        connection = await connectToDB();
-
-        // Verificar que el turno existe
-        const checkTurnQuery = 'SELECT id_turno, posicion_desde, posicion_hasta FROM Turno WHERE id_turno = ?';
-        const [existingTurn] = await connection.execute(checkTurnQuery, [turnoId]);
-
-        if (existingTurn.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Turno no encontrado',
-                error: 'TURN_NOT_FOUND'
-            });
-        }
-
-        const currentTurn = existingTurn[0];
-
-        // Validar que las posiciones sean diferentes si se actualizan ambas
-        const finalPosDesde = posicion_desde || currentTurn.posicion_desde;
-        const finalPosHasta = posicion_hasta || currentTurn.posicion_hasta;
-
-        if (finalPosDesde === finalPosHasta) {
-            return res.status(400).json({
-                success: false,
-                message: 'La posición de origen y destino deben ser diferentes',
-                error: 'SAME_POSITIONS'
-            });
-        }
-
-        // Construir query UPDATE dinámicamente
-        let updateFields = [];
-        let values = [];
-
-        if (posicion_desde) {
-            updateFields.push('posicion_desde = ?');
-            values.push(posicion_desde);
-        }
-
-        if (posicion_hasta) {
-            updateFields.push('posicion_hasta = ?');
-            values.push(posicion_hasta);
-        }
-
-        if (fue_captura !== undefined) {
-            updateFields.push('fue_captura = ?');
-            values.push(fue_captura);
-        }
-
-        if (tiempo_duracion) {
-            updateFields.push('tiempo_duracion = ?');
-            values.push(tiempo_duracion);
-        }
-
-        values.push(turnoId);
-
-        // Ejecutar UPDATE en tabla Turno
-        const updateQuery = `UPDATE Turno SET ${updateFields.join(', ')} WHERE id_turno = ?`;
-        
-        console.log('Update Query:', updateQuery);
-        console.log('Update Values:', values);
-        
-        const [updateResult] = await connection.execute(updateQuery, values);
-
-        if (updateResult.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'No se pudo actualizar el turno',
-                error: 'UPDATE_FAILED'
-            });
-        }
-
-        // Obtener datos actualizados desde la vista
-        const statsQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
-        const [statsData] = await connection.execute(statsQuery, [turnoId]);
-
-        const updatedTurn = statsData[0];
-        const completeTurnData = {
-            turnoId: updatedTurn.id_turno,
-            rondaId: updatedTurn.id_ronda,
-            jugadorId: updatedTurn.id_jugador,
-            piezaId: updatedTurn.id_pieza,
-            numeroTurno: updatedTurn.numero_turno,
-            posicionDesde: updatedTurn.posicion_desde,
-            posicionHasta: updatedTurn.posicion_hasta,
-            fueCaptura: updatedTurn.fue_captura,
-            tiempoDuracion: updatedTurn.tiempo_duracion,
-            tipoPieza: updatedTurn.tipo_pieza,
-            posicionInicialPieza: updatedTurn.posicion_inicial,
-            piezaCapturada: updatedTurn.capturada,
-            piezaProtegida: updatedTurn.protegida,
-            movimiento: `${updatedTurn.posicion_desde} → ${updatedTurn.posicion_hasta}`,
-            tipoMovimiento: updatedTurn.fue_captura ? 'Captura' : 'Movimiento'
-        };
-
-        res.status(200).json({
-            success: true,
-            message: 'Turno completo actualizado exitosamente',
-            data: completeTurnData
-        });
-
-    } catch (error) {
-        console.error('Error al actualizar turno completo:', error);
-
-        if (error.code === 'ER_NO_SUCH_TABLE') {
-            res.status(404).json({
-                success: false,
-                message: 'La tabla Turno no existe',
-                error: 'TABLE_NOT_FOUND'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: error.message
-            });
-        }
-
-    } finally {
-        if (connection) {
-            try {
-                await connection.end();
-                console.log('Conexión a DB cerrada correctamente');
-            } catch (closeError) {
-                console.error('Error al cerrar conexión:', closeError);
-            }
-        }
-    }
-});
-
-// ENDPOINTSA PARA VISTA_PIEZAS_COMPLETA
-
-// Obtener piezas completas
-
-app.get("/api/pieces/complete", async (req, res) => {
-    let connection = null;
-
-    try {
-        connection = await connectToDB();
-
-        const id_pieza = req.query.id_pieza ? parseInt(req.query.id_pieza) : null;
-        const id_jugador = req.query.id_jugador ? parseInt(req.query.id_jugador) : null;
-        const id_partida = req.query.id_partida ? parseInt(req.query.id_partida) : null;
-        const jugador_email = req.query.jugador_email;
-        const tipo_pieza = req.query.tipo_pieza;
-        const color = req.query.color;
-        const capturada = req.query.capturada; // 'true', 'false', 'todas'
-        const protegida = req.query.protegida; // 'true', 'false', 'todas'
-        
-        let query = 'SELECT * FROM vista_piezas_completa';
-        let params = [];
-        let whereConditions = [];
-
-        // Filtro por ID de pieza
-        if (id_pieza && !isNaN(id_pieza)) {
-            whereConditions.push('id_pieza = ?');
-            params.push(id_pieza);
-        }
-
-        // Filtro por ID de jugador
-        if (id_jugador && !isNaN(id_jugador)) {
-            whereConditions.push('id_jugador = ?');
-            params.push(id_jugador);
-        }
-
-        // Filtro por ID de partida
-        if (id_partida && !isNaN(id_partida)) {
-            whereConditions.push('id_partida = ?');
-            params.push(id_partida);
-        }
-
-        // Filtro por email de jugador
-        if (jugador_email) {
-            whereConditions.push('jugador_email = ?');
-            params.push(jugador_email);
-        }
-
-        // Filtro por tipo de pieza
-        if (tipo_pieza) {
-            whereConditions.push('tipo = ?');
-            params.push(tipo_pieza);
-        }
-
-        // Filtro por color (NO en el WHERE, solo filtrar en JS si es necesario)
-        // if (color) {
-        //     whereConditions.push('color = ?');
-        //     params.push(color);
-        // }
-
-        // Filtro por estado capturada
-        if (capturada) {
-            if (capturada === 'true') {
-                whereConditions.push('capturada = TRUE');
-            } else if (capturada === 'false') {
-                whereConditions.push('capturada = FALSE');
-            }
-            // Si es 'todas', no agregamos filtro
-        }
-
-        // Filtro por estado protegida
-        if (protegida) {
-            if (protegida === 'true') {
-                whereConditions.push('protegida = TRUE');
-            } else if (protegida === 'false') {
-                whereConditions.push('protegida = FALSE');
-            }
-            // Si es 'todas', no agregamos filtro
-        }
-
-        // Agregar WHERE si hay condiciones
-        if (whereConditions.length > 0) {
-            query += ' WHERE ' + whereConditions.join(' AND ');
-        }
-
-        // Ordenar por partida, tipo de pieza y posición inicial
-        query += ' ORDER BY id_partida DESC, tipo ASC, posicion_inicial ASC';
-
-        console.log('Query:', query);
-        console.log('Params:', params);
-        
-        const [rows] = await connection.execute(query, params);
-
-        // Si se pidió color, filtrar en JS
-        let filteredRows = rows;
-        if (color) {
-            filteredRows = rows.filter(row => row.color === color);
-        }
-
-        const completePieces = filteredRows.map(row => ({
-            piezaId: row.id_pieza,
-            tipo: row.tipo,
-            color: row.color,
-            posicionInicial: row.posicion_inicial,
-            jugadorId: row.id_jugador,
-            partidaId: row.id_partida,
-            capturada: row.capturada,
-            protegida: row.protegida,
-            // Información del jugador
-            jugadorEmail: row.jugador_email,
-            // Información de la partida
-            fechaInicioPartida: row.fecha_inicio,
-            fechaFinPartida: row.fecha_fin,
-            // Información adicional calculada
-            estado: row.capturada ? 'Capturada' : 
-                   row.protegida ? 'Protegida' : 'Activa',
-            estadoPartida: row.fecha_fin ? 'Finalizada' : 'En progreso',
-            descripcionCompleta: `${row.tipo} ${row.color} en ${row.posicion_inicial}`
-        }));
-
-        res.status(200).json({
-            success: true,
-            data: completePieces,
-            total: completePieces.length,
-            estadisticas: {
-                totalPiezas: completePieces.length,
-                piezasCapturadas: completePieces.filter(p => p.capturada).length,
-                piezasProtegidas: completePieces.filter(p => p.protegida).length,
-                piezasActivas: completePieces.filter(p => !p.capturada && !p.protegida).length,
-                distribucionPorTipo: calcularDistribucionTipos(completePieces),
-                distribucionPorColor: calcularDistribucionColores(completePieces)
-            }
-        });
-
-    } catch (error) {
-        console.error('Error al obtener piezas completas:', error);
-
-        if (error.code === 'ER_NO_SUCH_TABLE') {
-            res.status(404).json({
-                success: false,
-                message: 'La vista vista_piezas_completa no existe',
-                error: 'TABLE_NOT_FOUND'
-            });
-        } else if (error.code === 'ECONNREFUSED') {
-            res.status(503).json({
-                success: false,
-                message: 'No se pudo conectar a la base de datos',
-                error: 'DATABASE_CONNECTION_ERROR'
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: error.message
-            });
-        }
-
-    } finally {
-        if (connection) {
-            try {
-                await connection.end();
-                console.log('Conexión a DB cerrada correctamente');
-            } catch (closeError) {
-                console.error('Error al cerrar conexión:', closeError);
-            }
-        }
-    }
-});
-
-// Crear nueva pieza completa
-
-app.post("/api/pieces/complete", async (req, res) => {
-    let connection = null;
-
-    try {
-        const { 
-            tipo, 
-            color, 
-            posicion_inicial, 
-            id_jugador, 
-            id_partida, 
-            capturada, 
-            protegida 
-        } = req.body;
-
-        // Validaciones básicas
-        if (!tipo || !color || !posicion_inicial || !id_jugador || !id_partida) {
-            return res.status(400).json({
-                success: false,
-                message: 'Todos los campos básicos son requeridos (tipo, color, posicion_inicial, id_jugador, id_partida)',
-                error: 'MISSING_REQUIRED_FIELDS'
-            });
-        }
-
-        // Validar tipos de pieza válidos
-        const tiposValidos = ['Rey', 'Reina', 'Torre', 'Alfil', 'Caballo', 'Peon'];
-        if (!tiposValidos.includes(tipo)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Tipo de pieza inválido. Debe ser: Rey, Reina, Torre, Alfil, Caballo, Peon',
-                error: 'INVALID_PIECE_TYPE'
-            });
-        }
-
-        // Validar colores válidos
-        const coloresValidos = ['Blanco', 'Negro'];
-        if (!coloresValidos.includes(color)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Color inválido. Debe ser: Blanco o Negro',
-                error: 'INVALID_COLOR'
-            });
-        }
-
-        // Validar formato de posición (ej: A1, B2, etc.)
-        const positionRegex = /^[A-H][1-8]$/i;
-        if (!positionRegex.test(posicion_inicial)) {
-            return res.status(400).json({
-                success: false,
-                message: 'La posición inicial debe tener formato válido (ej: A1, B2)',
-                error: 'INVALID_POSITION_FORMAT'
-            });
-        }
-
-        connection = await connectToDB();
-
-        // Verificar que el jugador existe
-        const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
-        const [existingPlayer] = await connection.execute(checkPlayerQuery, [id_jugador]);
-        if (existingPlayer.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Jugador no encontrado',
-                error: 'PLAYER_NOT_FOUND'
-            });
-        }
-
-        // Verificar que la partida existe
-        const checkGameQuery = 'SELECT id_partida FROM Partida WHERE id_partida = ?';
-        const [existingGame] = await connection.execute(checkGameQuery, [id_partida]);
-        if (existingGame.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Partida no encontrada',
-                error: 'GAME_NOT_FOUND'
-            });
-        }
-
-        // Solo puede haber un Rey por color por partida
-        if (tipo === 'Rey') {
-            const checkKingQuery = 'SELECT id_pieza FROM Pieza WHERE tipo = "Rey" AND id_jugador = ? AND id_partida = ?';
-            const [existingKing] = await connection.execute(checkKingQuery, [id_jugador, id_partida]);
-            if (existingKing.length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Ya existe un Rey para este jugador en esta partida',
-                    error: 'KING_ALREADY_EXISTS'
-                });
-            }
-        }
-
         // Verificar que no hay otra pieza en la misma posición inicial en la misma partida
         const checkPositionQuery = 'SELECT id_pieza FROM Pieza WHERE posicion_inicial = ? AND id_partida = ?';
         const [existingPosition] = await connection.execute(checkPositionQuery, [posicion_inicial, id_partida]);
+
         if (existingPosition.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -3585,7 +3068,7 @@ app.post("/api/pieces/complete", async (req, res) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({
                 success: false,
-                message: 'Ya existe una pieza con esos datos',
+                message: 'Ya existe una pieza con ese nombre o posición',
                 error: 'DUPLICATE_ENTRY'
             });
         }
@@ -3613,6 +3096,42 @@ app.post("/api/pieces/complete", async (req, res) => {
                 console.error('Error al cerrar conexión:', closeError);
             }
         }
+    }
+});
+
+// ENDPOINT para actualizar Jugador_Partida (update-then-insert)
+app.post('/api/jugadorpartida/update', async (req, res) => {
+    let connection = null;
+    try {
+        const { id_jugador, id_partida, puntaje, turnos_jugados, color } = req.body;
+        console.log('📤 [jugadorpartida/update] Datos recibidos:', { id_jugador, id_partida, puntaje, turnos_jugados, color });
+        if (!id_jugador || !id_partida || !color) {
+            return res.status(400).json({ success: false, message: 'Faltan campos requeridos' });
+        }
+        connection = await connectToDB();
+        // Intentar actualizar primero
+        const [updateResult] = await connection.execute(
+            `UPDATE Jugador_Partida SET puntaje=?, turnos_jugados=?, color=?
+             WHERE id_jugador=? AND id_partida=?`,
+            [puntaje, turnos_jugados, color, id_jugador, id_partida]
+        );
+        if (updateResult.affectedRows === 0) {
+            // Si no existía, insertar
+            await connection.execute(
+                `INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [id_jugador, id_partida, color, puntaje, turnos_jugados]
+            );
+            console.log('🟢 [jugadorpartida/update] INSERT realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
+        } else {
+            console.log('🟢 [jugadorpartida/update] UPDATE realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
+        }
+        res.status(200).json({ success: true, message: 'Jugador_Partida actualizado' });
+    } catch (error) {
+        console.error('❌ [jugadorpartida/update] Error:', error);
+        res.status(500).json({ success: false, message: 'Error actualizando Jugador_Partida', error: error.message });
+    } finally {
+        if (connection) await connection.end();
     }
 });
 

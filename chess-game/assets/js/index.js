@@ -566,6 +566,78 @@ function handleRoundEnd(winner, gameContext) {
     }
     updateRoundStatsInDB();
     // --- FIN NUEVO ---
+
+    // --- NUEVO: Actualizar estadísticas de jugador en la base de datos ---
+    async function updatePlayerStatsInDB() {
+        try {
+            const gameId = gameContext.currentGameId;
+            const playerIds = gameContext.playerIds;
+            if (!gameId || !playerIds || !playerIds.w || !playerIds.b) return;
+
+            // Blancas
+            await fetch('/api/playerstats/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_jugador: playerIds.w,
+                    id_partida: gameId,
+                    piezas_capturadas: gameContext.gameStats.white.captured,
+                    muertes: gameContext.gameStats.white.lost || 0, // Si tienes este dato
+                    powerups_usados: gameContext.gameStats.white.powerupsUsed,
+                    piezas_movidas: gameContext.gameStats.white.turns
+                })
+            });
+
+            // Negras
+            await fetch('/api/playerstats/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_jugador: playerIds.b,
+                    id_partida: gameId,
+                    piezas_capturadas: gameContext.gameStats.black.captured,
+                    muertes: gameContext.gameStats.black.lost || 0, // Si tienes este dato
+                    powerups_usados: gameContext.gameStats.black.powerupsUsed,
+                    piezas_movidas: gameContext.gameStats.black.turns
+                })
+            });
+        } catch (err) {
+            console.error('Error actualizando estadísticas de jugador:', err);
+        }
+    }
+    updatePlayerStatsInDB();
+    // --- FIN NUEVO ---
+
+    // --- NUEVO: Actualizar Jugador_Partida en la base de datos ---
+    async function updateJugadorPartidaStats() {
+        try {
+            const { updateJugadorPartida } = await import('./pruebasAPI.js');
+            const gameId = gameContext.currentGameId;
+            const playerIds = gameContext.playerIds;
+            if (!gameId || !playerIds || !playerIds.w || !playerIds.b) return;
+
+            // Blancas
+            await updateJugadorPartida({
+                id_jugador: playerIds.w,
+                id_partida: gameId,
+                puntaje: gameContext.score1 || 0, // Ajusta según tu lógica de puntaje
+                turnos_jugados: gameContext.gameStats.white.turns || 0,
+                color: 'w'
+            });
+            // Negras
+            await updateJugadorPartida({
+                id_jugador: playerIds.b,
+                id_partida: gameId,
+                puntaje: gameContext.score2 || 0, // Ajusta según tu lógica de puntaje
+                turnos_jugados: gameContext.gameStats.black.turns || 0,
+                color: 'b'
+            });
+        } catch (err) {
+            console.error('Error actualizando Jugador_Partida:', err);
+        }
+    }
+    updateJugadorPartidaStats();
+    // --- FIN NUEVO ---
 }
 
 document.addEventListener('DOMContentLoaded', () => {
