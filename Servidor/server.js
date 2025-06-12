@@ -3418,3 +3418,105 @@ app.post("/api/jugadorpartida/update", async (req, res) => {
         }
     }
 });
+
+// NUEVO: Endpoint para crear registros iniciales en Jugador_Partida
+app.post("/api/jugadorpartida/create", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_partida, jugadores } = req.body;
+
+        // Validaciones básicas
+        if (!id_partida || !jugadores || !Array.isArray(jugadores) || jugadores.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan campos requeridos (id_partida, jugadores[])',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        console.log('🔄 Creando registros Jugador_Partida:', { id_partida, jugadores });
+
+        connection = await connectToDB();
+
+        // Verificar que la partida existe
+        const checkGameQuery = 'SELECT id_partida FROM Partida WHERE id_partida = ?';
+        const [gameExists] = await connection.execute(checkGameQuery, [id_partida]);
+
+        if (gameExists.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'La partida especificada no existe',
+                error: 'GAME_NOT_FOUND'
+            });
+        }
+
+        const insertedRecords = [];
+
+        // Crear registros para cada jugador
+        for (const jugador of jugadores) {
+            const { id_jugador, color } = jugador;
+
+            if (!id_jugador || !color) {
+                continue; // Skip invalid records
+            }
+
+            // Verificar que el jugador existe
+            const checkPlayerQuery = 'SELECT id_jugador FROM Jugador WHERE id_jugador = ?';
+            const [playerExists] = await connection.execute(checkPlayerQuery, [id_jugador]);
+
+            if (playerExists.length === 0) {
+                console.warn(`⚠️ Jugador ${id_jugador} no existe, saltando...`);
+                continue;
+            }
+
+            // Insertar o actualizar registro
+            const insertQuery = `
+                INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
+                VALUES (?, ?, ?, 0, 0)
+                ON DUPLICATE KEY UPDATE
+                color = VALUES(color)
+            `;
+
+            await connection.execute(insertQuery, [id_jugador, id_partida, color]);
+
+            insertedRecords.push({
+                id_jugador,
+                id_partida,
+                color,
+                puntaje: 0,
+                turnos_jugados: 0
+            });
+
+            console.log(`✅ Registro creado/actualizado para jugador ${id_jugador} (${color}) en partida ${id_partida}`);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: `${insertedRecords.length} registros de Jugador_Partida creados exitosamente`,
+            data: insertedRecords
+        });
+
+    } catch (error) {
+        console.error('❌ Error creando registros Jugador_Partida:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            res.status(400).json({
+                success: false,
+                message: 'Una o más referencias no existen (partida o jugador)',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+                error: error.message
+            });
+        }
+
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});

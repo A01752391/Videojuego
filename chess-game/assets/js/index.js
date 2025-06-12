@@ -307,6 +307,58 @@ function handleRoundEnd(winner, gameContext) {
     // Check if game is over (best of 3)
     const gameEnded = winsWhite === 2 || winsBlack === 2 || round === 3;
     
+    // NUEVO: Función para actualizar Jugador_Partida con puntajes finales acumulativos
+    async function updateJugadorPartidaFinalStats() {
+        try {
+            console.log('🏁 Actualizando estadísticas finales de Jugador_Partida...');
+            const { updateJugadorPartida } = await import('./pruebasAPI.js');
+            const gameId = gameContext.currentGameId;
+            const playerIds = gameContext.playerIds;
+            
+            if (!gameId || !playerIds || !playerIds.w || !playerIds.b) {
+                console.warn('⚠️ Datos faltantes para actualizar Jugador_Partida:', { gameId, playerIds });
+                return;
+            }
+
+            // Calcular turnos totales acumulados de todas las rondas
+            const totalWhiteTurns = gameSeriesData.rounds.reduce((total, round) => {
+                return total + (round.gameStats?.white?.turns || 0);
+            }, 0);
+            
+            const totalBlackTurns = gameSeriesData.rounds.reduce((total, round) => {
+                return total + (round.gameStats?.black?.turns || 0);
+            }, 0);
+
+            console.log('📊 Estadísticas finales:', {
+                whiteFinalScore: gameContext.score1,
+                blackFinalScore: gameContext.score2,
+                totalWhiteTurns,
+                totalBlackTurns
+            });
+
+            // Actualizar Jugador_Partida con puntajes acumulativos finales
+            await updateJugadorPartida({
+                id_jugador: playerIds.w,
+                id_partida: gameId,
+                puntaje: gameContext.score1 || 0, // Puntaje ACUMULATIVO final
+                turnos_jugados: totalWhiteTurns,
+                color: 'w'
+            });
+            
+            await updateJugadorPartida({
+                id_jugador: playerIds.b,
+                id_partida: gameId,
+                puntaje: gameContext.score2 || 0, // Puntaje ACUMULATIVO final
+                turnos_jugados: totalBlackTurns,
+                color: 'b'
+            });
+            
+            console.log('✅ Estadísticas finales de Jugador_Partida actualizadas correctamente');
+        } catch (err) {
+            console.error('❌ Error actualizando estadísticas finales de Jugador_Partida:', err);
+        }
+    }
+    
     // Show the round statistics modal ONLY if game hasn't ended
     if (!gameEnded && roundStatsModal) {
         roundStatsModal.show(roundData);
@@ -324,11 +376,15 @@ function handleRoundEnd(winner, gameContext) {
         (async () => {
             try {
                 if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.w) {
+                    // 1. Actualizar Jugador_Partida con puntajes finales
+                    await updateJugadorPartidaFinalStats();
+                    
+                    // 2. Finalizar partida
                     const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
                     await finalizeGame(gameContext.currentGameId, gameContext.playerIds.w, gameSeriesData.duration);
                     console.log('✅ Partida finalizada en BD - Ganador: Blancas');
                     
-                    // Crear estadísticas de partida
+                    // 3. Crear estadísticas de partida
                     await createGameStats(gameContext.currentGameId);
                     console.log('✅ Estadísticas de partida creadas en BD');
                 }
@@ -348,11 +404,15 @@ function handleRoundEnd(winner, gameContext) {
         (async () => {
             try {
                 if (gameContext.currentGameId && gameContext.playerIds && gameContext.playerIds.b) {
+                    // 1. Actualizar Jugador_Partida con puntajes finales
+                    await updateJugadorPartidaFinalStats();
+                    
+                    // 2. Finalizar partida
                     const { finalizeGame, createGameStats } = await import('./pruebasAPI.js');
                     await finalizeGame(gameContext.currentGameId, gameContext.playerIds.b, gameSeriesData.duration);
                     console.log('✅ Partida finalizada en BD - Ganador: Negras');
                     
-                    // Crear estadísticas de partida
+                    // 3. Crear estadísticas de partida
                     await createGameStats(gameContext.currentGameId);
                     console.log('✅ Estadísticas de partida creadas en BD');
                 }
@@ -384,6 +444,9 @@ function handleRoundEnd(winner, gameContext) {
         // NUEVO: Finalizar partida en BD después de ronda 3
         (async () => {
             try {
+                // Siempre actualizar Jugador_Partida, independientemente del resultado
+                await updateJugadorPartidaFinalStats();
+                
                 if (gameContext.currentGameId && gameContext.playerIds && gameSeriesData.winner && gameSeriesData.winner !== 'tie') {
                     const winnerId = gameContext.playerIds[gameSeriesData.winner];
                     if (winnerId) {
@@ -608,36 +671,7 @@ function handleRoundEnd(winner, gameContext) {
     updatePlayerStatsInDB();
     // --- FIN NUEVO ---
 
-    // --- NUEVO: Actualizar Jugador_Partida en la base de datos ---
-    async function updateJugadorPartidaStats() {
-        try {
-            const { updateJugadorPartida } = await import('./pruebasAPI.js');
-            const gameId = gameContext.currentGameId;
-            const playerIds = gameContext.playerIds;
-            if (!gameId || !playerIds || !playerIds.w || !playerIds.b) return;
-
-            // Blancas
-            await updateJugadorPartida({
-                id_jugador: playerIds.w,
-                id_partida: gameId,
-                puntaje: gameContext.score1 || 0, // Ajusta según tu lógica de puntaje
-                turnos_jugados: gameContext.gameStats.white.turns || 0,
-                color: 'w'
-            });
-            // Negras
-            await updateJugadorPartida({
-                id_jugador: playerIds.b,
-                id_partida: gameId,
-                puntaje: gameContext.score2 || 0, // Ajusta según tu lógica de puntaje
-                turnos_jugados: gameContext.gameStats.black.turns || 0,
-                color: 'b'
-            });
-        } catch (err) {
-            console.error('Error actualizando Jugador_Partida:', err);
-        }
-    }
-    updateJugadorPartidaStats();
-    // --- FIN NUEVO ---
+    // NOTA: updateJugadorPartidaStats() se ha movido al final de la partida completa
 }
 
 // Registrar turno en la base de datos ---
