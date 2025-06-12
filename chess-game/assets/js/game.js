@@ -323,14 +323,12 @@ export async function handleClick(r, c, gameContext) {
         // NUEVO: Registrar el turno en la base de datos
         try {
             console.log('🔄 PASO 1: Iniciando registro de turno...');
-            
             // DIAGNÓSTICO BÁSICO: Solo verificar datos mínimos
             console.log('🔄 PASO 2: Verificando datos básicos...');
             console.log('   currentGameId:', gameContext?.currentGameId);
             console.log('   currentRoundId:', gameContext?.currentRoundId);
             console.log('   playerIds:', gameContext?.playerIds);
             console.log('   currentColor:', currentColor);
-            
             if (!gameContext?.currentGameId) {
                 throw new Error('Falta currentGameId');
             }
@@ -340,36 +338,29 @@ export async function handleClick(r, c, gameContext) {
             if (!gameContext?.playerIds?.[currentColor]) {
                 throw new Error(`Falta playerIds[${currentColor}]`);
             }
-            
             console.log('🔄 PASO 3: Datos básicos verificados, preparando datos del turno...');
-            
-            // Incrementar contador de turnos global si no existe
             if (!gameContext.turnCounter) {
                 gameContext.turnCounter = 0;
             }
             gameContext.turnCounter++;
-
-            // NUEVO: Detectar posición inicial de la pieza
             const posicionInicial = getInitialPosition(gameContext, pieceToMove.type, pieceToMove.color);
-
-            const turnData = {
-                id_ronda: gameContext.currentRoundId,
-                id_jugador: gameContext.playerIds[currentColor],
+            // Construir el objeto turno para el endpoint correcto
+            const turno = {
+                id_partida: gameContext.currentGameId,
                 id_pieza: getPieceId(pieceToMove.type, pieceToMove.color),
-                numero_turno: gameContext.turnCounter,
-                posicion_desde: coordinateToAlgebraic(fr, fc),
-                posicion_hasta: coordinateToAlgebraic(r, c),
-                posicion_inicial: posicionInicial, // NUEVO: Posición inicial detectada automáticamente
-                fue_captura: !!capturedPiece,
-                tiempo_duracion: null // Opcional: se puede agregar tiempo después
+                id_jugador: gameContext.playerIds[currentColor],
+                turno_numero: gameContext.turnCounter,
+                posicion_origen: coordinateToAlgebraic(fr, fc),
+                posicion_destino: coordinateToAlgebraic(r, c),
+                posicion_inicial: posicionInicial,
+                fue_captura: !!capturedPiece
             };
-
-            console.log('🔄 PASO 4: Datos del turno preparados:', turnData);
-            console.log('🔄 PASO 5: Llamando a registerTurnComplete...');
-            
-            await registerTurnComplete(turnData);
+            console.log('🔄 PASO 4: Datos del turno preparados:', turno);
+            console.log('🔄 PASO 5: Llamando a registrarTurnoEnBD...');
+            // Importar y llamar a la función desde pruebasAPI.js en vez de index.js
+            const { registrarTurnoEnBD } = await import('./pruebasAPI.js');
+            await registrarTurnoEnBD(turno);
             console.log('✅ PASO 6: Turno registrado exitosamente');
-
         } catch (error) {
             console.error('❌ Error en PASO:', error.message);
             console.error('❌ Error registrando turno en BD:', error);

@@ -2927,8 +2927,10 @@ app.post("/api/turns/complete", async (req, res) => {
             numero_turno, 
             posicion_desde, 
             posicion_hasta, 
+            posicion_inicial, 
             fue_captura, 
-            tiempo_duracion 
+            capturada, 
+            protegida 
         } = req.body;
 
         // Validaciones básicas
@@ -2940,10 +2942,10 @@ app.post("/api/turns/complete", async (req, res) => {
             });
         }
 
-        if (numero_turno < 1 || numero_turno > 999) {
+        if (numero_turno < 1 || numero_turno > 255) {
             return res.status(400).json({
                 success: false,
-                message: 'El número de turno debe estar entre 1 y 999',
+                message: 'El número de turno debe estar entre 1 y 255',
                 error: 'INVALID_TURN_NUMBER'
             });
         }
@@ -3104,264 +3106,114 @@ app.post("/api/turns/complete", async (req, res) => {
     }
 });
 
-// ENDPOINT para actualizar Jugador_Partida (update-then-insert)
-app.post('/api/jugadorpartida/update', async (req, res) => {
+// Endpoint para registrar un turno en la tabla Turno
+app.post("/api/turns", async (req, res) => {
     let connection = null;
-    try {
-        const { id_jugador, id_partida, puntaje, turnos_jugados, color } = req.body;
-        if (!id_jugador || !id_partida || !color) {
-            return res.status(400).json({ success: false, message: 'Faltan campos requeridos' });
-        }
-        connection = await connectToDB();
-        // Intentar actualizar primero
-        const [updateResult] = await connection.execute(
-            `UPDATE Jugador_Partida SET puntaje=?, turnos_jugados=?, color=?
-             WHERE id_jugador=? AND id_partida=?`,
-            [puntaje, turnos_jugados, color, id_jugador, id_partida]
-        );
-        if (updateResult.affectedRows === 0) {
-            // Si no existía, insertar
-            await connection.execute(
-                `INSERT INTO Jugador_Partida (id_jugador, id_partida, color, puntaje, turnos_jugados)
-                 VALUES (?, ?, ?, ?, ?)`,
-                [id_jugador, id_partida, color, puntaje, turnos_jugados]
-            );
-            console.log('🟢 [jugadorpartida/update] INSERT realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
-        } else {
-            console.log('🟢 [jugadorpartida/update] UPDATE realizado:', { id_jugador, id_partida, color, puntaje, turnos_jugados });
-        }
-        res.status(200).json({ success: true, message: 'Jugador_Partida actualizado' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Error actualizando Jugador_Partida', error: error.message });
-    } finally {
-        if (connection) await connection.end();
-    }
-});
 
-// ENDPOINTS PARA SISTEMA DE DESBLOQUEO DE POWERUPS
-
-// Obtener desbloqueos de un jugador específico
-app.get('/api/players/:id_jugador/unlocks', async (req, res) => {
-    let connection = null;
     try {
-        const { id_jugador } = req.params;
-        
-        if (!id_jugador || isNaN(parseInt(id_jugador))) {
+        const {
+            id_partida,
+            id_pieza,
+            id_jugador,
+            turno_numero,
+            posicion_origen,
+            posicion_destino,
+            fue_captura,
+            capturada,
+            protegida
+        } = req.body;
+
+        // Log incoming request for debugging
+        console.log('📥 Incoming /api/turns request:', req.body);
+
+        // Validate required fields
+        if (!id_partida || !id_pieza || !id_jugador || !turno_numero || !posicion_origen || !posicion_destino) {
+            console.error('❌ Missing required fields:', req.body);
             return res.status(400).json({
                 success: false,
-                message: 'ID de jugador inválido',
-                error: 'INVALID_PLAYER_ID'
+                message: 'Todos los campos obligatorios son requeridos (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino)',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        // Validate position format (e.g., A1, B2)
+        const positionRegex = /^[A-H][1-8]$/i;
+        if (!positionRegex.test(posicion_origen) || !positionRegex.test(posicion_destino)) {
+            console.error('❌ Invalid position format:', { posicion_origen, posicion_destino });
+            return res.status(400).json({
+                success: false,
+                message: 'Las posiciones deben tener formato válido (ej: A1, B2)',
+                error: 'INVALID_POSITION_FORMAT'
             });
         }
 
         connection = await connectToDB();
 
-        // Verificar que el jugador existe
-        const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
-        const [playerData] = await connection.execute(checkPlayerQuery, [id_jugador]);
-
-        if (playerData.length === 0) {
+        // Validate foreign key references
+        const [partidaExists] = await connection.execute('SELECT id_partida FROM Partida WHERE id_partida = ?', [id_partida]);
+        if (partidaExists.length === 0) {
+            console.error('❌ Partida not found:', id_partida);
             return res.status(404).json({
                 success: false,
-                message: 'Jugador no encontrado',
-                error: 'PLAYER_NOT_FOUND'
+                message: 'La partida especificada no existe',
+                error: 'PARTIDA_NOT_FOUND'
             });
         }
 
-        // Obtener o crear registro de desbloqueos del jugador
-        let unlockQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
-        let [unlockData] = await connection.execute(unlockQuery, [id_jugador]);
-
-        if (unlockData.length === 0) {
-            // Si no existe, crear registro con valores por defecto
-            const insertQuery = `
-                INSERT INTO Jugador_Powerup_Desbloqueo 
-                (id_jugador, shield_desbloqueado, cage_desbloqueado, swap_desbloqueado, reducer_desbloqueado) 
-                VALUES (?, FALSE, FALSE, FALSE, FALSE)
-            `;
-            await connection.execute(insertQuery, [id_jugador]);
-            
-            // Obtener el registro recién creado
-            [unlockData] = await connection.execute(unlockQuery, [id_jugador]);
-        }
-
-        const unlocks = unlockData[0];
-        const responseData = {
-            playerId: parseInt(id_jugador),
-            playerEmail: playerData[0].email,
-            shieldUnlocked: !!unlocks.shield_desbloqueado,
-            cageUnlocked: !!unlocks.cage_desbloqueado,
-            swapUnlocked: !!unlocks.swap_desbloqueado,
-            reducerUnlocked: !!unlocks.reducer_desbloqueado,
-            lastUpdate: unlocks.fecha_actualizacion
-        };
-
-        console.log(`✅ Desbloqueos obtenidos para jugador ${id_jugador}:`, responseData);
-
-        res.status(200).json({
-            success: true,
-            data: responseData
-        });
-
-    } catch (error) {
-        console.error('Error obteniendo desbloqueos de jugador:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    } finally {
-        if (connection) {
-            await connection.end();
-        }
-    }
-});
-
-// Desbloquear un powerup específico para un jugador
-app.post('/api/players/:id_jugador/unlock/:powerup_name', async (req, res) => {
-    let connection = null;
-    try {
-        const { id_jugador, powerup_name } = req.params;
-        
-        if (!id_jugador || isNaN(parseInt(id_jugador))) {
-            return res.status(400).json({
-                success: false,
-                message: 'ID de jugador inválido',
-                error: 'INVALID_PLAYER_ID'
-            });
-        }
-
-        // Validar nombre de powerup
-        const validPowerups = ['shield', 'cage', 'swap', 'reducer'];
-        const powerupLower = powerup_name.toLowerCase();
-        
-        if (!validPowerups.includes(powerupLower)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Nombre de powerup inválido. Debe ser: shield, cage, swap, reducer',
-                error: 'INVALID_POWERUP_NAME'
-            });
-        }
-
-        connection = await connectToDB();
-
-        // Verificar que el jugador existe
-        const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
-        const [playerData] = await connection.execute(checkPlayerQuery, [id_jugador]);
-
-        if (playerData.length === 0) {
+        const [piezaExists] = await connection.execute('SELECT id_pieza FROM Pieza WHERE id_pieza = ?', [id_pieza]);
+        if (piezaExists.length === 0) {
+            console.error('❌ Pieza not found:', id_pieza);
             return res.status(404).json({
                 success: false,
-                message: 'Jugador no encontrado',
-                error: 'PLAYER_NOT_FOUND'
+                message: 'La pieza especificada no existe',
+                error: 'PIEZA_NOT_FOUND'
             });
         }
 
-        // Crear columna de BD basada en el nombre del powerup
-        const powerupColumn = `${powerupLower}_desbloqueado`;
-
-        // Usar INSERT ON DUPLICATE KEY UPDATE para crear o actualizar
-        const upsertQuery = `
-            INSERT INTO Jugador_Powerup_Desbloqueo (id_jugador, ${powerupColumn})
-            VALUES (?, TRUE)
-            ON DUPLICATE KEY UPDATE ${powerupColumn} = TRUE, fecha_actualizacion = CURRENT_TIMESTAMP
-        `;
-
-        console.log(`🔓 Desbloqueando ${powerup_name} para jugador ${id_jugador}`);
-        
-        const [result] = await connection.execute(upsertQuery, [id_jugador]);
-
-        // Obtener el estado actualizado
-        const getUpdatedQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
-        const [updatedData] = await connection.execute(getUpdatedQuery, [id_jugador]);
-        
-        const unlocks = updatedData[0];
-        const responseData = {
-            playerId: parseInt(id_jugador),
-            playerEmail: playerData[0].email,
-            powerupUnlocked: powerup_name,
-            shieldUnlocked: !!unlocks.shield_desbloqueado,
-            cageUnlocked: !!unlocks.cage_desbloqueado,
-            swapUnlocked: !!unlocks.swap_desbloqueado,
-            reducerUnlocked: !!unlocks.reducer_desbloqueado,
-            lastUpdate: unlocks.fecha_actualizacion
-        };
-
-        console.log(`✅ ${powerup_name} desbloqueado exitosamente para jugador ${id_jugador}`);
-
-        res.status(200).json({
-            success: true,
-            message: `PowerUp ${powerup_name} desbloqueado exitosamente`,
-            data: responseData
-        });
-
-    } catch (error) {
-        console.error('Error desbloqueando powerup:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    } finally {
-        if (connection) {
-            await connection.end();
+        const [jugadorExists] = await connection.execute('SELECT id_jugador FROM Jugador WHERE id_jugador = ?', [id_jugador]);
+        if (jugadorExists.length === 0) {
+            console.error('❌ Jugador not found:', id_jugador);
+            return res.status(404).json({
+                success: false,
+                message: 'El jugador especificado no existe',
+                error: 'JUGADOR_NOT_FOUND'
+            });
         }
-    }
-});
 
-// Obtener resumen de todos los desbloqueos (para administración)
-app.get('/api/unlocks/summary', async (req, res) => {
-    let connection = null;
-    try {
-        connection = await connectToDB();
-
-        const summaryQuery = `
-            SELECT 
-                j.id_jugador,
-                j.email,
-                COALESCE(jpd.shield_desbloqueado, FALSE) as shield_desbloqueado,
-                COALESCE(jpd.cage_desbloqueado, FALSE) as cage_desbloqueado,
-                COALESCE(jpd.swap_desbloqueado, FALSE) as swap_desbloqueado,
-                COALESCE(jpd.reducer_desbloqueado, FALSE) as reducer_desbloqueado,
-                jpd.fecha_actualizacion as last_unlock
-            FROM Jugador j
-            LEFT JOIN Jugador_Powerup_Desbloqueo jpd ON j.id_jugador = jpd.id_jugador
-            ORDER BY j.id_jugador
+        // Insert the turn into the database
+        const insertQuery = `
+            INSERT INTO Turno (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino, fue_captura, capturada, protegida)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
+        await connection.execute(insertQuery, [
+            id_partida,
+            id_pieza,
+            id_jugador,
+            turno_numero,
+            posicion_origen,
+            posicion_destino,
+            !!fue_captura, // Ensure boolean value
+            !!capturada,   // Ensure boolean value
+            !!protegida    // Ensure boolean value
+        ]);
 
-        const [summaryData] = await connection.execute(summaryQuery);
-        
-        const summary = summaryData.map(row => ({
-            playerId: row.id_jugador,
-            playerEmail: row.email,
-            shieldUnlocked: !!row.shield_desbloqueado,
-            cageUnlocked: !!row.cage_desbloqueado,
-            swapUnlocked: !!row.swap_desbloqueado,
-            reducerUnlocked: !!row.reducer_desbloqueado,
-            lastUnlock: row.last_unlock,
-            totalUnlocked: [row.shield_desbloqueado, row.cage_desbloqueado, row.swap_desbloqueado, row.reducer_desbloqueado]
-                .filter(Boolean).length
-        }));
-
-        // Estadísticas generales
-        const stats = {
-            totalPlayers: summary.length,
-            playersWithUnlocks: summary.filter(p => p.totalUnlocked > 0).length,
-            shieldUnlocks: summary.filter(p => p.shieldUnlocked).length,
-            cageUnlocks: summary.filter(p => p.cageUnlocked).length,
-            swapUnlocks: summary.filter(p => p.swapUnlocked).length,
-            reducerUnlocks: summary.filter(p => p.reducerUnlocked).length
-        };
-
-        res.status(200).json({
+        console.log('✅ Turno registrado exitosamente');
+        res.status(201).json({
             success: true,
-            data: summary,
-            statistics: stats,
-            total: summary.length
+            message: 'Turno registrado exitosamente'
         });
-
     } catch (error) {
-        console.error('Error obteniendo resumen de desbloqueos:', error);
+        console.error('❌ Error al registrar turno:', error);
+
+        // Handle specific database errors
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(400).json({
+                success: false,
+                message: 'Una o más referencias no existen (id_partida, id_pieza, id_jugador)',
+                error: 'FOREIGN_KEY_ERROR'
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
@@ -3369,11 +3221,170 @@ app.get('/api/unlocks/summary', async (req, res) => {
         });
     } finally {
         if (connection) {
-            await connection.end();
+            try {
+                await connection.end();
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
         }
     }
 });
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+});
+
+// Endpoint para obtener desbloqueos de un jugador
+app.get("/api/players/:id/unlocks", async (req, res) => {
+    let connection = null;
+
+    try {
+        const playerId = parseInt(req.params.id);
+
+        if (isNaN(playerId) || playerId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        connection = await connectToDB();
+
+        const query = `
+            SELECT shield_desbloqueado, cage_desbloqueado, swap_desbloqueado, reducer_desbloqueado
+            FROM Jugador_Powerup_Desbloqueo
+            WHERE id_jugador = ?
+        `;
+        const [rows] = await connection.execute(query, [playerId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No se encontraron desbloqueos para este jugador',
+                error: 'UNLOCKS_NOT_FOUND'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error al obtener desbloqueos del jugador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Endpoint para actualizar estadísticas del jugador
+app.post("/api/playerstats/update", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_jugador, puntaje, turnos_jugados } = req.body;
+
+        if (!id_jugador || puntaje === undefined || turnos_jugados === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'Todos los campos son requeridos (id_jugador, puntaje, turnos_jugados)',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        connection = await connectToDB();
+
+        const updateQuery = `
+            UPDATE Jugador_Partida
+            SET puntaje = ?, turnos_jugados = ?
+            WHERE id_jugador = ?
+        `;
+        const [result] = await connection.execute(updateQuery, [puntaje, turnos_jugados, id_jugador]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado o sin cambios',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Estadísticas del jugador actualizadas exitosamente'
+        });
+    } catch (error) {
+        console.error('Error actualizando estadísticas del jugador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// Endpoint para actualizar Jugador_Partida
+app.post("/api/jugadorpartida/update", async (req, res) => {
+    let connection = null;
+
+    try {
+        const { id_jugador, id_partida, puntaje, turnos_jugados, color } = req.body;
+
+        if (!id_jugador || !id_partida || !color) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan campos requeridos (id_jugador, id_partida, color)',
+                error: 'MISSING_REQUIRED_FIELDS'
+            });
+        }
+
+        connection = await connectToDB();
+
+        const updateQuery = `
+            UPDATE Jugador_Partida
+            SET puntaje = ?, turnos_jugados = ?
+            WHERE id_jugador = ? AND id_partida = ? AND color = ?
+        `;
+        const [result] = await connection.execute(updateQuery, [puntaje, turnos_jugados, id_jugador, id_partida, color]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador o partida no encontrados',
+                error: 'NOT_FOUND'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Jugador_Partida actualizado exitosamente'
+        });
+    } catch (error) {
+        console.error('Error actualizando Jugador_Partida:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
 });
