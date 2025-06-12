@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true}));
@@ -2906,6 +2906,7 @@ app.post("/api/turns/complete", async (req, res) => {
             numero_turno, 
             posicion_desde, 
             posicion_hasta, 
+            posicion_inicial, // NUEVO: Campo posición inicial
             fue_captura, 
             tiempo_duracion 
         } = req.body;
@@ -3012,8 +3013,8 @@ app.post("/api/turns/complete", async (req, res) => {
 
         // Insertar nuevo turno en tabla Turno
         const insertTurnQuery = `
-            INSERT INTO Turno (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino, fue_captura) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Turno (id_partida, id_pieza, id_jugador, turno_numero, posicion_origen, posicion_destino, posicion_inicial, fue_captura) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const [result] = await connection.execute(insertTurnQuery, [
@@ -3023,6 +3024,7 @@ app.post("/api/turns/complete", async (req, res) => {
             numero_turno, 
             posicion_desde, 
             posicion_hasta, 
+            posicion_inicial, // NUEVO: Incluir posición inicial
             fue_captura ? new Date() : null
         ]);
 
@@ -3625,6 +3627,252 @@ app.post("/api/pieces/complete", async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+// ============================================
+// ENDPOINTS PARA DESBLOQUEOS DE POWERUPS
+// ============================================
+
+// Obtener desbloqueos de un jugador
+app.get("/api/players/:id/unlocks", async (req, res) => {
+    let connection = null;
+
+    try {
+        const playerId = parseInt(req.params.id);
+        
+        if (isNaN(playerId) || playerId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Obtener o crear registro de desbloqueos para el jugador
+        let getUnlocksQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
+        let [unlocks] = await connection.execute(getUnlocksQuery, [playerId]);
+
+        if (unlocks.length === 0) {
+            // Crear registro inicial para el jugador
+            const createUnlocksQuery = `
+                INSERT INTO Jugador_Powerup_Desbloqueo (id_jugador) 
+                VALUES (?)
+            `;
+            await connection.execute(createUnlocksQuery, [playerId]);
+            
+            // Obtener el registro recién creado
+            [unlocks] = await connection.execute(getUnlocksQuery, [playerId]);
+        }
+
+        const playerUnlocks = unlocks[0];
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                playerId: playerUnlocks.id_jugador,
+                shieldUnlocked: !!playerUnlocks.shield_desbloqueado,
+                cageUnlocked: !!playerUnlocks.cage_desbloqueado,
+                swapUnlocked: !!playerUnlocks.swap_desbloqueado,
+                reducerUnlocked: !!playerUnlocks.reducer_desbloqueado,
+                lastUpdated: playerUnlocks.fecha_actualizacion
+            }
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo desbloqueos del jugador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Desbloquear un powerup específico para un jugador
+app.post("/api/players/:id/unlock/:powerup", async (req, res) => {
+    let connection = null;
+
+    try {
+        const playerId = parseInt(req.params.id);
+        const powerupName = req.params.powerup.toLowerCase();
+        
+        if (isNaN(playerId) || playerId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        // Validar powerup name
+        const validPowerups = ['shield', 'cage', 'swap', 'reducer'];
+        if (!validPowerups.includes(powerupName)) {
+            return res.status(400).json({
+                success: false,
+                message: `Powerup inválido. Debe ser uno de: ${validPowerups.join(', ')}`,
+                error: 'INVALID_POWERUP'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador FROM Jugador WHERE id_jugador = ?';
+        const [existingPlayer] = await connection.execute(checkPlayerQuery, [playerId]);
+
+        if (existingPlayer.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // Crear registro de desbloqueos si no existe
+        const insertOrIgnoreQuery = `
+            INSERT IGNORE INTO Jugador_Powerup_Desbloqueo (id_jugador) 
+            VALUES (?)
+        `;
+        await connection.execute(insertOrIgnoreQuery, [playerId]);
+
+        // Actualizar el powerup específico
+        const columnName = `${powerupName}_desbloqueado`;
+        const updateQuery = `
+            UPDATE Jugador_Powerup_Desbloqueo 
+            SET ${columnName} = TRUE, fecha_actualizacion = CURRENT_TIMESTAMP 
+            WHERE id_jugador = ?
+        `;
+        
+        const [result] = await connection.execute(updateQuery, [playerId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'No se pudo actualizar el desbloqueo',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        // Obtener los desbloqueos actualizados
+        const getUnlocksQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
+        const [unlocks] = await connection.execute(getUnlocksQuery, [playerId]);
+        const playerUnlocks = unlocks[0];
+
+        res.status(200).json({
+            success: true,
+            message: `${powerupName.charAt(0).toUpperCase() + powerupName.slice(1)} desbloqueado exitosamente`,
+            data: {
+                playerId: playerUnlocks.id_jugador,
+                powerupUnlocked: powerupName,
+                shieldUnlocked: !!playerUnlocks.shield_desbloqueado,
+                cageUnlocked: !!playerUnlocks.cage_desbloqueado,
+                swapUnlocked: !!playerUnlocks.swap_desbloqueado,
+                reducerUnlocked: !!playerUnlocks.reducer_desbloqueado,
+                lastUpdated: playerUnlocks.fecha_actualizacion
+            }
+        });
+
+    } catch (error) {
+        console.error('Error desbloqueando powerup:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+// Obtener estadísticas completas de un jugador (incluyendo desbloqueos)
+app.get("/api/players/:id/stats", async (req, res) => {
+    let connection = null;
+
+    try {
+        const playerId = parseInt(req.params.id);
+        
+        if (isNaN(playerId) || playerId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'El ID del jugador debe ser un número válido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Usar la vista actualizada que incluye desbloqueos
+        const statsQuery = 'SELECT * FROM vista_estadisticas_jugador WHERE id_jugador = ?';
+        const [stats] = await connection.execute(statsQuery, [playerId]);
+
+        if (stats.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        const playerStats = stats[0];
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                playerId: playerStats.id_jugador,
+                email: playerStats.email,
+                victories: playerStats.victorias,
+                gamesPlayed: playerStats.partidas_jugadas || 0,
+                totalScore: playerStats.puntaje_total || 0,
+                totalTurns: playerStats.turnos_totales || 0,
+                piecesCapturated: playerStats.piezas_capturadas_total || 0,
+                deaths: playerStats.muertes_total || 0,
+                powerupsUsed: playerStats.powerups_usados_total || 0,
+                // Desbloqueos
+                unlocks: {
+                    shield: !!playerStats.shield_desbloqueado,
+                    cage: !!playerStats.cage_desbloqueado,
+                    swap: !!playerStats.swap_desbloqueado,
+                    reducer: !!playerStats.reducer_desbloqueado
+                },
+                lastUnlockDate: playerStats.fecha_ultimo_desbloqueo
+            }
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo estadísticas del jugador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            try {
+                await connection.end();
+            } catch (closeError) {
+                console.error('Error al cerrar conexión:', closeError);
+            }
+        }
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor funcionando en http://localhost:${PORT}`);
 });
