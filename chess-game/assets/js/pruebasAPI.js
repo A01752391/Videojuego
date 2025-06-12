@@ -174,16 +174,34 @@ export async function trackPowerupUsage(powerupData) {
 
         if (!response.ok) {
             let errorData = {};
+            let rawText = '';
             try {
-                errorData = await response.json();
+                // Primero obtener el texto crudo
+                rawText = await response.text();
+                console.error('❌ Raw error response text:', rawText);
+                
+                // Intentar parsear como JSON
+                if (rawText) {
+                    errorData = JSON.parse(rawText);
+                    console.error('❌ Parsed error response data:', errorData);
+                }
             } catch (e) {
+                console.error('❌ No se pudo parsear error como JSON:', e);
                 errorData = { 
                     message: `HTTP ${response.status}: ${response.statusText}`,
-                    raw: await response.text() 
+                    raw: rawText || 'No response text available'
                 };
+                console.error('❌ Error data object:', errorData);
             }
-            console.error('❌ Server error response:', errorData);
-            throw new Error(errorData.message || `Error al registrar uso de powerup (${response.status})`);
+            
+            // Logs adicionales para debugging
+            console.error('❌ Response details:');
+            console.error('   Status:', response.status);
+            console.error('   StatusText:', response.statusText);
+            console.error('   Headers:', Object.fromEntries(response.headers.entries()));
+            console.error('   URL:', response.url);
+            
+            throw new Error(errorData.message || `HTTP ${response.status}: Error del servidor`);
         }
 
         const result = await response.json();
@@ -411,21 +429,72 @@ async function registerPieceComplete(pieceData) {
 
 // Registrar turno completo en la base de datos (rellena vista_partidas_completa y piezas)
 async function registerTurnComplete(turnData) {
+    console.log('🔄 registerTurnComplete PASO A: Iniciando con datos:', turnData);
+    
     try {
+        console.log('🔄 registerTurnComplete PASO B: Preparando request...');
+        console.log('   URL:', server + '/api/turns/complete');
+        console.log('   Method: POST');
+        
         const response = await fetch(server + '/api/turns/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(turnData)
         });
+        
+        console.log('🔄 registerTurnComplete PASO C: Response recibida');
+        console.log('   Status:', response.status);
+        console.log('   OK:', response.ok);
+        
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error registrando turno');
+            console.log('🔄 registerTurnComplete PASO D: Response no OK, obteniendo error...');
+            
+            let errorData = {};
+            let rawText = '';
+            try {
+                // Primero obtener el texto crudo para no consumir el stream
+                rawText = await response.text();
+                console.error('❌ Raw server response:', rawText);
+                
+                // Intentar parsear como JSON
+                if (rawText) {
+                    errorData = JSON.parse(rawText);
+                    console.error('❌ Parsed error data:', errorData);
+                } else {
+                    errorData = { message: 'Respuesta vacía del servidor' };
+                }
+            } catch (e) {
+                console.error('❌ No se pudo parsear respuesta como JSON:', e);
+                errorData = { 
+                    message: rawText || `HTTP ${response.status}: ${response.statusText}`,
+                    raw: rawText,
+                    parseError: e.message
+                };
+            }
+            
+            // Logs adicionales para debugging
+            console.error('❌ Server Response Details:');
+            console.error('   Status:', response.status);
+            console.error('   StatusText:', response.statusText);
+            console.error('   URL:', response.url);
+            
+            throw new Error(errorData.message || `Server Error ${response.status}: ${response.statusText}`);
         }
+        
+        console.log('🔄 registerTurnComplete PASO E: Parseando resultado...');
         const result = await response.json();
-        console.log('Turno registrado exitosamente:', result);
+        console.log('✅ registerTurnComplete PASO F: Turno registrado exitosamente:', result);
         return result;
     } catch (error) {
-        console.error('Error registrando turno:', error);
+        console.error('❌ registerTurnComplete ERROR en:', error.message);
+        console.error('❌ Error tipo:', error.name);
+        console.error('❌ Stack completo:', error.stack);
+        
+        // Verificar si es un error de red
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            console.error('❌ Posible error de conexión con el servidor');
+        }
+        
         throw error;
     }
 }
@@ -740,6 +809,162 @@ export async function createGameStats(gameId) {
         }
         
         throw error;
+    }
+}
+
+// Función auxiliar para convertir coordenadas a notación algebraica
+function coordinateToAlgebraicAPI(row, col) {
+    const file = String.fromCharCode(97 + col); // a-h
+    const rank = 8 - row; // 8-1
+    return file + rank;
+}
+
+// Función auxiliar para obtener ID de pieza por tipo y color
+function getPieceIdAPI(pieceType, pieceColor) {
+    const pieceMap = {
+        'p': pieceColor === 'w' ? 1 : 7,  // Peón blanco: 1, Peón negro: 7
+        'r': pieceColor === 'w' ? 2 : 8,  // Torre blanca: 2, Torre negra: 8
+        'n': pieceColor === 'w' ? 3 : 9,  // Caballo blanco: 3, Caballo negro: 9
+        'b': pieceColor === 'w' ? 4 : 10, // Alfil blanco: 4, Alfil negro: 10
+        'q': pieceColor === 'w' ? 5 : 11, // Reina blanca: 5, Reina negra: 11
+        'k': pieceColor === 'w' ? 6 : 12  // Rey blanco: 6, Rey negro: 12
+    };
+    return pieceMap[pieceType];
+}
+
+// NUEVO: Función para diagnosticar el estado del gameContext antes de registrar turnos
+export function debugTurnRegistration(gameContext, currentColor, pieceToMove, fr, fc, r, c, capturedPiece) {
+    console.log('🔍 === DIAGNÓSTICO DE REGISTRO DE TURNO ===');
+    
+    // 1. Verificar datos básicos del contexto
+    console.log('📊 Estado del gameContext:');
+    console.log('   currentGameId:', gameContext?.currentGameId);
+    console.log('   currentRoundId:', gameContext?.currentRoundId);
+    console.log('   playerIds:', gameContext?.playerIds);
+    console.log('   turnCounter:', gameContext?.turnCounter);
+    
+    // 2. Verificar datos del movimiento
+    console.log('📊 Datos del movimiento:');
+    console.log('   currentColor:', currentColor);
+    console.log('   pieceToMove:', pieceToMove);
+    console.log('   from [row, col]:', [fr, fc]);
+    console.log('   to [row, col]:', [r, c]);
+    console.log('   capturedPiece:', capturedPiece);
+    
+    // 3. Verificar funciones auxiliares
+    console.log('📊 Verificando funciones auxiliares:');
+    try {
+        const algFrom = coordinateToAlgebraicAPI(fr, fc);
+        const algTo = coordinateToAlgebraicAPI(r, c);
+        const pieceId = getPieceIdAPI(pieceToMove.type, pieceToMove.color);
+        
+        console.log('   coordinateToAlgebraic funciona:');
+        console.log('     desde:', algFrom);
+        console.log('     hasta:', algTo);
+        console.log('   getPieceId funciona:', pieceId);
+    } catch (error) {
+        console.error('❌ Error en funciones auxiliares:', error);
+    }
+    
+    // 4. Simular datos que se enviarían
+    console.log('📊 Datos que se enviarían al servidor:');
+    try {
+        const simulatedTurnData = {
+            id_ronda: gameContext?.currentRoundId,
+            id_jugador: gameContext?.playerIds?.[currentColor],
+            id_pieza: getPieceIdAPI(pieceToMove.type, pieceToMove.color),
+            numero_turno: (gameContext?.turnCounter || 0) + 1,
+            posicion_desde: coordinateToAlgebraicAPI(fr, fc),
+            posicion_hasta: coordinateToAlgebraicAPI(r, c),
+            fue_captura: !!capturedPiece,
+            tiempo_duracion: null
+        };
+        console.log('   simulatedTurnData:', simulatedTurnData);
+    } catch (error) {
+        console.error('❌ Error simulando datos:', error);
+    }
+    
+    // 5. Verificar si todos los datos necesarios están presentes
+    const missingData = [];
+    if (!gameContext?.currentGameId) missingData.push('currentGameId');
+    if (!gameContext?.currentRoundId) missingData.push('currentRoundId');
+    if (!gameContext?.playerIds) missingData.push('playerIds');
+    if (!gameContext?.playerIds?.[currentColor]) missingData.push(`playerIds[${currentColor}]`);
+    
+    if (missingData.length > 0) {
+        console.error('❌ Datos faltantes:', missingData);
+        return false;
+    } else {
+        console.log('✅ Todos los datos necesarios están presentes');
+        return true;
+    }
+}
+
+// NUEVO: Función para testear manualmente el registro de turnos
+export async function testTurnRegistration() {
+    console.log('🧪 Iniciando test manual de registro de turnos...');
+    
+    // Verificar servidor
+    const serverOk = await checkServerStatus();
+    if (!serverOk) {
+        console.error('❌ Test fallido: Servidor no disponible');
+        return false;
+    }
+    
+    // Primero probar con datos mínimos válidos
+    const testTurnData = {
+        id_ronda: 1,        // Ronda 1 existe en la DB
+        id_jugador: 1,      // Jugador 1 existe en la DB (mauro@example.com)
+        id_pieza: 1,        // Pieza 1 existe en la DB (Peón blanco)
+        numero_turno: 999,  // Número alto para evitar conflictos
+        posicion_desde: 'e2',
+        posicion_hasta: 'e4',
+        fue_captura: false,
+        tiempo_duracion: null
+    };
+    
+    try {
+        console.log('🧪 Enviando datos de prueba para turno:', testTurnData);
+        const result = await registerTurnComplete(testTurnData);
+        console.log('✅ Test de turno exitoso:', result);
+        return true;
+    } catch (error) {
+        console.error('❌ Test de turno fallido:', error);
+        return false;
+    }
+}
+
+// NUEVO: Función para verificar si existen los datos referenciales necesarios
+export async function checkTurnReferences(gameContext, currentColor, pieceType) {
+    console.log('🔍 Verificando referencias para turno...');
+    
+    try {
+        // Verificar ronda
+        const roundResponse = await fetch(`${server}/api/rounds/stats?id_partida=${gameContext.currentGameId}`);
+        if (roundResponse.ok) {
+            const roundData = await roundResponse.json();
+            console.log('✅ Rondas disponibles:', roundData.data?.map(r => r.rondaId));
+        }
+        
+        // Verificar jugador
+        const playerId = gameContext.playerIds?.[currentColor];
+        if (playerId) {
+            const playerResponse = await fetch(`${server}/api/playerstats?id_jugador=${playerId}`);
+            if (playerResponse.ok) {
+                const playerData = await playerResponse.json();
+                console.log('✅ Jugador existe:', playerData.data?.[0]);
+            }
+        }
+        
+        // Verificar piezas disponibles
+        const piecesResponse = await fetch(`${server}/api/pieces/complete`);
+        if (piecesResponse.ok) {
+            const piecesData = await piecesResponse.json();
+            console.log('✅ Piezas disponibles:', piecesData.data?.slice(0, 5));
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verificando referencias:', error);
     }
 }
 

@@ -2769,21 +2769,21 @@ app.get("/api/turns/complete", async (req, res) => {
 
         // Filtro por ID de turno
         if (id_turno && !isNaN(id_turno)) {
-            whereConditions.push('id_turno = ?');
+            whereConditions.push('id_movimiento = ?');
             params.push(id_turno);
         }
 
-        // Filtro por ID de ronda
-        if (id_ronda && !isNaN(id_ronda)) {
-            whereConditions.push('id_ronda = ?');
-            params.push(id_ronda);
-        }
+        // Filtro por ID de ronda - NOTA: La tabla Turno no tiene id_ronda, solo id_partida
+        // if (id_ronda && !isNaN(id_ronda)) {
+        //     whereConditions.push('id_ronda = ?');
+        //     params.push(id_ronda);
+        // }
 
-        // Filtro por ID de jugador
-        if (id_jugador && !isNaN(id_jugador)) {
-            whereConditions.push('id_jugador = ?');
-            params.push(id_jugador);
-        }
+        // Filtro por ID de jugador - NOTA: La tabla Turno no tiene id_jugador
+        // if (id_jugador && !isNaN(id_jugador)) {
+        //     whereConditions.push('id_jugador = ?');
+        //     params.push(id_jugador);
+        // }
 
         // Filtro por tipo de pieza
         if (tipo_pieza) {
@@ -2827,22 +2827,20 @@ app.get("/api/turns/complete", async (req, res) => {
         const [rows] = await connection.execute(query, params);
 
         const completeTurns = rows.map(row => ({
-            turnoId: row.id_turno,
-            rondaId: row.id_ronda,
-            jugadorId: row.id_jugador,
+            turnoId: row.id_movimiento,
+            partidaId: row.id_partida,
             piezaId: row.id_pieza,
-            numeroTurno: row.numero_turno,
-            posicionDesde: row.posicion_desde,
-            posicionHasta: row.posicion_hasta,
-            fueCaptura: row.fue_captura,
-            tiempoDuracion: row.tiempo_duracion,
+            numeroTurno: row.turno_numero,
+            posicionDesde: row.posicion_origen,
+            posicionHasta: row.posicion_destino,
+            fueCaptura: !!row.fue_captura,
             // Información de la pieza
             tipoPieza: row.tipo_pieza,
             posicionInicialPieza: row.posicion_inicial,
             piezaCapturada: row.capturada,
             piezaProtegida: row.protegida,
             // Información adicional calculada
-            movimiento: `${row.posicion_desde} → ${row.posicion_hasta}`,
+            movimiento: `${row.posicion_origen} → ${row.posicion_destino}`,
             tipoMovimiento: row.fue_captura ? 'Captura' : 'Movimiento',
             estadoPieza: row.capturada ? 'Capturada' : 
                         row.protegida ? 'Protegida' : 'Normal'
@@ -2986,54 +2984,65 @@ app.post("/api/turns/complete", async (req, res) => {
         }
 
         // Verificar que no existe ya un turno con ese número en la ronda
-        const checkTurnQuery = 'SELECT id_turno FROM Turno WHERE id_ronda = ? AND numero_turno = ?';
-        const [existingTurn] = await connection.execute(checkTurnQuery, [id_ronda, numero_turno]);
+        // NOTA: La tabla Turno no tiene id_ronda directamente, necesitamos buscar por id_partida
+        const getGameQuery = 'SELECT id_partida FROM Ronda WHERE id_ronda = ?';
+        const [gameData] = await connection.execute(getGameQuery, [id_ronda]);
+        
+        if (gameData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ronda no encontrada para obtener id_partida',
+                error: 'ROUND_NOT_FOUND'
+            });
+        }
+        
+        const id_partida = gameData[0].id_partida;
+        
+        // Verificar que no existe ya un turno con ese número para esa partida
+        const checkTurnQuery = 'SELECT id_movimiento FROM Turno WHERE id_partida = ? AND turno_numero = ?';
+        const [existingTurn] = await connection.execute(checkTurnQuery, [id_partida, numero_turno]);
 
         if (existingTurn.length > 0) {
             return res.status(409).json({
                 success: false,
-                message: 'Ya existe un turno con ese número en esta ronda',
+                message: 'Ya existe un turno con ese número en esta partida',
                 error: 'TURN_ALREADY_EXISTS'
             });
         }
 
         // Insertar nuevo turno en tabla Turno
         const insertTurnQuery = `
-            INSERT INTO Turno (id_ronda, id_jugador, id_pieza, numero_turno, posicion_desde, posicion_hasta, fue_captura, tiempo_duracion) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Turno (id_partida, id_pieza, turno_numero, posicion_origen, posicion_destino, fue_captura) 
+            VALUES (?, ?, ?, ?, ?, ?)
         `;
         
         const [result] = await connection.execute(insertTurnQuery, [
-            id_ronda, 
-            id_jugador, 
+            id_partida,
             id_pieza, 
             numero_turno, 
             posicion_desde, 
             posicion_hasta, 
-            fue_captura || false, 
-            tiempo_duracion || null
+            fue_captura ? new Date() : null
         ]);
 
         // Obtener el turno completo recién creado desde la vista
-        const newTurnQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
+        const newTurnQuery = 'SELECT * FROM vista_turnos_completa WHERE id_movimiento = ?';
         const [newTurnData] = await connection.execute(newTurnQuery, [result.insertId]);
 
         const newTurn = newTurnData[0];
         const completeTurnData = {
-            turnoId: newTurn.id_turno,
-            rondaId: newTurn.id_ronda,
-            jugadorId: newTurn.id_jugador,
+            turnoId: newTurn.id_movimiento,
+            partidaId: newTurn.id_partida,
             piezaId: newTurn.id_pieza,
-            numeroTurno: newTurn.numero_turno,
-            posicionDesde: newTurn.posicion_desde,
-            posicionHasta: newTurn.posicion_hasta,
-            fueCaptura: newTurn.fue_captura,
-            tiempoDuracion: newTurn.tiempo_duracion,
+            numeroTurno: newTurn.turno_numero,
+            posicionDesde: newTurn.posicion_origen,
+            posicionHasta: newTurn.posicion_destino,
+            fueCaptura: !!newTurn.fue_captura,
             tipoPieza: newTurn.tipo_pieza,
             posicionInicialPieza: newTurn.posicion_inicial,
             piezaCapturada: newTurn.capturada,
             piezaProtegida: newTurn.protegida,
-            movimiento: `${newTurn.posicion_desde} → ${newTurn.posicion_hasta}`,
+            movimiento: `${newTurn.posicion_origen} → ${newTurn.posicion_destino}`,
             tipoMovimiento: newTurn.fue_captura ? 'Captura' : 'Movimiento'
         };
 
@@ -3131,7 +3140,7 @@ app.patch("/api/turns/complete/:id", async (req, res) => {
         connection = await connectToDB();
 
         // Verificar que el turno existe
-        const checkTurnQuery = 'SELECT id_turno, posicion_desde, posicion_hasta FROM Turno WHERE id_turno = ?';
+        const checkTurnQuery = 'SELECT id_movimiento, posicion_origen, posicion_destino FROM Turno WHERE id_movimiento = ?';
         const [existingTurn] = await connection.execute(checkTurnQuery, [turnoId]);
 
         if (existingTurn.length === 0) {
@@ -3145,8 +3154,8 @@ app.patch("/api/turns/complete/:id", async (req, res) => {
         const currentTurn = existingTurn[0];
 
         // Validar que las posiciones sean diferentes si se actualizan ambas
-        const finalPosDesde = posicion_desde || currentTurn.posicion_desde;
-        const finalPosHasta = posicion_hasta || currentTurn.posicion_hasta;
+        const finalPosDesde = posicion_desde || currentTurn.posicion_origen;
+        const finalPosHasta = posicion_hasta || currentTurn.posicion_destino;
 
         if (finalPosDesde === finalPosHasta) {
             return res.status(400).json({
@@ -3183,7 +3192,7 @@ app.patch("/api/turns/complete/:id", async (req, res) => {
         values.push(turnoId);
 
         // Ejecutar UPDATE en tabla Turno
-        const updateQuery = `UPDATE Turno SET ${updateFields.join(', ')} WHERE id_turno = ?`;
+        const updateQuery = `UPDATE Turno SET ${updateFields.join(', ')} WHERE id_movimiento = ?`;
         
         console.log('Update Query:', updateQuery);
         console.log('Update Values:', values);
@@ -3199,25 +3208,24 @@ app.patch("/api/turns/complete/:id", async (req, res) => {
         }
 
         // Obtener datos actualizados desde la vista
-        const statsQuery = 'SELECT * FROM vista_turnos_completa WHERE id_turno = ?';
+        const statsQuery = 'SELECT * FROM vista_turnos_completa WHERE id_movimiento = ?';
         const [statsData] = await connection.execute(statsQuery, [turnoId]);
 
         const updatedTurn = statsData[0];
         const completeTurnData = {
-            turnoId: updatedTurn.id_turno,
-            rondaId: updatedTurn.id_ronda,
-            jugadorId: updatedTurn.id_jugador,
+            turnoId: updatedTurn.id_movimiento,
+            partidaId: updatedTurn.id_partida,
             piezaId: updatedTurn.id_pieza,
-            numeroTurno: updatedTurn.numero_turno,
-            posicionDesde: updatedTurn.posicion_desde,
-            posicionHasta: updatedTurn.posicion_hasta,
+            numeroTurno: updatedTurn.turno_numero,
+            posicionDesde: updatedTurn.posicion_origen,
+            posicionHasta: updatedTurn.posicion_destino,
             fueCaptura: updatedTurn.fue_captura,
             tiempoDuracion: updatedTurn.tiempo_duracion,
             tipoPieza: updatedTurn.tipo_pieza,
             posicionInicialPieza: updatedTurn.posicion_inicial,
             piezaCapturada: updatedTurn.capturada,
             piezaProtegida: updatedTurn.protegida,
-            movimiento: `${updatedTurn.posicion_desde} → ${updatedTurn.posicion_hasta}`,
+            movimiento: `${updatedTurn.posicion_origen} → ${updatedTurn.posicion_destino}`,
             tipoMovimiento: updatedTurn.fue_captura ? 'Captura' : 'Movimiento'
         };
 

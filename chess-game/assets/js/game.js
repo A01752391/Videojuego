@@ -5,7 +5,7 @@ import { EvolutionPowerUp } from './powerups/EvolutionPowerUp.js';
 import { CagePowerUp } from './powerups/CagePowerUp.js';
 import { ReducerPowerUp } from './powerups/ReducerPowerUp.js';
 import { SwapPowerUp } from './powerups/SwapPowerUp.js'; // NUEVO IMPORT
-import { initializeGameIds, createNewRound, trackPowerupUsage, registerPieceComplete, registerTurnComplete } from './pruebasAPI.js';
+import { initializeGameIds, createNewRound, trackPowerupUsage, registerPieceComplete, registerTurnComplete, debugTurnRegistration, checkTurnReferences } from './pruebasAPI.js';
 import { midgameBoards } from './boards/midgameBoards.js';
 import { isOnlyKingsRemaining } from './pieces.js'; // NUEVO IMPORT para regla de tablas
 
@@ -81,7 +81,7 @@ function playSound(soundFile) {
  * @param {number} c - The column clicked.
  * @param {object} gameContext - The current game context.
  */
-export function handleClick(r, c, gameContext) {
+export async function handleClick(r, c, gameContext) {
     let { board, currentColor, selected, messageElement, awaitingPowerUpTarget, powerUpsWhite, powerUpsBlack } = gameContext;
 
     if (gameContext.gameOver) return;
@@ -319,6 +319,59 @@ export function handleClick(r, c, gameContext) {
         board[r][c] = pieceToMove;
         board[r][c].hasMoved = true;
         board[fr][fc] = null;
+
+        // NUEVO: Registrar el turno en la base de datos
+        try {
+            console.log('🔄 PASO 1: Iniciando registro de turno...');
+            
+            // DIAGNÓSTICO BÁSICO: Solo verificar datos mínimos
+            console.log('🔄 PASO 2: Verificando datos básicos...');
+            console.log('   currentGameId:', gameContext?.currentGameId);
+            console.log('   currentRoundId:', gameContext?.currentRoundId);
+            console.log('   playerIds:', gameContext?.playerIds);
+            console.log('   currentColor:', currentColor);
+            
+            if (!gameContext?.currentGameId) {
+                throw new Error('Falta currentGameId');
+            }
+            if (!gameContext?.currentRoundId) {
+                throw new Error('Falta currentRoundId');
+            }
+            if (!gameContext?.playerIds?.[currentColor]) {
+                throw new Error(`Falta playerIds[${currentColor}]`);
+            }
+            
+            console.log('🔄 PASO 3: Datos básicos verificados, preparando datos del turno...');
+            
+            // Incrementar contador de turnos global si no existe
+            if (!gameContext.turnCounter) {
+                gameContext.turnCounter = 0;
+            }
+            gameContext.turnCounter++;
+
+            const turnData = {
+                id_ronda: gameContext.currentRoundId,
+                id_jugador: gameContext.playerIds[currentColor],
+                id_pieza: getPieceId(pieceToMove.type, pieceToMove.color),
+                numero_turno: gameContext.turnCounter,
+                posicion_desde: coordinateToAlgebraic(fr, fc),
+                posicion_hasta: coordinateToAlgebraic(r, c),
+                fue_captura: !!capturedPiece,
+                tiempo_duracion: null // Opcional: se puede agregar tiempo después
+            };
+
+            console.log('🔄 PASO 4: Datos del turno preparados:', turnData);
+            console.log('🔄 PASO 5: Llamando a registerTurnComplete...');
+            
+            await registerTurnComplete(turnData);
+            console.log('✅ PASO 6: Turno registrado exitosamente');
+
+        } catch (error) {
+            console.error('❌ Error en PASO:', error.message);
+            console.error('❌ Error registrando turno en BD:', error);
+            console.error('❌ Stack trace:', error.stack);
+            // No interrumpir el juego por errores de BD
+        }
 
         // NUEVA VERIFICACIÓN: Detectar captura del rey como jaque mate automático
         if (capturedPiece && capturedPiece.type === 'k') {
@@ -1104,6 +1157,9 @@ export async function initGame(whitePlayerEmail, blackPlayerEmail) {
         // Resto de la inicialización del juego...
         setupGameContext(gameContext);
         
+        // NUEVO: Inicializar contador de turnos para DB
+        gameContext.turnCounter = 0;
+        
         // Inicializar displays de puntuación
         document.getElementById('score1').textContent = '0';
         document.getElementById('score2').textContent = '0';
@@ -1182,6 +1238,9 @@ export async function resetGame(gameContext) {
         black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
     };
     
+    // NUEVO: Reset contador de turnos para DB
+    gameContext.turnCounter = 0;
+    
     // NUEVO: Reset del estado de tablas por solo dos reyes
     gameContext.onlyKingsStalemate = {
         detected: false,
@@ -1237,6 +1296,9 @@ export async function resetRound(gameContext) {
         black: { turns: 0, captured: 0, powerupsUsed: 0, roundScore: 0 }
     };
     
+    // NUEVO: Reset contador de turnos para DB
+    gameContext.turnCounter = 0;
+    
     // NUEVO: Reset del estado de tablas por solo dos reyes
     gameContext.onlyKingsStalemate = {
         detected: false,
@@ -1259,4 +1321,25 @@ export async function resetRound(gameContext) {
     if (gameContext.renderBoard) {
         gameContext.renderBoard();
     }
+}
+
+// Función para convertir coordenadas de tablero a notación algebraica
+function coordinateToAlgebraic(row, col) {
+    const file = String.fromCharCode(97 + col); // a-h
+    const rank = 8 - row; // 8-1
+    return file + rank;
+}
+
+// Función para obtener ID de pieza por tipo y color
+function getPieceId(pieceType, pieceColor) {
+    // Mapeo de tipos de pieza a IDs según la base de datos
+    const pieceMap = {
+        'p': pieceColor === 'w' ? 1 : 7,  // Peón blanco: 1, Peón negro: 7
+        'r': pieceColor === 'w' ? 2 : 8,  // Torre blanca: 2, Torre negra: 8
+        'n': pieceColor === 'w' ? 3 : 9,  // Caballo blanco: 3, Caballo negro: 9
+        'b': pieceColor === 'w' ? 4 : 10, // Alfil blanco: 4, Alfil negro: 10
+        'q': pieceColor === 'w' ? 5 : 11, // Reina blanca: 5, Reina negra: 11
+        'k': pieceColor === 'w' ? 6 : 12  // Rey blanco: 6, Rey negro: 12
+    };
+    return pieceMap[pieceType];
 }
