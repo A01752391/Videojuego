@@ -6,11 +6,18 @@ export class PauseManager {
         this.resumeBtn = document.getElementById('resume-btn');
         this.restartBtn = document.getElementById('restart-btn');
         this.mainMenuBtn = document.getElementById('main-menu-btn');
+          // Audio control elements
+        this.volumeSlider = document.getElementById('volume-slider');
+        this.volumeDisplay = document.getElementById('volume-display');
+        this.muteToggle = document.getElementById('mute-toggle');
+        
+        // Audio state
+        this.isMuted = false;
+        this.previousVolume = 25;
         
         this.initializeEventListeners();
-    }
-
-    initializeEventListeners() {
+        this.initializeAudioControls();
+    }    initializeEventListeners() {
         // ESC key listener
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
@@ -30,6 +37,15 @@ export class PauseManager {
 
         if (this.mainMenuBtn) {
             this.mainMenuBtn.addEventListener('click', () => this.goToMainMenu());
+        }
+
+        // Audio control listeners
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (event) => this.handleVolumeChange(event));
+        }
+
+        if (this.muteToggle) {
+            this.muteToggle.addEventListener('click', () => this.toggleMute());
         }
 
         // Close pause menu when clicking outside
@@ -52,9 +68,7 @@ export class PauseManager {
         } else {
             this.pause();
         }
-    }
-
-    pause() {
+    }    pause() {
         if (this.gameContext.gameOver) return;
         
         this.isPaused = true;
@@ -68,6 +82,10 @@ export class PauseManager {
         
         // Disable board interactions
         this.disableBoardInteractions();
+        
+        // Keep background music playing during pause (optional)
+        // If you want to pause music during game pause, uncomment the next line:
+        // this.pauseBackgroundMusic();
         
         console.log('Game paused');
     }
@@ -86,8 +104,11 @@ export class PauseManager {
         // Re-enable board interactions
         this.enableBoardInteractions();
         
+        // Resume background music if it was paused
+        this.playBackgroundMusic();
+        
         console.log('Game resumed');
-    }    restart() {
+    }restart() {
         this.resume(); // Close pause menu first
         
         // Use the same confirmation dialog as the main reset button
@@ -121,9 +142,7 @@ export class PauseManager {
             button.disabled = true;
             button.style.opacity = '0.6';
         });
-    }
-
-    enableBoardInteractions() {
+    }    enableBoardInteractions() {
         // Re-enable board interactions
         if (this.gameContext.boardElement) {
             this.gameContext.boardElement.style.pointerEvents = 'auto';
@@ -136,6 +155,137 @@ export class PauseManager {
             button.disabled = false;
             button.style.opacity = '1';
         });
+    }
+
+    // Audio control methods
+    initializeAudioControls() {
+        // Get or create background music audio element
+        this.backgroundMusic = document.getElementById('bg-music');
+        
+        if (!this.backgroundMusic) {
+            // Create audio element if it doesn't exist
+            this.backgroundMusic = document.createElement('audio');
+            this.backgroundMusic.id = 'bg-music';
+            this.backgroundMusic.src = '../Sonidos/musicaFondo.mp3';
+            this.backgroundMusic.loop = true;
+            this.backgroundMusic.autoplay = false;
+            this.backgroundMusic.style.display = 'none';
+            document.body.appendChild(this.backgroundMusic);
+        }
+
+        // Set initial volume
+        if (this.backgroundMusic) {
+            this.backgroundMusic.volume = 0.25; // 25% default volume
+        }
+
+        // Load saved audio preferences
+        this.loadAudioPreferences();
+        
+        // Try to play background music
+        this.playBackgroundMusic();
+    }
+
+    handleVolumeChange(event) {
+        const volume = parseInt(event.target.value);
+        this.setVolume(volume);
+    }
+
+    setVolume(volume) {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.volume = volume / 100;
+        }
+        
+        // Update volume display
+        if (this.volumeDisplay) {
+            this.volumeDisplay.textContent = `${volume}%`;
+        }
+        
+        // Update slider value
+        if (this.volumeSlider) {
+            this.volumeSlider.value = volume;
+        }
+        
+        // Save preference
+        this.saveAudioPreferences();
+        
+        // If volume is set above 0 and we were muted, unmute
+        if (volume > 0 && this.isMuted) {
+            this.isMuted = false;
+            this.updateMuteUI();
+        }
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        
+        if (this.isMuted) {
+            // Store current volume and mute
+            this.previousVolume = parseInt(this.volumeSlider.value);
+            this.setVolume(0);
+        } else {
+            // Restore previous volume
+            this.setVolume(this.previousVolume);
+        }
+        
+        this.updateMuteUI();
+        this.saveAudioPreferences();
+    }    updateMuteUI() {
+        if (this.muteToggle) {
+            const muteImg = this.muteToggle.querySelector('img');
+            if (muteImg) {
+                if (this.isMuted) {
+                    // Change to muted state - could use a different image or add visual indicator
+                    muteImg.style.opacity = '0.5';
+                    muteImg.style.filter = 'grayscale(100%)';
+                    this.muteToggle.classList.add('muted');
+                } else {
+                    // Normal state
+                    muteImg.style.opacity = '1';
+                    muteImg.style.filter = 'none';
+                    this.muteToggle.classList.remove('muted');
+                }
+            }
+        }
+    }
+
+    playBackgroundMusic() {
+        if (this.backgroundMusic && !this.isMuted) {
+            this.backgroundMusic.play().catch(error => {
+                console.log('Could not play background music:', error);
+            });
+        }
+    }
+
+    pauseBackgroundMusic() {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.pause();
+        }
+    }
+
+    saveAudioPreferences() {
+        const preferences = {
+            volume: parseInt(this.volumeSlider?.value || 25),
+            isMuted: this.isMuted,
+            previousVolume: this.previousVolume
+        };
+        localStorage.setItem('chessAudioPreferences', JSON.stringify(preferences));
+    }
+
+    loadAudioPreferences() {
+        try {
+            const savedPrefs = localStorage.getItem('chessAudioPreferences');
+            if (savedPrefs) {
+                const preferences = JSON.parse(savedPrefs);
+                this.isMuted = preferences.isMuted || false;
+                this.previousVolume = preferences.previousVolume || 25;
+                
+                const volume = preferences.isMuted ? 0 : preferences.volume;
+                this.setVolume(volume);
+                this.updateMuteUI();
+            }
+        } catch (error) {
+            console.log('Could not load audio preferences:', error);
+        }
     }
 
     // Method to check if game is currently paused

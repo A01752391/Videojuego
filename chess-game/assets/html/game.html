@@ -7,25 +7,9 @@
   <link rel="stylesheet" href="../css/powerup-unlock-modal.css">
 </head>
 <body>
-  <!-- Música de fondo -->
+  <!-- Background Music -->
   <audio id="bg-music" src="../Sonidos/musicaFondo.mp3" autoplay loop style="display:none"></audio>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var audio = document.getElementById('bg-music');
-      if (audio) {
-        audio.volume = 0.25;
-        // Reintentar play en interacción de usuario si autoplay falla
-        function tryPlay() {
-          audio.play().catch(()=>{});
-          document.removeEventListener('click', tryPlay);
-        }
-        audio.play().catch(function() {
-          document.addEventListener('click', tryPlay);
-        });
-      }
-    });
-  </script>
-
+  
   <!-- Game Start Form -->
   <div id="game-start-form" class="game-start-form">
     <div class="start-form-container">
@@ -97,14 +81,38 @@
   </div>  <!-- Pause Menu Overlay -->  <div id="pause-overlay" class="pause-overlay">
     <div class="pause-menu">
       <h2>PAUSA</h2>
-      <button id="resume-btn" class="pause-button">
-        <img src="/images/continuegamebutton.png" alt="Continuar" class="pause-button-image" />
-      </button>
-      <button id="restart-btn" class="pause-button">
-        <img src="/images/resetgamebutton.png" alt="Reiniciar Partida" class="pause-button-image" />
-      </button>      <button id="main-menu-btn" class="pause-button">
-        <img src="/images/Photoroom_20250604_174552.png" alt="Menú Principal" class="pause-button-image" />
-      </button>
+        <!-- Audio Controls Section -->
+      <div class="audio-controls-section">
+        <h3>CONTROLES DE AUDIO</h3>
+        
+        <!-- Volume Control -->
+        <div class="volume-control">
+          <label for="volume-slider">Volumen:</label>
+          <div class="volume-slider-container">
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="25" step="1">
+            <span id="volume-display" class="volume-display">25%</span>
+          </div>
+        </div>
+        
+        <!-- Mute Toggle -->
+        <div class="mute-control">
+          <button id="mute-toggle" class="pause-button">
+            <img src="/images/mutebutton.png" alt="Silenciar" class="pause-button-image" />
+          </button>
+        </div>
+      </div>
+      
+      <!-- Game Controls Section -->
+      <div class="game-controls-section">
+        <button id="resume-btn" class="pause-button">
+          <img src="/images/continuegamebutton.png" alt="Continuar" class="pause-button-image" />
+        </button>
+        <button id="restart-btn" class="pause-button">
+          <img src="/images/resetgamebutton.png" alt="Reiniciar Partida" class="pause-button-image" />
+        </button>        <button id="main-menu-btn" class="pause-button">
+          <img src="/images/Photoroom_20250604_174552.png" alt="Menú Principal" class="pause-button-image" />
+        </button>
+      </div>
     </div>
   </div>
   <!-- PowerUp Unlock Modal -->

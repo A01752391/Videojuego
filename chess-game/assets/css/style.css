@@ -352,6 +352,107 @@ body {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
+/* ===== AUDIO CONTROLS STYLING ===== */
+.audio-controls-section {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #ff4081;
+}
+
+.audio-controls-section h3 {
+  color: #ffd54f;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-family: 'Fredoka', Arial, sans-serif;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.volume-control {
+  margin-bottom: 15px;
+}
+
+.volume-control label {
+  color: #fff;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+  font-family: 'Fredoka', Arial, sans-serif;
+  font-weight: 600;
+}
+
+.volume-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.volume-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #333;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff4081;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  background: #ff6ec7;
+  transform: scale(1.1);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff4081;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.volume-display {
+  color: #ffd54f;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 35px;
+  text-align: center;
+}
+
+.mute-control {
+  margin-top: 10px;
+}
+
+/* Visual state for muted button */
+.pause-button.muted {
+  opacity: 0.6;
+}
+
+.pause-button.muted img {
+  filter: grayscale(100%) brightness(0.7);
+}
+
+.game-controls-section {
+  border-top: 1px solid rgba(255, 64, 129, 0.3);
+  padding-top: 20px;
+}
+
+/* ===== END AUDIO CONTROLS STYLING ===== */
+
 /* ===== END PAUSE MENU STYLING ===== */
 
 /* ===== POWERUP ANIMATION EFFECTS ===== */
