@@ -3670,6 +3670,242 @@ app.post('/api/jugadorpartida/update', async (req, res) => {
     }
 });
 
+// ENDPOINTS PARA SISTEMA DE DESBLOQUEO DE POWERUPS
+
+// Obtener desbloqueos de un jugador específico
+app.get('/api/players/:id_jugador/unlocks', async (req, res) => {
+    let connection = null;
+    try {
+        const { id_jugador } = req.params;
+        
+        if (!id_jugador || isNaN(parseInt(id_jugador))) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de jugador inválido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
+        const [playerData] = await connection.execute(checkPlayerQuery, [id_jugador]);
+
+        if (playerData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // Obtener o crear registro de desbloqueos del jugador
+        let unlockQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
+        let [unlockData] = await connection.execute(unlockQuery, [id_jugador]);
+
+        if (unlockData.length === 0) {
+            // Si no existe, crear registro con valores por defecto
+            const insertQuery = `
+                INSERT INTO Jugador_Powerup_Desbloqueo 
+                (id_jugador, shield_desbloqueado, cage_desbloqueado, swap_desbloqueado, reducer_desbloqueado) 
+                VALUES (?, FALSE, FALSE, FALSE, FALSE)
+            `;
+            await connection.execute(insertQuery, [id_jugador]);
+            
+            // Obtener el registro recién creado
+            [unlockData] = await connection.execute(unlockQuery, [id_jugador]);
+        }
+
+        const unlocks = unlockData[0];
+        const responseData = {
+            playerId: parseInt(id_jugador),
+            playerEmail: playerData[0].email,
+            shieldUnlocked: !!unlocks.shield_desbloqueado,
+            cageUnlocked: !!unlocks.cage_desbloqueado,
+            swapUnlocked: !!unlocks.swap_desbloqueado,
+            reducerUnlocked: !!unlocks.reducer_desbloqueado,
+            lastUpdate: unlocks.fecha_actualizacion
+        };
+
+        console.log(`✅ Desbloqueos obtenidos para jugador ${id_jugador}:`, responseData);
+
+        res.status(200).json({
+            success: true,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo desbloqueos de jugador:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// Desbloquear un powerup específico para un jugador
+app.post('/api/players/:id_jugador/unlock/:powerup_name', async (req, res) => {
+    let connection = null;
+    try {
+        const { id_jugador, powerup_name } = req.params;
+        
+        if (!id_jugador || isNaN(parseInt(id_jugador))) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de jugador inválido',
+                error: 'INVALID_PLAYER_ID'
+            });
+        }
+
+        // Validar nombre de powerup
+        const validPowerups = ['shield', 'cage', 'swap', 'reducer'];
+        const powerupLower = powerup_name.toLowerCase();
+        
+        if (!validPowerups.includes(powerupLower)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nombre de powerup inválido. Debe ser: shield, cage, swap, reducer',
+                error: 'INVALID_POWERUP_NAME'
+            });
+        }
+
+        connection = await connectToDB();
+
+        // Verificar que el jugador existe
+        const checkPlayerQuery = 'SELECT id_jugador, email FROM Jugador WHERE id_jugador = ?';
+        const [playerData] = await connection.execute(checkPlayerQuery, [id_jugador]);
+
+        if (playerData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Jugador no encontrado',
+                error: 'PLAYER_NOT_FOUND'
+            });
+        }
+
+        // Crear columna de BD basada en el nombre del powerup
+        const powerupColumn = `${powerupLower}_desbloqueado`;
+
+        // Usar INSERT ON DUPLICATE KEY UPDATE para crear o actualizar
+        const upsertQuery = `
+            INSERT INTO Jugador_Powerup_Desbloqueo (id_jugador, ${powerupColumn})
+            VALUES (?, TRUE)
+            ON DUPLICATE KEY UPDATE ${powerupColumn} = TRUE, fecha_actualizacion = CURRENT_TIMESTAMP
+        `;
+
+        console.log(`🔓 Desbloqueando ${powerup_name} para jugador ${id_jugador}`);
+        
+        const [result] = await connection.execute(upsertQuery, [id_jugador]);
+
+        // Obtener el estado actualizado
+        const getUpdatedQuery = 'SELECT * FROM Jugador_Powerup_Desbloqueo WHERE id_jugador = ?';
+        const [updatedData] = await connection.execute(getUpdatedQuery, [id_jugador]);
+        
+        const unlocks = updatedData[0];
+        const responseData = {
+            playerId: parseInt(id_jugador),
+            playerEmail: playerData[0].email,
+            powerupUnlocked: powerup_name,
+            shieldUnlocked: !!unlocks.shield_desbloqueado,
+            cageUnlocked: !!unlocks.cage_desbloqueado,
+            swapUnlocked: !!unlocks.swap_desbloqueado,
+            reducerUnlocked: !!unlocks.reducer_desbloqueado,
+            lastUpdate: unlocks.fecha_actualizacion
+        };
+
+        console.log(`✅ ${powerup_name} desbloqueado exitosamente para jugador ${id_jugador}`);
+
+        res.status(200).json({
+            success: true,
+            message: `PowerUp ${powerup_name} desbloqueado exitosamente`,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('Error desbloqueando powerup:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
+// Obtener resumen de todos los desbloqueos (para administración)
+app.get('/api/unlocks/summary', async (req, res) => {
+    let connection = null;
+    try {
+        connection = await connectToDB();
+
+        const summaryQuery = `
+            SELECT 
+                j.id_jugador,
+                j.email,
+                COALESCE(jpd.shield_desbloqueado, FALSE) as shield_desbloqueado,
+                COALESCE(jpd.cage_desbloqueado, FALSE) as cage_desbloqueado,
+                COALESCE(jpd.swap_desbloqueado, FALSE) as swap_desbloqueado,
+                COALESCE(jpd.reducer_desbloqueado, FALSE) as reducer_desbloqueado,
+                jpd.fecha_actualizacion as last_unlock
+            FROM Jugador j
+            LEFT JOIN Jugador_Powerup_Desbloqueo jpd ON j.id_jugador = jpd.id_jugador
+            ORDER BY j.id_jugador
+        `;
+
+        const [summaryData] = await connection.execute(summaryQuery);
+        
+        const summary = summaryData.map(row => ({
+            playerId: row.id_jugador,
+            playerEmail: row.email,
+            shieldUnlocked: !!row.shield_desbloqueado,
+            cageUnlocked: !!row.cage_desbloqueado,
+            swapUnlocked: !!row.swap_desbloqueado,
+            reducerUnlocked: !!row.reducer_desbloqueado,
+            lastUnlock: row.last_unlock,
+            totalUnlocked: [row.shield_desbloqueado, row.cage_desbloqueado, row.swap_desbloqueado, row.reducer_desbloqueado]
+                .filter(Boolean).length
+        }));
+
+        // Estadísticas generales
+        const stats = {
+            totalPlayers: summary.length,
+            playersWithUnlocks: summary.filter(p => p.totalUnlocked > 0).length,
+            shieldUnlocks: summary.filter(p => p.shieldUnlocked).length,
+            cageUnlocks: summary.filter(p => p.cageUnlocked).length,
+            swapUnlocks: summary.filter(p => p.swapUnlocked).length,
+            reducerUnlocks: summary.filter(p => p.reducerUnlocked).length
+        };
+
+        res.status(200).json({
+            success: true,
+            data: summary,
+            statistics: stats,
+            total: summary.length
+        });
+
+    } catch (error) {
+        console.error('Error obteniendo resumen de desbloqueos:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
 });

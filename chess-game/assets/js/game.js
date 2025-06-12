@@ -556,72 +556,96 @@ export async function handleClick(r, c, gameContext) {
 }
 
 /**
- * Verifica y desbloquea PowerUps basado en la puntuación acumulada total entre ambos jugadores
+ * Verifica y desbloquea PowerUps basado en la puntuación total histórica del jugador
  * @param {string} playerColor - El color del jugador que acaba de ganar puntos ('w' o 'b')
  * @param {object} gameContext - El contexto actual del juego
  * @returns {Array} Array de PowerUps desbloqueados en esta verificación con información del jugador
  */
 async function checkAndUnlockPowerUps(playerColor, gameContext) {
-    const totalScore = gameContext.score1 + gameContext.score2; // Puntos acumulados entre ambos jugadores
     const newlyUnlocked = [];
     
-    // Definir los umbrales de desbloqueo por puntos acumulados
+    // Definir los umbrales de desbloqueo por puntos históricos totales
     const unlockThresholds = {
-        'Shield': 100,      // Se desbloquea a los 100 puntos acumulados
-        'Cage': 200,        // Se desbloquea a los 200 puntos acumulados
-        'Swap': 400,        // Se desbloquea a los 400 puntos acumulados
-        'Reducer': 800      // Se desbloquea a los 800 puntos acumulados
+        'Shield': 100,      // Se desbloquea a los 100 puntos históricos totales
+        'Cage': 200,        // Se desbloquea a los 200 puntos históricos totales
+        'Swap': 400,        // Se desbloquea a los 400 puntos históricos totales
+        'Reducer': 800      // Se desbloquea a los 800 puntos históricos totales
     };
     
-    // Verificar cada PowerUp bloqueado
-    for (const [powerUpType, threshold] of Object.entries(unlockThresholds)) {
-        if (!gameContext.unlockedPowerUps[powerUpType] && totalScore >= threshold) {
-            gameContext.unlockedPowerUps[powerUpType] = true;
-            
-            // NUEVO: Persistir desbloqueo en base de datos para ambos jugadores
-            try {
-                const { unlockPowerupForPlayer } = await import('./pruebasAPI.js');
-                const whitePlayerId = gameContext.playerIds?.w;
-                const blackPlayerId = gameContext.playerIds?.b;
-                
-                // Mapear nombres de powerups a nombres de BD
-                const powerupMapping = {
-                    'Shield': 'shield',
-                    'Cage': 'cage',
-                    'Swap': 'swap',
-                    'Reducer': 'reducer'
-                };
-                
-                const dbPowerupName = powerupMapping[powerUpType];
-                if (dbPowerupName && whitePlayerId && blackPlayerId) {
-                    // Desbloquear para ambos jugadores en paralelo
-                    await Promise.all([
-                        unlockPowerupForPlayer(whitePlayerId, dbPowerupName).catch(e => 
-                            console.error(`Error desbloqueando ${powerUpType} para jugador blanco:`, e)
-                        ),
-                        unlockPowerupForPlayer(blackPlayerId, dbPowerupName).catch(e => 
-                            console.error(`Error desbloqueando ${powerUpType} para jugador negro:`, e)
-                        )
-                    ]);
-                    console.log(`💾 ${powerUpType} persistido en BD para ambos jugadores`);
-                }
-            } catch (error) {
-                console.error(`❌ Error persistiendo desbloqueo de ${powerUpType}:`, error);
-                // No interrumpir el juego por errores de BD
-            }
-            
-            // Agregar información del jugador que desbloqueó el PowerUp
-            newlyUnlocked.push({
-                powerUpType: powerUpType,
-                playerColor: playerColor,
-                playerScore: playerColor === 'w' ? gameContext.score1 : gameContext.score2,
-                totalScore: totalScore,
-                threshold: threshold
-            });
-            
-            const playerName = playerColor === 'w' ? 'Blancas' : 'Negras';
-            console.log(`🔓 PowerUp desbloqueado por ${playerName}: ${powerUpType} (Puntos totales: ${totalScore} >= ${threshold})`);
+    // Obtener el ID del jugador que acaba de sumar puntos
+    const activePlayerId = playerColor === 'w' ? gameContext.playerIds?.w : gameContext.playerIds?.b;
+    if (!activePlayerId) {
+        console.warn('No se pudo obtener ID del jugador para verificar desbloqueos');
+        return newlyUnlocked;
+    }
+    
+    try {
+        // Obtener puntuación total histórica del jugador desde la base de datos
+        const { getPlayerStats } = await import('./pruebasAPI.js');
+        const playerStats = await getPlayerStats(null, activePlayerId);
+        
+        if (!playerStats || !playerStats.data || playerStats.data.length === 0) {
+            console.warn(`No se pudieron obtener estadísticas para jugador ${activePlayerId}`);
+            return newlyUnlocked;
         }
+        
+        const totalHistoricalScore = playerStats.data[0].puntajeTotal || 0;
+        console.log(`🎯 Verificando desbloqueos para jugador ${activePlayerId}: ${totalHistoricalScore} puntos históricos totales`);
+        
+        // Verificar cada PowerUp bloqueado
+        for (const [powerUpType, threshold] of Object.entries(unlockThresholds)) {
+            if (!gameContext.unlockedPowerUps[powerUpType] && totalHistoricalScore >= threshold) {
+                gameContext.unlockedPowerUps[powerUpType] = true;
+                
+                // Persistir desbloqueo en base de datos para ambos jugadores de la partida actual
+                try {
+                    const { unlockPowerupForPlayer } = await import('./pruebasAPI.js');
+                    const whitePlayerId = gameContext.playerIds?.w;
+                    const blackPlayerId = gameContext.playerIds?.b;
+                    
+                    // Mapear nombres de powerups a nombres de BD
+                    const powerupMapping = {
+                        'Shield': 'shield',
+                        'Cage': 'cage',
+                        'Swap': 'swap',
+                        'Reducer': 'reducer'
+                    };
+                    
+                    const dbPowerupName = powerupMapping[powerUpType];
+                    if (dbPowerupName && whitePlayerId && blackPlayerId) {
+                        // Desbloquear para ambos jugadores en paralelo
+                        await Promise.all([
+                            unlockPowerupForPlayer(whitePlayerId, dbPowerupName).catch(e => 
+                                console.error(`Error desbloqueando ${powerUpType} para jugador blanco:`, e)
+                            ),
+                            unlockPowerupForPlayer(blackPlayerId, dbPowerupName).catch(e => 
+                                console.error(`Error desbloqueando ${powerUpType} para jugador negro:`, e)
+                            )
+                        ]);
+                        console.log(`💾 ${powerUpType} persistido en BD para ambos jugadores`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Error persistiendo desbloqueo de ${powerUpType}:`, error);
+                    // No interrumpir el juego por errores de BD
+                }
+                
+                // Agregar información del jugador que alcanzó el umbral
+                newlyUnlocked.push({
+                    powerUpType: powerUpType,
+                    playerColor: playerColor,
+                    playerScore: playerColor === 'w' ? gameContext.score1 : gameContext.score2,
+                    totalHistoricalScore: totalHistoricalScore,
+                    threshold: threshold,
+                    achievedBy: activePlayerId
+                });
+                
+                const playerName = playerColor === 'w' ? 'Blancas' : 'Negras';
+                console.log(`🔓 PowerUp desbloqueado por ${playerName}: ${powerUpType} (Puntos históricos totales: ${totalHistoricalScore} >= ${threshold})`);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error verificando desbloqueos desde base de datos:', error);
     }
     
     return newlyUnlocked;

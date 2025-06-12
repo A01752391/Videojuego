@@ -1015,11 +1015,34 @@ export async function unlockPowerupForPlayer(playerId, powerupName) {
     }
 }
 
-// Obtener estadísticas completas de un jugador (incluyendo desbloqueos)
-export async function getPlayerStats(playerId) {
+// Obtener estadísticas completas de un jugador usando el endpoint existente
+export async function getPlayerStats(email = null, playerId = null) {
     try {
-        console.log(`📊 Obteniendo estadísticas completas para jugador ID: ${playerId}`);
-        const response = await fetch(`${server}/api/players/${playerId}/stats`);
+        let url = `${server}/api/playerstats`;
+        
+        if (email) {
+            url += `?email_jugador=${encodeURIComponent(email)}`;
+            console.log(`📊 Obteniendo estadísticas para jugador con email: ${email}`);
+        } else if (playerId) {
+            // Primero obtener el email del jugador usando su ID
+            const allPlayersResponse = await fetch(`${server}/api/playerstats`);
+            if (!allPlayersResponse.ok) {
+                throw new Error('Error obteniendo lista de jugadores');
+            }
+            const allPlayersData = await allPlayersResponse.json();
+            const player = allPlayersData.data.find(p => p.jugadorId === parseInt(playerId));
+            
+            if (!player) {
+                throw new Error(`Jugador con ID ${playerId} no encontrado`);
+            }
+            
+            url += `?email_jugador=${encodeURIComponent(player.email)}`;
+            console.log(`📊 Obteniendo estadísticas para jugador ID: ${playerId} (email: ${player.email})`);
+        } else {
+            console.log(`📊 Obteniendo estadísticas de todos los jugadores`);
+        }
+        
+        const response = await fetch(url);
         
         if (!response.ok) {
             const errorData = await response.json();
@@ -1027,10 +1050,10 @@ export async function getPlayerStats(playerId) {
         }
         
         const data = await response.json();
-        console.log('✅ Estadísticas obtenidas:', data.data);
-        return data.data;
+        console.log('✅ Estadísticas obtenidas:', data);
+        return data;
     } catch (error) {
-        console.error(`❌ Error obteniendo estadísticas para jugador ${playerId}:`, error);
+        console.error(`❌ Error obteniendo estadísticas:`, error);
         throw error;
     }
 }
