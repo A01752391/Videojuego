@@ -48,36 +48,37 @@ CREATE TABLE Partida (
   FOREIGN KEY (ganador_id) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 'Pieza' table
+-- 'Pieza' table (ahora catálogo de tipos de piezas)
 CREATE TABLE Pieza (
-  id_pieza MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  id_partida MEDIUMINT UNSIGNED NOT NULL,
-  id_jugador SMALLINT UNSIGNED NOT NULL,
+  id_pieza TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
   tipo VARCHAR(10) NOT NULL,
-  capturada BOOLEAN DEFAULT FALSE,
-  protegida BOOLEAN DEFAULT FALSE,
-  posicion_inicial CHAR(2),
+  color CHAR(1) NOT NULL,
+  nombre VARCHAR(20) NOT NULL,
+  descripcion TEXT,
   PRIMARY KEY (id_pieza),
-  KEY idx_partida (id_partida),
-  KEY idx_jugador (id_jugador),
-  FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
-  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
+  UNIQUE KEY uk_tipo_color (tipo, color)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 'Turno' table
+-- 'Turno' table (ahora contiene la información específica de cada pieza en el juego)
 CREATE TABLE Turno (
   id_movimiento MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
   id_partida MEDIUMINT UNSIGNED NOT NULL,
-  id_pieza MEDIUMINT UNSIGNED NOT NULL,
+  id_pieza TINYINT UNSIGNED NOT NULL,
+  id_jugador SMALLINT UNSIGNED NOT NULL,
   turno_numero SMALLINT UNSIGNED,
   posicion_origen CHAR(2),
   posicion_destino CHAR(2),
-  fue_captura DATETIME DEFAULT CURRENT_TIMESTAMP,
+  posicion_inicial CHAR(2),
+  fue_captura DATETIME DEFAULT NULL,
+  capturada BOOLEAN DEFAULT FALSE,
+  protegida BOOLEAN DEFAULT FALSE,
   PRIMARY KEY (id_movimiento),
   KEY idx_partida (id_partida),
   KEY idx_pieza (id_pieza),
+  KEY idx_jugador (id_jugador),
   FOREIGN KEY (id_partida) REFERENCES Partida(id_partida),
-  FOREIGN KEY (id_pieza) REFERENCES Pieza(id_pieza)
+  FOREIGN KEY (id_pieza) REFERENCES Pieza(id_pieza),
+  FOREIGN KEY (id_jugador) REFERENCES Jugador(id_jugador)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 'Ronda' table
@@ -274,15 +275,14 @@ LEFT JOIN Jugador jg ON p.ganador_id = jg.id_jugador;
 CREATE OR REPLACE VIEW vista_turnos_completa AS
 SELECT 
   t.*,
-  pz.tipo AS tipo_pieza,
-  pz.posicion_inicial,
-  pz.capturada,
-  pz.protegida
+  p.tipo AS tipo_pieza,
+  p.nombre AS nombre_pieza,
+  j.email AS jugador_email
 FROM Turno t
-LEFT JOIN Pieza pz USING (id_pieza);
+LEFT JOIN Pieza p USING (id_pieza)
+LEFT JOIN Jugador j USING (id_jugador);
 -- We used LEFT JOIN so all rows in the left table (Turn) are included in the result.
--- Only the matching rows of the right table (Piece) are included.
--- When there is no match, the Piece columns will have NULL values.
+-- Now we join with the piece catalog and player information.
 
 
 --
@@ -290,11 +290,31 @@ LEFT JOIN Pieza pz USING (id_pieza);
 --
 CREATE OR REPLACE VIEW vista_piezas_completa AS
 SELECT 
-  p.*,
-  j.email AS jugador_email,
-  pa.fecha_inicio,
-  pa.fecha_fin
+  p.id_pieza,
+  p.tipo,
+  p.nombre,
+  p.descripcion,
+  COUNT(t.id_movimiento) AS veces_usada,
+  COUNT(CASE WHEN t.capturada = TRUE THEN 1 END) AS veces_capturada
 FROM Pieza p
-LEFT JOIN Jugador j USING (id_jugador)
-LEFT JOIN Partida pa USING (id_partida);
--- We used LEFT JOIN to include all the pieces even if they have no player or associated game (improbable case but still) 
+LEFT JOIN Turno t USING (id_pieza)
+GROUP BY p.id_pieza, p.tipo, p.nombre, p.descripcion;
+-- We used LEFT JOIN to include all piece types even if they haven't been used yet
+-- We count how many times each piece type has been used and captured
+
+--
+-- Datos iniciales para tabla Pieza (catálogo de tipos)
+--
+INSERT INTO Pieza (id_pieza, tipo, color, nombre, descripcion) VALUES
+(1, 'p', 'w', 'Peón Blanco', 'Pieza básica que se mueve hacia adelante'),
+(2, 'r', 'w', 'Torre Blanca', 'Se mueve en línea recta horizontal y vertical'),
+(3, 'n', 'w', 'Caballo Blanco', 'Se mueve en forma de L'),
+(4, 'b', 'w', 'Alfil Blanco', 'Se mueve en diagonal'),
+(5, 'q', 'w', 'Reina Blanca', 'La pieza más poderosa, combina torre y alfil'),
+(6, 'k', 'w', 'Rey Blanco', 'La pieza más importante del juego'),
+(7, 'p', 'b', 'Peón Negro', 'Pieza básica que se mueve hacia adelante'),
+(8, 'r', 'b', 'Torre Negra', 'Se mueve en línea recta horizontal y vertical'),
+(9, 'n', 'b', 'Caballo Negro', 'Se mueve en forma de L'),
+(10, 'b', 'b', 'Alfil Negro', 'Se mueve en diagonal'),
+(11, 'q', 'b', 'Reina Negra', 'La pieza más poderosa, combina torre y alfil'),
+(12, 'k', 'b', 'Rey Negro', 'La pieza más importante del juego'); 

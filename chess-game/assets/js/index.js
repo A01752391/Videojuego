@@ -683,12 +683,12 @@ document.addEventListener('DOMContentLoaded', () => {
             gameContext.pauseManager = new PauseManager(gameContext);
 
             // Configurar eventos del tablero
-            boardElement.addEventListener('click', (e) => {
+            boardElement.addEventListener('click', async (e) => {
                 const cell = e.target.closest('.cell');
                 if (cell) {
                     const row = parseInt(cell.dataset.row);
                     const col = parseInt(cell.dataset.col);
-                    handleClickFunc(row, col, gameContext);
+                    await handleClickFunc(row, col, gameContext);
                 }
             });
 
