@@ -1041,6 +1041,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     testRoundModal: () => {
                         if (gameContext && roundStatsModal) {
                             console.log('🧪 Probando modal de ronda con datos actuales...');
+                            
+                            console.log('📊 DIAGNÓSTICO COMPLETO DE MODAL DE RONDA:');
+                            console.log('   🎯 Número de ronda:', round);
+                            console.log('   🎯 Puntajes de ronda actual:');
+                            console.log('      - Blancas (roundScore):', gameContext.gameStats?.white?.roundScore || 0);
+                            console.log('      - Negras (roundScore):', gameContext.gameStats?.black?.roundScore || 0);
+                            console.log('   🎯 Puntajes acumulativos:');
+                            console.log('      - Blancas (total):', gameContext.score1 || 0);
+                            console.log('      - Negras (total):', gameContext.score2 || 0);
+                            console.log('   🎯 IDs para endpoints:');
+                            console.log('      - Game ID:', gameContext.currentGameId);
+                            console.log('      - Round ID:', gameContext.currentRoundId);
+                            console.log('      - Player IDs:', gameContext.playerIds);
+                            
                             const testRoundData = {
                                 roundNumber: round,
                                 winner: 'w', // Ejemplo
@@ -1051,7 +1065,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 gameStats: gameContext.gameStats,
                                 timestamp: new Date().toISOString()
                             };
-                            console.log('📊 Datos de prueba para modal de ronda:', testRoundData);
+                            
+                            console.log('📊 Datos completos de prueba:', testRoundData);
                             roundStatsModal.show(testRoundData);
                         } else {
                             console.warn('Modal de ronda no disponible');
@@ -1069,7 +1084,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                 whiteWins: winsWhite,
                                 blackWins: winsBlack
                             };
-                            console.log('📊 Datos de prueba para modal de partida:', testGameData);
+                            
+                            console.log('📊 DIAGNÓSTICO COMPLETO DE MODAL DE PARTIDA:');
+                            console.log('   🎯 Puntajes reales del juego:');
+                            console.log('      - Blancas:', gameContext?.score1 || 0);
+                            console.log('      - Negras:', gameContext?.score2 || 0);
+                            console.log('   🎯 finalStats que se envían:');
+                            console.log('      - Blancas:', testGameData.finalStats.totalWhiteScore);
+                            console.log('      - Negras:', testGameData.finalStats.totalBlackScore);
+                            console.log('   🎯 Datos de rondas:');
+                            testGameData.rounds?.forEach((round, i) => {
+                                console.log(`      Ronda ${i + 1}:`, {
+                                    winner: round.winner,
+                                    whiteScore: round.whiteScore,
+                                    blackScore: round.blackScore,
+                                    whiteRoundScore: round.whiteRoundScore,
+                                    blackRoundScore: round.blackRoundScore
+                                });
+                            });
+                            
+                            console.log('📊 Datos completos de prueba:', testGameData);
                             gameStatsModal.show(testGameData);
                         } else {
                             console.warn('Modal de partida no disponible');

@@ -312,7 +312,7 @@ class RoundStatsModal {
     async processAndDisplayStats(roundData) {
         try {
             // Update round title
-            document.getElementById('roundTitle').textContent = `Ronda ${roundData.round} Completada`;
+            document.getElementById('roundTitle').textContent = `Ronda ${roundData.roundNumber || 1} Completada`;
 
             // Display winner
             this.displayWinnerInfo(roundData);
@@ -367,49 +367,61 @@ class RoundStatsModal {
      * Fetches round statistics from the API
      */
     async fetchRoundStatsFromAPI(gameContext) {
-        // Usar el endpoint correcto que existe en el servidor
-        const apiUrl = '/api/rounds/stats';
-        
-        // Build query parameters based on available context
-        const params = new URLSearchParams();
-        
-        // Prioridad 1: Filtrar por IDs de jugadores si están disponibles
-        if (gameContext.playerIds && (gameContext.playerIds.w || gameContext.playerIds.b)) {
-            // Agregar ambos jugadores como filtros separados si están disponibles
-            if (gameContext.playerIds.w) {
-                params.append('id_jugador', gameContext.playerIds.w);
-                console.log('Adding white player filter:', gameContext.playerIds.w);
+        try {
+            if (!gameContext || !gameContext.currentRoundId || !gameContext.playerIds) {
+                console.warn('Datos insuficientes para obtener estadísticas de BD:', { 
+                    gameContext, 
+                    roundId: gameContext?.currentRoundId, 
+                    playerIds: gameContext?.playerIds 
+                });
+                return null;
             }
-            if (gameContext.playerIds.b) {
-                // Para obtener estadísticas de ambos jugadores, hacer 2 llamadas separadas
-                // Por ahora, usar solo un jugador para simplicidad
-                if (!gameContext.playerIds.w) {
-                    params.append('id_jugador', gameContext.playerIds.b);
-                    console.log('Adding black player filter:', gameContext.playerIds.b);
-                }
+
+            console.log('📊 Obteniendo estadísticas de ronda desde BD:', {
+                roundId: gameContext.currentRoundId,
+                playerIds: gameContext.playerIds
+            });
+
+            // Obtener estadísticas para ambos jugadores en paralelo
+            const [whiteStats, blackStats] = await Promise.all([
+                this.fetchPlayerRoundStats(gameContext.playerIds.w, gameContext.currentRoundId),
+                this.fetchPlayerRoundStats(gameContext.playerIds.b, gameContext.currentRoundId)
+            ]);
+
+            if (whiteStats && blackStats) {
+                return [
+                    { ...whiteStats, color: 'white' },
+                    { ...blackStats, color: 'black' }
+                ];
+            } else {
+                console.warn('No se pudieron obtener estadísticas completas de BD');
+                return null;
             }
+        } catch (error) {
+            console.error('Error obteniendo estadísticas de ronda:', error);
+            return null;
         }
-        
-        // Nota: El endpoint /api/rounds/stats no acepta filtro por id_partida o id_ronda
-        // Se basa en estadísticas agregadas por jugador a través de todas las rondas
-        
-        const fullUrl = params.toString() ? `${apiUrl}?${params}` : apiUrl;
-        
-        console.log('Fetching round stats from:', fullUrl);
-        
-        const response = await fetch(fullUrl);
-        
-        if (!response.ok) {
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-            console.log('Round stats fetched successfully:', result.data);
-            return result.data;
-        } else {
-            throw new Error('Invalid API response format');
+    }
+
+    /**
+     * Fetches statistics for a specific player in a specific round
+     */
+    async fetchPlayerRoundStats(playerId, roundId) {
+        try {
+            const response = await fetch(`/api/rounds/stats/${playerId}/${roundId}`);
+            
+            if (!response.ok) {
+                console.warn(`No se encontraron estadísticas para jugador ${playerId} en ronda ${roundId}`);
+                return null;
+            }
+            
+            const result = await response.json();
+            console.log(`📊 Estadísticas obtenidas para jugador ${playerId}:`, result);
+            
+            return result;
+        } catch (error) {
+            console.error(`Error obteniendo estadísticas del jugador ${playerId}:`, error);
+            return null;
         }
     }
 
@@ -445,22 +457,61 @@ class RoundStatsModal {
      * Displays player scores using database statistics
      */
     displayDatabaseScores(roundData, dbStats) {
+        console.log('📊 Mostrando puntajes desde BD en modal de ronda:', { roundData, dbStats });
+        
         // Basic scores from roundData (these come from the game logic)
-        document.getElementById('modalWhiteScore').textContent = roundData.whiteScore || 0;
-        document.getElementById('modalBlackScore').textContent = roundData.blackScore || 0;
+        const roundWhiteScore = roundData.whiteScore || 0;
+        const roundBlackScore = roundData.blackScore || 0;
+        const cumulativeWhiteScore = roundData.whiteCumulativeScore || roundWhiteScore;
+        const cumulativeBlackScore = roundData.blackCumulativeScore || roundBlackScore;
+
+        // Mostrar puntajes de la ronda actual
+        document.getElementById('modalWhiteScore').textContent = roundWhiteScore;
+        document.getElementById('modalBlackScore').textContent = roundBlackScore;
 
         // Try to map database stats to players
         const whiteStats = this.findPlayerStats(dbStats, 'white');
         const blackStats = this.findPlayerStats(dbStats, 'black');
 
-        // Display detailed breakdowns from database
-        document.getElementById('modalWhiteCaptured').textContent = whiteStats.piezasCapturadas || 0;
-        document.getElementById('modalWhitePowerups').textContent = whiteStats.powerupsUsados || 0;
-        document.getElementById('modalWhiteTurns').textContent = whiteStats.turnosTomados || 0;
+        console.log('📊 Estadísticas mapeadas:', { whiteStats, blackStats });
 
-        document.getElementById('modalBlackCaptured').textContent = blackStats.piezasCapturadas || 0;
-        document.getElementById('modalBlackPowerups').textContent = blackStats.powerupsUsados || 0;
-        document.getElementById('modalBlackTurns').textContent = blackStats.turnosTomados || 0;
+        // Display detailed breakdowns from database
+        document.getElementById('modalWhiteCaptured').textContent = whiteStats.piezas_capturadas || 0;
+        document.getElementById('modalWhitePowerups').textContent = whiteStats.powerups_usados || 0;
+        document.getElementById('modalWhiteTurns').textContent = whiteStats.turnos_tomados || 0;
+
+        document.getElementById('modalBlackCaptured').textContent = blackStats.piezas_capturadas || 0;
+        document.getElementById('modalBlackPowerups').textContent = blackStats.powerups_usados || 0;
+        document.getElementById('modalBlackTurns').textContent = blackStats.turnos_tomados || 0;
+
+        // NUEVO: Mostrar puntajes acumulativos como información adicional
+        const modalElement = document.querySelector('.round-stats-modal');
+        if (modalElement && (cumulativeWhiteScore !== roundWhiteScore || cumulativeBlackScore !== roundBlackScore)) {
+            let cumulativeInfo = modalElement.querySelector('.cumulative-scores-info');
+            if (!cumulativeInfo) {
+                cumulativeInfo = document.createElement('div');
+                cumulativeInfo.className = 'cumulative-scores-info';
+                cumulativeInfo.style.cssText = `
+                    margin-top: 10px;
+                    padding: 8px;
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 6px;
+                    text-align: center;
+                    font-size: 0.9em;
+                    color: #ccc;
+                `;
+                
+                const scoresSection = modalElement.querySelector('.scores-section') || modalElement.querySelector('.modal-content');
+                if (scoresSection) {
+                    scoresSection.appendChild(cumulativeInfo);
+                }
+            }
+            
+            cumulativeInfo.innerHTML = `
+                <div style="margin-bottom: 4px;">📊 <strong>Puntajes Acumulativos:</strong></div>
+                <div>Blancas: ${cumulativeWhiteScore} | Negras: ${cumulativeBlackScore}</div>
+            `;
+        }
     }
 
     /**
@@ -475,26 +526,26 @@ class RoundStatsModal {
         const blackStats = this.findPlayerStats(dbStats, 'black');
 
         // Calculate ratios using database values
-        const whiteCaptureRatio = whiteStats.turnosTomados > 0 ? 
-            (whiteStats.piezasCapturadas / whiteStats.turnosTomados).toFixed(2) : '0.00';
-        const blackCaptureRatio = blackStats.turnosTomados > 0 ? 
-            (blackStats.piezasCapturadas / blackStats.turnosTomados).toFixed(2) : '0.00';
+        const whiteCaptureRatio = whiteStats.turnos_tomados > 0 ? 
+            (whiteStats.piezas_capturadas / whiteStats.turnos_tomados).toFixed(2) : '0.00';
+        const blackCaptureRatio = blackStats.turnos_tomados > 0 ? 
+            (blackStats.piezas_capturadas / blackStats.turnos_tomados).toFixed(2) : '0.00';
         
-        const whitePointsPerCapture = whiteStats.piezasCapturadas > 0 ? 
-            (whiteScore / whiteStats.piezasCapturadas).toFixed(1) : '0.0';
-        const blackPointsPerCapture = blackStats.piezasCapturadas > 0 ? 
-            (blackScore / blackStats.piezasCapturadas).toFixed(1) : '0.0';
+        const whitePointsPerCapture = whiteStats.piezas_capturadas > 0 ? 
+            (whiteScore / whiteStats.piezas_capturadas).toFixed(1) : '0.0';
+        const blackPointsPerCapture = blackStats.piezas_capturadas > 0 ? 
+            (blackScore / blackStats.piezas_capturadas).toFixed(1) : '0.0';
         
-        const whitePowerupRatio = whiteStats.turnosTomados > 0 ? 
-            (whiteStats.powerupsUsados / whiteStats.turnosTomados).toFixed(2) : '0.00';
-        const blackPowerupRatio = blackStats.turnosTomados > 0 ? 
-            (blackStats.powerupsUsados / blackStats.turnosTomados).toFixed(2) : '0.00';
+        const whitePowerupRatio = whiteStats.turnos_tomados > 0 ? 
+            (whiteStats.powerups_usados / whiteStats.turnos_tomados).toFixed(2) : '0.00';
+        const blackPowerupRatio = blackStats.turnos_tomados > 0 ? 
+            (blackStats.powerups_usados / blackStats.turnos_tomados).toFixed(2) : '0.00';
 
         // PowerUp efficiency calculation
-        const whitePowerupEfficiency = whiteStats.powerupsUsados > 0 ? 
-            Math.min(100, Math.round((whiteScore / whiteStats.powerupsUsados) * 10)) : 0;
-        const blackPowerupEfficiency = blackStats.powerupsUsados > 0 ? 
-            Math.min(100, Math.round((blackScore / blackStats.powerupsUsados) * 10)) : 0;
+        const whitePowerupEfficiency = whiteStats.powerups_usados > 0 ? 
+            Math.min(100, Math.round((whiteScore / whiteStats.powerups_usados) * 10)) : 0;
+        const blackPowerupEfficiency = blackStats.powerups_usados > 0 ? 
+            Math.min(100, Math.round((blackScore / blackStats.powerups_usados) * 10)) : 0;
 
         // Update display
         document.getElementById('modalWhiteCaptureRatio').textContent = whiteCaptureRatio;
@@ -518,56 +569,55 @@ class RoundStatsModal {
     findPlayerStats(dbStats, playerColor) {
         // Default empty stats
         const defaultStats = {
-            piezasCapturadas: 0,
-            piezasPerdidas: 0,
-            powerupsUsados: 0,
-            turnosTomados: 0,
-            rondasJugadas: 0
+            piezas_capturadas: 0,
+            piezas_perdidas: 0,
+            powerups_usados: 0,
+            turnos_tomados: 0,
+            rondas_jugadas: 0
         };
 
         if (!dbStats || !Array.isArray(dbStats) || dbStats.length === 0) {
+            console.warn('No hay estadísticas de BD disponibles, usando defaults');
             return defaultStats;
         }
 
-        // Try to get player context
-        const gameContext = this.getGameContext();
+        // Buscar estadísticas por color asignado en fetchRoundStatsFromAPI
+        const playerStats = dbStats.find(stat => stat.color === playerColor);
         
-        if (gameContext.playerIds) {
-            const playerId = playerColor === 'white' ? gameContext.playerIds.w : gameContext.playerIds.b;
-            
-            // Find stats by player ID
-            const playerStats = dbStats.find(stat => stat.jugadorId === parseInt(playerId));
-            if (playerStats) {
-                return {
-                    piezasCapturadas: playerStats.piezasCapturadas || 0,
-                    piezasPerdidas: playerStats.piezasPerdidas || 0,
-                    powerupsUsados: playerStats.powerupsUsados || 0,
-                    turnosTomados: playerStats.turnosTomados || 0,
-                    rondasJugadas: playerStats.rondasJugadas || 0
-                };
-            }
+        if (playerStats) {
+            console.log(`📊 Estadísticas encontradas para ${playerColor}:`, playerStats);
+            return {
+                piezas_capturadas: playerStats.piezas_capturadas || 0,
+                piezas_perdidas: playerStats.piezas_perdidas || 0,
+                powerups_usados: playerStats.powerups_usados || 0,
+                turnos_tomados: playerStats.turnos_tomados || 0,
+                rondas_jugadas: playerStats.rondas_jugadas || 0
+            };
         }
 
         // Fallback: if we have exactly 2 players, assign by index
         if (dbStats.length === 2) {
             const playerIndex = playerColor === 'white' ? 0 : 1;
             const playerStats = dbStats[playerIndex];
+            console.log(`📊 Usando fallback por índice para ${playerColor}:`, playerStats);
             return {
-                piezasCapturadas: playerStats.piezasCapturadas || 0,
-                piezasPerdidas: playerStats.piezasPerdidas || 0,
-                powerupsUsados: playerStats.powerupsUsados || 0,
-                turnosTomados: playerStats.turnosTomados || 0,
-                rondasJugadas: playerStats.rondasJugadas || 0
+                piezas_capturadas: playerStats.piezas_capturadas || 0,
+                piezas_perdidas: playerStats.piezas_perdidas || 0,
+                powerups_usados: playerStats.powerups_usados || 0,
+                turnos_tomados: playerStats.turnos_tomados || 0,
+                rondas_jugadas: playerStats.rondas_jugadas || 0
             };
         }
 
-        // Fallback: use first available stats or defaults
+        // Final fallback: use first available stats or defaults
+        console.warn(`No se pudieron mapear estadísticas para ${playerColor}, usando defaults`);
         return dbStats.length > 0 ? {
-            piezasCapturadas: dbStats[0].piezasCapturadas || 0,
-            piezasPerdidas: dbStats[0].piezasPerdidas || 0,
-            powerupsUsados: dbStats[0].powerupsUsados || 0,
-            turnosTomados: dbStats[0].turnosTomados || 0,
-            rondasJugadas: dbStats[0].rondasJugadas || 0        } : defaultStats;
+            piezas_capturadas: dbStats[0].piezas_capturadas || 0,
+            piezas_perdidas: dbStats[0].piezas_perdidas || 0,
+            powerups_usados: dbStats[0].powerups_usados || 0,
+            turnos_tomados: dbStats[0].turnos_tomados || 0,
+            rondas_jugadas: dbStats[0].rondas_jugadas || 0
+        } : defaultStats;
     }
 
     /**

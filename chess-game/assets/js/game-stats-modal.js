@@ -701,6 +701,9 @@ class GameStatsModal {
             }
         };
 
+        // Determinar si necesitamos contar rondas ganadas del bucle
+        let countRoundsFromLoop = true;
+        
         // CORREGIDO: Usar puntajes finales acumulativos si están disponibles
         if (gameData.finalStats) {
             console.log('✅ Usando estadísticas finales acumulativas:', gameData.finalStats);
@@ -708,6 +711,9 @@ class GameStatsModal {
             aggregated.black.totalScore = gameData.finalStats.totalBlackScore || 0;
             aggregated.white.roundsWon = gameData.finalStats.whiteWins || 0;
             aggregated.black.roundsWon = gameData.finalStats.blackWins || 0;
+            
+            // No contar rondas ganadas del bucle porque ya las tenemos de finalStats
+            countRoundsFromLoop = false;
         } else {
             // Fallback: usar el último puntaje acumulativo de las rondas
             console.log('⚠️ Usando fallback - último puntaje acumulativo de las rondas');
@@ -716,6 +722,9 @@ class GameStatsModal {
                 aggregated.white.totalScore = lastRound.whiteScore || 0; // Este ES el acumulativo
                 aggregated.black.totalScore = lastRound.blackScore || 0; // Este ES el acumulativo
             }
+            
+            // En el fallback, SÍ necesitamos contar las rondas ganadas
+            countRoundsFromLoop = true;
         }
 
         // Aggregate other data from all rounds (these still need to be summed)
@@ -726,7 +735,11 @@ class GameStatsModal {
                     aggregated.white.totalCaptured += round.gameStats.white.captured || 0;
                     aggregated.white.totalPowerups += round.gameStats.white.powerupsUsed || 0;
                     aggregated.white.totalTurns += round.gameStats.white.turns || 0;
-                    if (round.winner === 'w') aggregated.white.roundsWon++;
+                    
+                    // Solo contar rondas ganadas si no las tenemos ya de finalStats
+                    if (countRoundsFromLoop && round.winner === 'w') {
+                        aggregated.white.roundsWon++;
+                    }
                 }
 
                 // Black player stats
@@ -734,12 +747,24 @@ class GameStatsModal {
                     aggregated.black.totalCaptured += round.gameStats.black.captured || 0;
                     aggregated.black.totalPowerups += round.gameStats.black.powerupsUsed || 0;
                     aggregated.black.totalTurns += round.gameStats.black.turns || 0;
-                    if (round.winner === 'b') aggregated.black.roundsWon++;
+                    
+                    // Solo contar rondas ganadas si no las tenemos ya de finalStats
+                    if (countRoundsFromLoop && round.winner === 'b') {
+                        aggregated.black.roundsWon++;
+                    }
                 }
             });
         }
 
-        console.log('📊 Datos agregados finales:', aggregated);
+        console.log('📊 Datos agregados finales:', {
+            totalScore: { white: aggregated.white.totalScore, black: aggregated.black.totalScore },
+            roundsWon: { white: aggregated.white.roundsWon, black: aggregated.black.roundsWon },
+            totalCaptured: { white: aggregated.white.totalCaptured, black: aggregated.black.totalCaptured },
+            totalTurns: { white: aggregated.white.totalTurns, black: aggregated.black.totalTurns },
+            usingFinalStats: !!gameData.finalStats,
+            countedRoundsFromLoop: countRoundsFromLoop
+        });
+        
         return aggregated;
     }    /**
      * Displays game summary information
